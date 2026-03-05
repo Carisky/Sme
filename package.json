@@ -1,13 +1,22 @@
 {
   "name": "sme",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Portable Electron rewrite of the Trade_N VBA workflow",
+  "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "electron .",
+    "test": "node test/core.test.js",
+    "make:portable": "node scripts/make-portable.cjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@electron/packager": "^19.0.5",
+    "electron": "^40.7.0"
+  }
 }

@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>SME Portable</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="topbar__brand">
+          <p class="eyebrow">Electron Portable for Windows</p>
+          <h1>SME Trade Rewrite</h1>
+          <p class="project-indicator" id="project-indicator">
+            Szablon z `samples/files/Trade_N.xls`
+          </p>
+        </div>
+
+        <div class="toolbar">
+          <button data-action="new">Nowy</button>
+          <button data-action="open">Otwórz</button>
+          <button data-action="import" class="button--accent">Pobierz dane</button>
+          <button data-action="save">Zapisz</button>
+          <button data-action="saveAs">Zapisz jako</button>
+          <button data-action="show-print" class="button--strong">Wydruk</button>
+        </div>
+      </header>
+
+      <nav class="tabs">
+        <button class="tab is-active" data-tab="dane">Dane</button>
+        <button class="tab" data-tab="wydruk">Wydruk</button>
+      </nav>
+
+      <main class="content">
+        <section class="panel is-active" data-panel="dane">
+          <section class="summary-grid">
+            <article class="card">
+              <div class="card__title-row">
+                <h2>Wprowadź dane</h2>
+                <span class="badge" data-output="meta.sourceFileName"></span>
+              </div>
+              <div class="form-grid">
+                <label class="field field--wide">
+                  <span>Lokalizacja pliku</span>
+                  <input type="text" data-path="fileLocation" />
+                </label>
+                <label class="field">
+                  <span>Nazwa pliku</span>
+                  <input type="text" data-path="fileName" />
+                </label>
+                <label class="field">
+                  <span>Nr kontrolny</span>
+                  <input type="text" data-path="controlNumber" />
+                </label>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card__title-row">
+                <h2>Wprowadź dane dodatkowe</h2>
+                <span class="badge badge--warn" data-output="meta.noteCount"></span>
+              </div>
+              <div class="form-grid">
+                <label class="field">
+                  <span>Kurs EUR</span>
+                  <input type="text" inputmode="decimal" data-path="eurRate" />
+                </label>
+                <label class="field">
+                  <span>Numer własny</span>
+                  <input type="text" data-path="ownNumber" />
+                </label>
+                <label class="field">
+                  <span>Numer wpisu</span>
+                  <input type="text" data-path="entryNumber" />
+                </label>
+                <label class="field">
+                  <span>Z dnia</span>
+                  <input type="text" data-path="entryDate" placeholder="dd-mm-rrrr" />
+                </label>
+                <label class="field">
+                  <span>Typ dokumentu</span>
+                  <select data-path="documentType" id="document-type"></select>
+                </label>
+                <label class="field">
+                  <span id="document-number-label">Numer MRN:</span>
+                  <input type="text" data-path="documentNumber" />
+                </label>
+                <label class="field">
+                  <span>Rodzaj rudy</span>
+                  <input type="text" data-path="oreKind" />
+                </label>
+                <label class="field">
+                  <span>Typ rudy</span>
+                  <select data-path="oreType" id="ore-type"></select>
+                </label>
+                <label class="field">
+                  <span>Kraj pochodzenia</span>
+                  <input type="text" data-path="originCountry" />
+                </label>
+                <label class="field field--readonly">
+                  <span>Kod CN</span>
+                  <output data-output="meta.cnCode"></output>
+                </label>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card__title-row">
+                <h2>Nagłówek wydruku</h2>
+                <span class="badge badge--muted">edytowalne</span>
+              </div>
+              <div class="form-grid">
+                <label class="field">
+                  <span>Miejscowość</span>
+                  <input type="text" data-path="letter.printCity" />
+                </label>
+                <label class="field">
+                  <span>Data wydruku</span>
+                  <input type="text" data-path="letter.printDate" placeholder="dd.mm.rrrr" />
+                </label>
+                <label class="field field--wide">
+                  <span>Nadawca</span>
+                  <input type="text" data-path="letter.senderCompany" />
+                </label>
+                <label class="field field--wide">
+                  <span>Adres nadawcy 1</span>
+                  <input type="text" data-path="letter.senderAddressLine1" />
+                </label>
+                <label class="field field--wide">
+                  <span>Adres nadawcy 2</span>
+                  <input type="text" data-path="letter.senderAddressLine2" />
+                </label>
+                <label class="field field--wide">
+                  <span>Urząd</span>
+                  <input type="text" data-path="letter.recipientOffice" />
+                </label>
+                <label class="field field--wide">
+                  <span>Adres urzędu 1</span>
+                  <input type="text" data-path="letter.recipientAddressLine1" />
+                </label>
+                <label class="field field--wide">
+                  <span>Adres urzędu 2</span>
+                  <input type="text" data-path="letter.recipientAddressLine2" />
+                </label>
+                <label class="field field--wide">
+                  <span>Unikalny numer dokumentu</span>
+                  <input type="text" data-path="letter.uniqueDocumentNumber" />
+                </label>
+                <label class="field field--wide">
+                  <span>Podpis</span>
+                  <input type="text" data-path="letter.signatory" />
+                </label>
+              </div>
+            </article>
+          </section>
+
+          <section class="tables-grid">
+            <article class="sheet-card">
+              <div class="sheet-card__header">
+                <div>
+                  <p class="sheet-card__eyebrow">Wniosek</p>
+                  <h2>JEST</h2>
+                </div>
+                <button data-action="import" class="button--minimal">Pobierz dane</button>
+              </div>
+
+              <div class="sheet-table-wrapper">
+                <table class="sheet-table">
+                  <thead>
+                    <tr>
+                      <th>L.p.</th>
+                      <th>Nr faktury</th>
+                      <th>Waga wyższa w tonach</th>
+                      <th>Cena w EUR</th>
+                      <th>Wartość w EUR</th>
+                    </tr>
+                  </thead>
+                  <tbody id="original-table-body"></tbody>
+                </table>
+              </div>
+
+              <dl class="metrics">
+                <div>
+                  <dt>Razem</dt>
+                  <dd><span data-output="totals.originalEur"></span> EUR</dd>
+                </div>
+                <div>
+                  <dt>Kurs</dt>
+                  <dd><span data-output="totals.eurRate"></span> zł = 1 EUR</dd>
+                </div>
+                <div>
+                  <dt>Wartość</dt>
+                  <dd><span data-output="totals.originalPlnExact"></span> PLN</dd>
+                </div>
+                <div>
+                  <dt>Koszt transportu i ważenia wagonów</dt>
+                  <dd><span data-output="totals.transportRoundedOne"></span> PLN</dd>
+                </div>
+              </dl>
+            </article>
+
+            <article class="sheet-card sheet-card--accent">
+              <div class="sheet-card__header">
+                <div>
+                  <p class="sheet-card__eyebrow">Wniosek</p>
+                  <h2>WINNO BYĆ</h2>
+                </div>
+                <button data-action="show-print" class="button--minimal">Oblicz</button>
+              </div>
+
+              <div class="sheet-table-wrapper">
+                <table class="sheet-table">
+                  <thead>
+                    <tr>
+                      <th>L.p.</th>
+                      <th>Nr faktury</th>
+                      <th>Waga wyższa w tonach</th>
+                      <th>Cena w EUR</th>
+                      <th>Wartość w EUR</th>
+                      <th>Nota numer</th>
+                      <th>Nota data</th>
+                    </tr>
+                  </thead>
+                  <tbody id="correction-table-body"></tbody>
+                </table>
+              </div>
+
+              <dl class="metrics">
+                <div>
+                  <dt>Razem</dt>
+                  <dd><span data-output="totals.correctedEurExact"></span> EUR</dd>
+                </div>
+                <div>
+                  <dt>Kurs</dt>
+                  <dd><span data-output="totals.eurRate"></span> zł = 1 EUR</dd>
+                </div>
+                <div>
+                  <dt>Wartość</dt>
+                  <dd><span data-output="totals.correctedPlnExact"></span> PLN</dd>
+                </div>
+                <div>
+                  <dt>Koszt transportu i ważenia wagonów</dt>
+                  <dd><span data-output="totals.transportRoundedZero"></span> PLN</dd>
+                </div>
+              </dl>
+            </article>
+          </section>
+
+          <section class="footnotes-grid">
+            <article class="card card--notes">
+              <h2>Uwagi po pobraniu danych</h2>
+              <ul id="hint-list" class="message-list"></ul>
+            </article>
+
+            <article class="card card--notes card--warn">
+              <h2>Walidacja</h2>
+              <ul id="validation-list" class="message-list"></ul>
+            </article>
+          </section>
+        </section>
+
+        <section class="panel" data-panel="wydruk">
+          <div class="print-toolbar">
+            <button data-action="back">Powrót</button>
+            <button data-action="save">Zapisz</button>
+            <button data-action="print" class="button--strong">Drukuj</button>
+          </div>
+
+          <article id="print-root" class="document-sheet"></article>
+        </section>
+      </main>
+
+      <footer class="statusbar">
+        <span id="status-text">Gotowe.</span>
+      </footer>
+    </div>
+
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>
