@@ -6,6 +6,7 @@ const stateRef = {
   currentProjectPath: null,
   dirty: false,
   activeTab: "dane",
+  lastWorkTab: "dane",
 };
 
 const elements = {
@@ -58,6 +59,9 @@ function setValueAtPath(object, path, value) {
 
 function setActiveTab(tabName) {
   stateRef.activeTab = tabName;
+  if (tabName !== "wydruk") {
+    stateRef.lastWorkTab = tabName;
+  }
 
   document.querySelectorAll(".tab").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.tab === tabName);
@@ -83,7 +87,7 @@ function renderProjectIndicator() {
   if (stateRef.currentProjectPath) {
     elements.projectIndicator.textContent = `${stateRef.currentProjectPath}${suffix}`;
   } else {
-    elements.projectIndicator.textContent = `Projekt w pamięci${suffix}`;
+    elements.projectIndicator.textContent = `Projekt w pamieci${suffix}`;
   }
 
   const titleBase = stateRef.currentProjectPath
@@ -96,7 +100,7 @@ function buildSelectOptions() {
   elements.documentType.innerHTML = bridge.meta.documentTypes
     .map(
       (value) =>
-        `<option value="${escapeHtml(value)}">${escapeHtml(value || "—")}</option>`
+        `<option value="${escapeHtml(value)}">${escapeHtml(value || "-")}</option>`
     )
     .join("");
 
@@ -199,7 +203,7 @@ function renderOutputs() {
       ? snapshot.validation.errors
           .map((item) => `<li>${escapeHtml(item)}</li>`)
           .join("")
-      : "<li>Brak błędów walidacji.</li>";
+      : "<li>Brak bledow walidacji.</li>";
 
   document.querySelectorAll("#correction-table-body tr").forEach((rowNode, index) => {
     const correction = snapshot.rows[index].correction;
@@ -267,25 +271,25 @@ function renderPrint(snapshot) {
         snapshot.state.entryNumber
       )} z dnia ${escapeHtml(snapshot.state.entryDate)}</p>
       <p class="document__subject document__subject--secondary">
-        SAD UZUPEŁNIAJĄCY ${escapeHtml(snapshot.meta.documentDisplay)}
+        SAD UZUPELNIAJACY ${escapeHtml(snapshot.meta.documentDisplay)}
       </p>
 
       <p class="document__paragraph">
-        Działając w imieniu i z upoważnienia ArcelorMittal Poland S.A. w dniu
+        Dzialajac w imieniu i z upowaznienia ArcelorMittal Poland S.A. w dniu
         ${escapeHtml(snapshot.state.entryDate)} TSL Silesia Sp. z o.o.
       </p>
       <p class="document__paragraph">
-        dokonała wpisu do rejestru towarów objętych procedurą uproszczoną pod
-        pozycją ${escapeHtml(snapshot.state.entryNumber)} oraz sporządziła
+        dokonala wpisu do rejestru towarow objetych procedura uproszczona pod
+        pozycja ${escapeHtml(snapshot.state.entryNumber)} oraz sporzadzila
       </p>
       <p class="document__paragraph">
-        uzupełniające zgłoszenie celne towaru - ruda żelaza
+        uzupelniajace zgloszenie celne towaru - ruda zelaza
         ${escapeHtml(snapshot.state.oreType)} ${escapeHtml(snapshot.state.oreKind)}
       </p>
       <p class="document__paragraph">
-        zarejestrowanej w ewidencji pod pozycją nr ${escapeHtml(
+        zarejestrowanej w ewidencji pod pozycja nr ${escapeHtml(
           snapshot.meta.documentDisplay
-        )} pochodzącego i przywiezionego
+        )} pochodzacego i przywiezionego
       </p>
       <p class="document__paragraph">
         z ${escapeHtml(snapshot.state.originCountry)} oraz zaklasyfikowanego do
@@ -295,9 +299,9 @@ function renderPrint(snapshot) {
       ${paragraphs}
 
       <p class="document__paragraph">
-        Na podstawie art. 173 ust. 3 Rozporządzenia Parlamentu Europejskiego i
-        Rady (UE) nr 952/2013 z dn. 09.10.2013 r. ustanawiającego UKC z
-        późniejszymi zmianami, proszę o dokonanie zmian w polach SAD na:
+        Na podstawie art. 173 ust. 3 Rozporzadzenia Parlamentu Europejskiego i
+        Rady (UE) nr 952/2013 z dn. 09.10.2013 r. ustanawiajacego UKC z
+        pozniejszymi zmianami, prosze o dokonanie zmian w polach SAD na:
       </p>
 
       <table class="document__summary">
@@ -305,27 +309,27 @@ function renderPrint(snapshot) {
           <tr>
             <th></th>
             <th>JEST:</th>
-            <th>WINNO BYĆ:</th>
+            <th>WINNO BYC:</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Całkowita zafakt. kwota 1406</td>
+            <td>Calkowita zafakt. kwota 1406</td>
             <td>EUR ${snapshot.totals.formatted.originalEur}</td>
             <td>EUR ${snapshot.totals.formatted.correctedEurRounded}</td>
           </tr>
           <tr>
-            <td>Wartość fakt. pozycji 1408</td>
+            <td>Wartosc fakt. pozycji 1408</td>
             <td>${snapshot.totals.formatted.originalEur}</td>
             <td>${snapshot.totals.formatted.correctedEurRounded}</td>
           </tr>
           <tr>
-            <td>Dokumenty załączone 1203</td>
+            <td>Dokumenty zalaczone 1203</td>
             <td>${escapeHtml(snapshot.meta.invoiceNumbersList)}</td>
             <td>${escapeHtml(snapshot.meta.paymentDocumentsList)}</td>
           </tr>
           <tr>
-            <td>Wartość statystyczna 9906</td>
+            <td>Wartosc statystyczna 9906</td>
             <td>${snapshot.totals.formatted.originalStatValue}</td>
             <td>${snapshot.totals.formatted.correctedStatValue}</td>
           </tr>
@@ -333,14 +337,14 @@ function renderPrint(snapshot) {
             <td>Kalkulacje podatkowe 1403</td>
             <td>
               <table class="document__tax">
-                <tr><th>Typ</th><th>Podstawa opłaty</th><th>Stawka</th><th>Kwota</th></tr>
+                <tr><th>Typ</th><th>Podstawa oplaty</th><th>Stawka</th><th>Kwota</th></tr>
                 <tr><td>A00</td><td>${snapshot.totals.formatted.originalStatValue}</td><td>0</td><td>0</td></tr>
                 <tr><td>B00</td><td>${snapshot.totals.formatted.vatBaseOriginal}</td><td>23</td><td>${snapshot.totals.formatted.vatAmountOriginal}</td></tr>
               </table>
             </td>
             <td>
               <table class="document__tax">
-                <tr><th>Typ</th><th>Podstawa opłaty</th><th>Stawka</th><th>Kwota</th></tr>
+                <tr><th>Typ</th><th>Podstawa oplaty</th><th>Stawka</th><th>Kwota</th></tr>
                 <tr><td>A00</td><td>${snapshot.totals.formatted.correctedStatValue}</td><td>0</td><td>0</td></tr>
                 <tr><td>B00</td><td>${snapshot.totals.formatted.vatBaseCorrected}</td><td>23</td><td>${snapshot.totals.formatted.vatAmountCorrected}</td></tr>
               </table>
@@ -351,15 +355,15 @@ function renderPrint(snapshot) {
 
       <p class="document__paragraph">
         Kwota ${escapeHtml(snapshot.totals.vatDescriptor)} podatku VAT wynosi:
-        ${snapshot.totals.formatted.vatDifference} zł
+        ${snapshot.totals.formatted.vatDifference} zl
       </p>
 
       <div class="document__attachments">
-        <strong>Załączniki:</strong>
+        <strong>Zalaczniki:</strong>
         <ul>${attachmentItems}</ul>
       </div>
 
-      <p class="document__signature">Z poważaniem ${escapeHtml(
+      <p class="document__signature">Z powazaniem ${escapeHtml(
         snapshot.state.letter.signatory
       )}</p>
     </div>
@@ -397,7 +401,7 @@ async function confirmDiscardIfNeeded() {
     return true;
   }
 
-  return window.confirm("Są niezapisane zmiany. Kontynuować?");
+  return window.confirm("Sa niezapisane zmiany. Kontynuowac?");
 }
 
 function setState(nextState, options = {}) {
@@ -420,7 +424,7 @@ async function handleAction(action) {
 
       const result = await bridge.bootstrap();
       setState(result.state, { currentProjectPath: null, dirty: false });
-      showStatus("Załadowano szablon startowy.");
+      showStatus("Zaladowano szablon startowy.");
       return;
     }
 
@@ -479,19 +483,19 @@ async function handleAction(action) {
 
     if (action === "show-print") {
       if (stateRef.snapshot.validation.errors.length > 0) {
-        alert("Uzupełnij numer i datę noty we wszystkich rozpoczętych wierszach korekty.");
+        alert("Uzupelnij numer i date noty we wszystkich rozpoczetych wierszach korekty.");
         setActiveTab("dane");
         return;
       }
 
       setActiveTab("wydruk");
-      showStatus("Podgląd wydruku jest gotowy.");
+      showStatus("Podglad wydruku jest gotowy.");
       return;
     }
 
     if (action === "print") {
       if (stateRef.snapshot.validation.errors.length > 0) {
-        alert("Nie można drukować, dopóki są błędy walidacji.");
+        alert("Nie mozna drukowac, dopoki sa bledy walidacji.");
         setActiveTab("dane");
         return;
       }
@@ -502,7 +506,7 @@ async function handleAction(action) {
     }
 
     if (action === "back") {
-      setActiveTab("dane");
+      setActiveTab(stateRef.lastWorkTab || "dane");
     }
   } catch (error) {
     alert(error.message);
@@ -552,7 +556,7 @@ async function bootstrap() {
 
   const result = await bridge.bootstrap();
   setState(result.state, { currentProjectPath: null, dirty: false });
-  showStatus(result.error || "Załadowano szablon Trade_N.xls.");
+  showStatus(result.error || "Zaladowano szablon Trade_N.xls.");
 }
 
 bootstrap();

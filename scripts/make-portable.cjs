@@ -24,9 +24,13 @@ async function compressDirectory(sourceDir, destinationZip) {
 async function main() {
   const rootDir = path.resolve(__dirname, "..");
   const distDir = path.join(rootDir, "dist");
-  const outDir = path.join(distDir, "portable");
+  const buildsDir = path.join(distDir, "portable-builds");
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[:]/g, "-")
+    .replace(/\..+$/, "");
+  const outDir = path.join(buildsDir, stamp);
 
-  await fs.rm(outDir, { recursive: true, force: true });
   await fs.mkdir(outDir, { recursive: true });
 
   const packagedPaths = await packager({
