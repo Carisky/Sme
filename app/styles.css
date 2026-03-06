@@ -186,6 +186,12 @@ button:hover {
   align-items: start;
 }
 
+.settings-stack {
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+}
+
 .card,
 .sheet-card,
 .print-toolbar,
@@ -281,6 +287,15 @@ button:hover {
 
 .field--wide {
   grid-column: 1 / -1;
+}
+
+.settings-office-grid {
+  grid-template-columns: 1fr;
+  align-items: end;
+}
+
+.field--actions .toolbar {
+  justify-content: flex-start;
 }
 
 .field span {
@@ -603,6 +618,7 @@ button:hover {
   .metrics--compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
 }
 
 @media (max-width: 820px) {

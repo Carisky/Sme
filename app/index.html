@@ -211,18 +211,58 @@
 
         <section class="panel" data-panel="ustawienia">
           <section class="settings-grid">
-            <article class="card">
-              <div class="card__title-row">
-                <h2>Sciezki i projekt</h2>
-                <span class="badge badge--muted">rzadziej zmieniane</span>
-              </div>
-              <div class="form-grid">
-                <label class="field field--wide">
-                  <span>Lokalizacja pliku</span>
-                  <input type="text" data-path="fileLocation" />
-                </label>
-              </div>
-            </article>
+            <div class="settings-stack">
+              <article class="card">
+                <div class="card__title-row">
+                  <h2>Sciezki i projekt</h2>
+                  <span class="badge badge--muted">rzadziej zmieniane</span>
+                </div>
+                <div class="form-grid">
+                  <label class="field field--wide">
+                    <span>Lokalizacja pliku</span>
+                    <input type="text" data-path="fileLocation" />
+                  </label>
+                </div>
+              </article>
+
+              <article class="card">
+                <div class="card__title-row">
+                  <h2>Urzedy celne</h2>
+                  <span class="badge badge--muted">slownik SQLite</span>
+                </div>
+                <div class="form-grid settings-office-grid">
+                  <label class="field field--wide">
+                    <span>Wybierz urzad</span>
+                    <select id="settings-customs-office"></select>
+                  </label>
+                  <label class="field field--wide">
+                    <span>Kod</span>
+                    <input type="text" id="settings-office-code" />
+                  </label>
+                  <label class="field field--wide">
+                    <span>Nazwa</span>
+                    <input type="text" id="settings-office-name" />
+                  </label>
+                  <label class="field field--wide">
+                    <span>Adres 1</span>
+                    <input type="text" id="settings-office-address-1" />
+                  </label>
+                  <label class="field field--wide">
+                    <span>Adres 2</span>
+                    <input type="text" id="settings-office-address-2" />
+                  </label>
+                  <div class="field field--wide field--actions">
+                    <span>Operacje</span>
+                    <div class="toolbar">
+                      <button type="button" data-action="office-new">Nowy urzad</button>
+                      <button type="button" data-action="office-save" class="button--strong">
+                        Zapisz urzad
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
 
             <article class="card">
               <div class="card__title-row">
@@ -261,43 +301,6 @@
               </div>
             </article>
 
-            <article class="card">
-              <div class="card__title-row">
-                <h2>Urzedy celne</h2>
-                <span class="badge badge--muted">slownik SQLite</span>
-              </div>
-              <div class="form-grid">
-                <label class="field field--wide">
-                  <span>Wybierz urzad</span>
-                  <select id="settings-customs-office"></select>
-                </label>
-                <label class="field">
-                  <span>Kod</span>
-                  <input type="text" id="settings-office-code" />
-                </label>
-                <label class="field field--wide">
-                  <span>Nazwa</span>
-                  <input type="text" id="settings-office-name" />
-                </label>
-                <label class="field field--wide">
-                  <span>Adres 1</span>
-                  <input type="text" id="settings-office-address-1" />
-                </label>
-                <label class="field field--wide">
-                  <span>Adres 2</span>
-                  <input type="text" id="settings-office-address-2" />
-                </label>
-                <div class="field field--wide">
-                  <span>Operacje</span>
-                  <div class="toolbar">
-                    <button type="button" data-action="office-new">Nowy urzad</button>
-                    <button type="button" data-action="office-save" class="button--strong">
-                      Zapisz urzad
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </article>
           </section>
         </section>
 
