@@ -32,6 +32,15 @@ const elements = {
   settingsOfficeAddress2: document.getElementById("settings-office-address-2"),
 };
 
+function resolveAssetUrl(relativePath) {
+  return new URL(relativePath, window.location.href).href;
+}
+
+const PRINT_ASSETS = {
+  header: resolveAssetUrl("../samples/files/doc_header.png"),
+  footer: resolveAssetUrl("../samples/files/doc_footer.png"),
+};
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -89,6 +98,46 @@ function markDirty(value = true) {
 
 function showStatus(message) {
   elements.statusText.textContent = message;
+}
+
+function nextFrame() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
+
+function waitForImages(container) {
+  const images = Array.from(container.querySelectorAll("img"));
+  if (images.length === 0) {
+    return Promise.resolve();
+  }
+
+  return Promise.all(
+    images.map(
+      (image) =>
+        new Promise((resolve) => {
+          if (image.complete) {
+            resolve();
+            return;
+          }
+
+          function settle() {
+            image.removeEventListener("load", settle);
+            image.removeEventListener("error", settle);
+            resolve();
+          }
+
+          image.addEventListener("load", settle, { once: true });
+          image.addEventListener("error", settle, { once: true });
+        })
+    )
+  );
+}
+
+async function waitForPrintPreviewReady() {
+  await nextFrame();
+  await waitForImages(elements.printRoot);
+  await nextFrame();
 }
 
 function renderProjectIndicator() {
@@ -337,7 +386,22 @@ function renderOutputs() {
   });
 
   applyCorrectionPlaceholders();
-  elements.printRoot.innerHTML = renderPrint(snapshot);
+  try {
+    elements.printRoot.innerHTML = renderPrint(snapshot);
+  } catch (error) {
+    console.error("Print preview render failed:", error);
+    elements.printRoot.innerHTML = `
+      <div class="document document--error">
+        <p class="document__paragraph">
+          Nie udalo sie zbudowac podgladu wydruku.
+        </p>
+        <p class="document__paragraph">
+          ${escapeHtml(error.message)}
+        </p>
+      </div>
+    `;
+    showStatus(`Blad podgladu wydruku: ${error.message}`);
+  }
   renderProjectIndicator();
 }
 
@@ -367,53 +431,52 @@ function renderPrint(snapshot) {
     .map((line) => `<li>${escapeHtml(line)}</li>`)
     .join("");
 
-  return `
-    <div class="document">
-      <div class="document__header">
-        <div class="document__case">${escapeHtml(snapshot.meta.caseNumber)}</div>
-        <div class="document__place">
-          <strong>${escapeHtml(snapshot.state.letter.printCity)}</strong><br />
-          ${escapeHtml(snapshot.state.letter.printDate)}
-        </div>
+  const firstPageContent = `
+    <div class="document__header">
+      <div class="document__case">${escapeHtml(snapshot.meta.caseNumber)}</div>
+      <div class="document__place">
+        <strong>${escapeHtml(snapshot.state.letter.printCity)}</strong><br />
+        ${escapeHtml(snapshot.state.letter.printDate)}
       </div>
+    </div>
 
-      <div class="document__address-grid">
-        <div class="document__address"></div>
-        <div class="document__address">
-          <strong>${escapeHtml(String(office.name || "").toUpperCase())}</strong>
-          <div>${escapeHtml(office.addressLine1)}</div>
-          <div>${escapeHtml(office.addressLine2)}</div>
-        </div>
-      </div>
+    <div class="document__office-block">
+      <strong>${escapeHtml(String(office.name || "").toUpperCase())}</strong>
+      <div>${escapeHtml(office.addressLine1)}</div>
+      <div>${escapeHtml(office.addressLine2)}</div>
+    </div>
 
-      <p class="document__subject">Sprawa: ${escapeHtml(snapshot.state.documentNumber)}</p>
+    <p class="document__subject">Sprawa: ${escapeHtml(snapshot.state.documentNumber)}</p>
 
-      <p class="document__paragraph">
-        Dzialajac w imieniu i z upowaznienia ArcelorMittal Poland S.A. w dniu
-        ${escapeHtml(snapshot.state.entryDate)} ${escapeHtml(snapshot.state.letter.senderCompany)}
-      </p>
-      <p class="document__paragraph">
-        Dzialajac jako przedstawiciel bezposredni dokonala zgloszenia w procedurze
-        standardowej MRN
-      </p>
-      <p class="document__paragraph">
-        ${escapeHtml(snapshot.state.documentNumber)} dla towaru - ruda zelaza
-        ${escapeHtml(snapshot.state.oreType)} ${escapeHtml(snapshot.state.oreKind)}
-      </p>
-      <p class="document__paragraph">
-        pochodzacego i przywiezionego z ${escapeHtml(
-          snapshot.state.originCountry
-        )} oraz zaklasyfikowanego do kodu CN${escapeHtml(snapshot.meta.cnCode)}.
-      </p>
+    <p class="document__paragraph">
+      Dzialajac w imieniu i z upowaznienia ArcelorMittal Poland S.A. w dniu
+      ${escapeHtml(snapshot.state.entryDate)} ${escapeHtml(snapshot.state.letter.senderCompany)}
+    </p>
+    <p class="document__paragraph">
+      Dzialajac jako przedstawiciel bezposredni dokonala zgloszenia w procedurze
+      standardowej MRN
+    </p>
+    <p class="document__paragraph">
+      ${escapeHtml(snapshot.state.documentNumber)} dla towaru - ruda zelaza
+      ${escapeHtml(snapshot.state.oreType)} ${escapeHtml(snapshot.state.oreKind)}
+    </p>
+    <p class="document__paragraph">
+      pochodzacego i przywiezionego z ${escapeHtml(
+        snapshot.state.originCountry
+      )} oraz zaklasyfikowanego do kodu CN${escapeHtml(snapshot.meta.cnCode)}.
+    </p>
 
-      ${paragraphs}
+    ${paragraphs}
 
-      <p class="document__paragraph">
-        Na podstawie art. 173 ust. 3 Rozporzadzenia Parlamentu Europejskiego i
-        Rady (UE) nr 952/2013 z dn. 09.10.2013 r. ustanawiajacego UKC z
-        pozniejszymi zmianami, prosze o dokonanie zmian w polach SAD na:
-      </p>
+    <p class="document__paragraph">
+      Na podstawie art. 173 ust. 3 Rozporzadzenia Parlamentu Europejskiego i
+      Rady (UE) nr 952/2013 z dn. 09.10.2013 r. ustanawiajacego UKC z
+      pozniejszymi zmianami, prosze o dokonanie zmian w polach SAD na:
+    </p>
+  `;
 
+  const secondPageContent = `
+    <div class="document__table-block">
       <table class="document__summary">
         <thead>
           <tr>
@@ -463,11 +526,13 @@ function renderPrint(snapshot) {
         </tbody>
       </table>
 
-      <p class="document__paragraph">
+      <p class="document__paragraph document__paragraph--after-table">
         Kwota ${escapeHtml(snapshot.totals.vatDescriptor)} podatku VAT wynosi:
         ${snapshot.totals.formatted.vatDifference} zl
       </p>
+    </div>
 
+    <div class="document__closing-block">
       <div class="document__attachments">
         <strong>Zalaczniki:</strong>
         <ul>${attachmentItems}</ul>
@@ -476,6 +541,29 @@ function renderPrint(snapshot) {
       <p class="document__signature">
         Z powazaniem<br />${escapeHtml(snapshot.state.letter.signatory)}
       </p>
+    </div>
+  `;
+
+  function renderPage(pageContent, extraClass = "") {
+    return `
+      <section class="document__page ${extraClass}">
+        <div class="document__page-header">
+          <img src="${escapeHtml(PRINT_ASSETS.header)}" alt="Header" />
+        </div>
+        <div class="document__content">
+          ${pageContent}
+        </div>
+        <div class="document__page-footer">
+          <img src="${escapeHtml(PRINT_ASSETS.footer)}" alt="Footer" />
+        </div>
+      </section>
+    `;
+  }
+
+  return `
+    <div class="document">
+      ${renderPage(firstPageContent, "document__page--first")}
+      ${renderPage(secondPageContent, "document__page--second")}
     </div>
   `;
 }
@@ -681,6 +769,7 @@ async function handleAction(action) {
       }
 
       setActiveTab("wydruk");
+      await waitForPrintPreviewReady();
       showStatus("Podglad wydruku jest gotowy.");
       return;
     }
@@ -693,7 +782,9 @@ async function handleAction(action) {
       }
 
       setActiveTab("wydruk");
-      window.print();
+      await waitForPrintPreviewReady();
+      const result = await bridge.openPdfPreview();
+      showStatus(`Otworzono podglad PDF: ${basename(result.pdfPath)}.`);
       return;
     }
 

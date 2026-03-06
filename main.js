@@ -1,6 +1,6 @@
 const path = require("path");
 const fs = require("fs/promises");
-const { app, BrowserWindow, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const {
   createEmptyState,
   normalizeState,
@@ -166,6 +166,28 @@ ipcMain.handle("source:import", async (_event, currentState) => {
 
 ipcMain.handle("catalog:save-customs-office", async (_event, office) => {
   return saveCustomsOffice(office);
+});
+
+ipcMain.handle("print:open-pdf-preview", async () => {
+  if (!mainWindow) {
+    throw new Error("Okno aplikacji nie jest gotowe do wydruku.");
+  }
+
+  const pdfBuffer = await mainWindow.webContents.printToPDF({
+    printBackground: true,
+    pageSize: "A4",
+    preferCSSPageSize: true,
+  });
+  const pdfPath = path.join(app.getPath("temp"), `sme-preview-${Date.now()}.pdf`);
+
+  await fs.writeFile(pdfPath, pdfBuffer);
+
+  const openError = await shell.openPath(pdfPath);
+  if (openError) {
+    throw new Error(openError);
+  }
+
+  return { pdfPath };
 });
 
 ipcMain.on("window:set-title", (_event, title) => {

@@ -30,5 +30,6 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("source:import", state),
   saveCustomsOffice: (office) =>
     ipcRenderer.invoke("catalog:save-customs-office", office),
+  openPdfPreview: () => ipcRenderer.invoke("print:open-pdf-preview"),
   setWindowTitle: (title) => ipcRenderer.send("window:set-title", title),
 });
