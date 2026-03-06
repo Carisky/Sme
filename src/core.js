@@ -215,6 +215,10 @@ function createBaseState() {
     transportCost: "",
     originalRows: Array.from({ length: MAX_LINES }, () => createOriginalRow()),
     correctionRows: Array.from({ length: MAX_LINES }, () => createCorrectionRow()),
+    print: {
+      savePdfAfterPrint: false,
+      pdfOutputDir: "",
+    },
     letter: {
       ...DEFAULT_LETTER,
       printDate: formatDateForUi(),
@@ -271,6 +275,10 @@ function normalizeState(input = {}) {
     correctionRows: Array.from({ length: MAX_LINES }, (_, index) =>
       normalizeCorrectionRow(input.correctionRows?.[index])
     ),
+    print: {
+      savePdfAfterPrint: Boolean(input.print?.savePdfAfterPrint ?? base.print.savePdfAfterPrint),
+      pdfOutputDir: asText(input.print?.pdfOutputDir ?? base.print.pdfOutputDir),
+    },
     letter: {
       ...DEFAULT_LETTER,
       printDate: formatDateForUi(),

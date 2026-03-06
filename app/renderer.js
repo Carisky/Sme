@@ -10,6 +10,7 @@ const stateRef = {
   oreKinds: [],
   customsOffices: [],
   officeDraftId: null,
+  isPrinting: false,
 };
 
 const elements = {
@@ -30,6 +31,16 @@ const elements = {
   settingsOfficeName: document.getElementById("settings-office-name"),
   settingsOfficeAddress1: document.getElementById("settings-office-address-1"),
   settingsOfficeAddress2: document.getElementById("settings-office-address-2"),
+  settingsSavePdfAfterPrint: document.getElementById("settings-save-pdf-after-print"),
+  settingsPdfOutputDir: document.getElementById("settings-pdf-output-dir"),
+  settingsPdfOutputDirButton: document.getElementById("settings-pdf-output-dir-button"),
+  printStatusModal: document.getElementById("print-status-modal"),
+  printStatusClose: document.getElementById("print-status-close"),
+  printStatusSummary: document.getElementById("print-status-summary"),
+  printStatusPages: document.getElementById("print-status-pages"),
+  printStatusPrinter: document.getElementById("print-status-printer"),
+  printStatusDetail: document.getElementById("print-status-detail"),
+  printStatusProgressFill: document.getElementById("print-status-progress-fill"),
 };
 
 function resolveAssetUrl(relativePath) {
@@ -76,6 +87,14 @@ function setValueAtPath(object, path, value) {
   current[lastKey] = value;
 }
 
+function readControlValue(input) {
+  if (input instanceof HTMLInputElement && input.type === "checkbox") {
+    return input.checked;
+  }
+
+  return input.value;
+}
+
 function setActiveTab(tabName) {
   stateRef.activeTab = tabName;
   if (tabName !== "wydruk") {
@@ -98,6 +117,119 @@ function markDirty(value = true) {
 
 function showStatus(message) {
   elements.statusText.textContent = message;
+}
+
+function getPrintPageCount() {
+  return elements.printRoot.querySelectorAll(".document__page").length;
+}
+
+function setPrintStatusModalBusy(isBusy) {
+  elements.printStatusClose.disabled = isBusy;
+}
+
+function setPrintProgress(printedPages, totalPages) {
+  const normalizedTotal = Math.max(Number(totalPages) || 0, 0);
+  const normalizedPrinted = Math.max(Number(printedPages) || 0, 0);
+  const cappedPrinted =
+    normalizedTotal > 0 ? Math.min(normalizedPrinted, normalizedTotal) : normalizedPrinted;
+
+  elements.printStatusPages.textContent =
+    normalizedTotal > 0
+      ? `${cappedPrinted} / ${normalizedTotal}`
+      : `${cappedPrinted}`;
+  elements.printStatusProgressFill.style.width =
+    normalizedTotal > 0
+      ? `${Math.max(6, Math.round((cappedPrinted / normalizedTotal) * 100))}%`
+      : "8%";
+}
+
+function openPrintStatusModal(pageCount) {
+  stateRef.isPrinting = true;
+  elements.printStatusModal.hidden = false;
+  elements.printStatusPrinter.textContent = "domyslna systemowa";
+  elements.printStatusSummary.textContent = "Przygotowywanie dokumentu do druku";
+  elements.printStatusDetail.textContent = "Budowanie podgladu i przygotowanie zadania.";
+  setPrintProgress(0, pageCount);
+  setPrintStatusModalBusy(true);
+}
+
+function closePrintStatusModal() {
+  if (!stateRef.isPrinting && !elements.printStatusClose.disabled) {
+    elements.printStatusModal.hidden = true;
+  }
+}
+
+function updatePrintStatusModalAfterPrepare(pageCount) {
+  elements.printStatusSummary.textContent = "Dokument gotowy, rozpoczynam drukowanie";
+  elements.printStatusDetail.textContent = `Przygotowano ${pageCount} stron i rozpoczeto wysylanie do drukarki.`;
+  setPrintProgress(0, pageCount);
+}
+
+function updatePrintStatusModalSuccess(result, pageCount) {
+  const modeLabel = result.colorMode === "grayscale" ? "czarno-bialy" : "kolor";
+  const printedPages = Number(result.printedPages) || pageCount;
+  const totalPages = Number(result.totalPages) || pageCount;
+  elements.printStatusPrinter.textContent = result.printerName || "domyslna systemowa";
+  elements.printStatusSummary.textContent = "Gotowe";
+  elements.printStatusDetail.textContent = `Wydrukowano ${printedPages} z ${totalPages} stron na ${result.printerName || "drukarce domyslnej"} (${modeLabel}).`;
+  setPrintProgress(printedPages, totalPages);
+
+  if (result.pdfError) {
+    elements.printStatusSummary.textContent =
+      "Wydruk wyslany, ale zapis PDF zakonczyl sie bledem.";
+    elements.printStatusDetail.textContent = result.pdfError;
+  } else if (result.pdfPath) {
+    elements.printStatusDetail.textContent = `Wydrukowano ${printedPages} z ${totalPages} stron, PDF zapisano jako ${basename(
+      result.pdfPath
+    )}.`;
+  }
+
+  stateRef.isPrinting = false;
+  setPrintStatusModalBusy(false);
+}
+
+function updatePrintStatusModalError(error) {
+  elements.printStatusSummary.textContent = "Nie udalo sie uruchomic drukowania.";
+  elements.printStatusDetail.textContent = error.message;
+  stateRef.isPrinting = false;
+  setPrintStatusModalBusy(false);
+}
+
+function handlePrintStatusEvent(payload = {}) {
+  if (elements.printStatusModal.hidden) {
+    return;
+  }
+
+  if (payload.printerName) {
+    elements.printStatusPrinter.textContent = payload.printerName;
+  }
+
+  const totalPages = Number(payload.totalPages) || getPrintPageCount() || 0;
+  const printedPages = Number(payload.printedPages) || 0;
+
+  if (payload.phase === "spooling") {
+    elements.printStatusSummary.textContent = "Wysylanie dokumentu do drukarki";
+    elements.printStatusDetail.textContent =
+      payload.message || "Trwa przekazywanie zadania do kolejki drukarki.";
+    setPrintProgress(printedPages, totalPages);
+    return;
+  }
+
+  if (payload.phase === "printing") {
+    elements.printStatusSummary.textContent = "Dokument jest drukowany";
+    elements.printStatusDetail.textContent =
+      payload.message || `Wydrukowano ${printedPages} z ${totalPages} stron.`;
+    setPrintProgress(printedPages, totalPages);
+    return;
+  }
+
+  if (payload.phase === "pdf") {
+    elements.printStatusSummary.textContent = "Zapis PDF po wydruku";
+    elements.printStatusDetail.textContent =
+      payload.message || "Trwa zapisywanie kopii PDF.";
+    setPrintProgress(totalPages || printedPages, totalPages || printedPages);
+    return;
+  }
 }
 
 function nextFrame() {
@@ -283,6 +415,12 @@ function renderCustomsOfficeEditor(targetId = stateRef.officeDraftId) {
   elements.settingsOfficeAddress2.value = office?.addressLine2 || "";
 }
 
+function renderPrintSettingsControls() {
+  const isEnabled = Boolean(stateRef.state?.print?.savePdfAfterPrint);
+  elements.settingsPdfOutputDir.disabled = !isEnabled;
+  elements.settingsPdfOutputDirButton.disabled = !isEnabled;
+}
+
 function buildTables() {
   elements.originalTableBody.innerHTML = Array.from(
     { length: bridge.meta.maxLines },
@@ -316,8 +454,14 @@ function buildTables() {
 function populateInputs() {
   document.querySelectorAll("[data-path]").forEach((input) => {
     const value = getValueAtPath(stateRef.state, input.dataset.path);
+    if (input instanceof HTMLInputElement && input.type === "checkbox") {
+      input.checked = Boolean(value);
+      return;
+    }
+
     input.value = value ?? "";
   });
+  renderPrintSettingsControls();
 }
 
 function applyCorrectionPlaceholders() {
@@ -601,7 +745,7 @@ function recompute() {
 function handlePathInput(target) {
   const previousType = stateRef.state.documentType;
   const previousPreset = bridge.getDocumentPreset(previousType);
-  setValueAtPath(stateRef.state, target.dataset.path, target.value);
+  setValueAtPath(stateRef.state, target.dataset.path, readControlValue(target));
 
   if (target.dataset.path === "documentType") {
     const nextPreset = bridge.getDocumentPreset(target.value);
@@ -633,6 +777,10 @@ function handlePathInput(target) {
       stateRef.officeDraftId = selectedOffice.id;
       renderCustomsOfficeEditor(selectedOffice.id);
     }
+  }
+
+  if (target.dataset.path === "print.savePdfAfterPrint") {
+    renderPrintSettingsControls();
   }
 
   markDirty();
@@ -718,6 +866,21 @@ function handleOfficeNew() {
   showStatus("Wprowadz dane nowego urzedu i zapisz je do slownika.");
 }
 
+async function handleChoosePdfOutputDir() {
+  const currentPath = stateRef.state.print?.pdfOutputDir || stateRef.state.fileLocation || "";
+  const result = await bridge.chooseDirectory(currentPath);
+  if (result.canceled) {
+    return;
+  }
+
+  stateRef.state.print.pdfOutputDir = result.filePath;
+  elements.settingsPdfOutputDir.value = result.filePath;
+  renderPrintSettingsControls();
+  markDirty();
+  recompute();
+  showStatus(`Ustawiono folder PDF: ${result.filePath}.`);
+}
+
 async function handleAction(action) {
   try {
     if (action === "new") {
@@ -800,16 +963,57 @@ async function handleAction(action) {
     }
 
     if (action === "print") {
+      if (stateRef.isPrinting) {
+        return;
+      }
+
       if (stateRef.snapshot.validation.errors.length > 0) {
         alert("Nie mozna drukowac, dopoki sa bledy walidacji.");
         setActiveTab("dane");
         return;
       }
 
+      if (
+        stateRef.state.print?.savePdfAfterPrint &&
+        !String(stateRef.state.print?.pdfOutputDir || "").trim()
+      ) {
+        alert("Wlaczono zapis PDF po wydruku, ale nie ustawiono folderu docelowego.");
+        setActiveTab("ustawienia");
+        return;
+      }
+
       setActiveTab("wydruk");
+      const pageCount = getPrintPageCount() || 0;
+      openPrintStatusModal(pageCount);
       await waitForPrintPreviewReady();
-      const result = await bridge.openPdfPreview();
-      showStatus(`Otworzono podglad PDF: ${basename(result.pdfPath)}.`);
+      const resolvedPageCount = getPrintPageCount() || pageCount || 0;
+      updatePrintStatusModalAfterPrepare(resolvedPageCount);
+      const result = await bridge.printToDefaultPrinter({
+        ...stateRef.state,
+        print: {
+          ...stateRef.state.print,
+          pageCount: resolvedPageCount,
+        },
+      });
+      const modeLabel = result.colorMode === "grayscale" ? "czarno-bialy" : "kolor";
+      updatePrintStatusModalSuccess(result, resolvedPageCount);
+      if (result.pdfError) {
+        showStatus(
+          `Wydrukowano na ${result.printerName} (${modeLabel}), ale zapis PDF nie udal sie: ${result.pdfError}`
+        );
+        return;
+      }
+
+      if (result.pdfPath) {
+        showStatus(
+          `Wydrukowano na ${result.printerName} (${modeLabel}) i zapisano PDF: ${basename(
+            result.pdfPath
+          )}.`
+        );
+        return;
+      }
+
+      showStatus(`Wydrukowano na ${result.printerName} (${modeLabel}).`);
       return;
     }
 
@@ -825,8 +1029,19 @@ async function handleAction(action) {
 
     if (action === "office-save") {
       await handleOfficeSave();
+      return;
+    }
+
+    if (action === "choose-pdf-output-dir") {
+      await handleChoosePdfOutputDir();
+      return;
+    }
+
+    if (action === "close-print-status") {
+      closePrintStatusModal();
     }
   } catch (error) {
+    updatePrintStatusModalError(error);
     alert(error.message);
     showStatus(error.message);
   }
@@ -877,6 +1092,11 @@ function wireEvents() {
   });
 
   window.addEventListener("keydown", async (event) => {
+    if (event.key === "Escape" && !elements.printStatusModal.hidden) {
+      closePrintStatusModal();
+      return;
+    }
+
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
       await handleAction("save");
@@ -886,6 +1106,7 @@ function wireEvents() {
 
 async function bootstrap() {
   buildTables();
+  bridge.onPrintStatus(handlePrintStatusEvent);
   wireEvents();
 
   const result = await bridge.bootstrap();

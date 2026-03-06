@@ -294,6 +294,10 @@ button:hover {
   align-items: end;
 }
 
+.settings-print-grid {
+  grid-template-columns: 1fr;
+}
+
 .field--actions .toolbar {
   justify-content: flex-start;
 }
@@ -318,6 +322,35 @@ button:hover {
   align-items: center;
   color: var(--steel);
   font-family: var(--mono);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 2.55rem;
+  padding: 0.12rem 0;
+}
+
+.toggle-row input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--steel);
+}
+
+.toggle-row span {
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.field input:disabled,
+.field select:disabled {
+  cursor: not-allowed;
+  color: rgba(47, 45, 40, 0.55);
+  background: rgba(235, 232, 226, 0.9);
 }
 
 .sheet-table-wrapper {
@@ -697,6 +730,69 @@ button:hover {
   color: var(--muted);
 }
 
+.modal[hidden] {
+  display: none !important;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 1.2rem;
+}
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(21, 26, 30, 0.38);
+  backdrop-filter: blur(8px);
+}
+
+.modal__dialog {
+  position: relative;
+  width: min(100%, 34rem);
+  padding: 1rem 1rem 1.1rem;
+  border-radius: 24px;
+  background: var(--panel-strong);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 28px 70px rgba(29, 24, 18, 0.28);
+}
+
+.modal__summary {
+  margin: 0 0 0.8rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.modal__metrics {
+  margin-bottom: 0.95rem;
+}
+
+.modal__detail {
+  margin: 0.9rem 0 0;
+  color: var(--muted);
+  line-height: 1.42;
+}
+
+.print-progress-bar {
+  position: relative;
+  height: 0.55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(25, 58, 84, 0.08);
+}
+
+.print-progress-bar__fill {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #224f73, #2f6d97);
+  transition: width 180ms ease;
+}
+
 @page {
   size: A4;
   margin: 0;
@@ -763,8 +859,14 @@ button:hover {
 }
 
 @media print {
+  .modal,
+  .modal__backdrop,
+  .modal__dialog {
+    display: none !important;
+  }
+
   body {
-    background: white;
+    background: white !important;
   }
 
   body::before,

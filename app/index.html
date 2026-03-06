@@ -262,6 +262,46 @@
                   </div>
                 </div>
               </article>
+
+              <article class="card">
+                <div class="card__title-row">
+                  <h2>Druk i PDF</h2>
+                  <span class="badge badge--muted">druk bez okna systemowego</span>
+                </div>
+                <div class="form-grid settings-print-grid">
+                  <label class="toggle-row field--wide">
+                    <input
+                      type="checkbox"
+                      id="settings-save-pdf-after-print"
+                      data-path="print.savePdfAfterPrint"
+                    />
+                    <span>Zapisuj PDF po wydrukowaniu</span>
+                  </label>
+
+                  <label class="field field--wide">
+                    <span>Folder PDF</span>
+                    <input
+                      type="text"
+                      id="settings-pdf-output-dir"
+                      data-path="print.pdfOutputDir"
+                      placeholder="C:\\Dokumenty\\SME\\PDF"
+                    />
+                  </label>
+
+                  <div class="field field--wide field--actions">
+                    <span>Operacje</span>
+                    <div class="toolbar">
+                      <button
+                        type="button"
+                        id="settings-pdf-output-dir-button"
+                        data-action="choose-pdf-output-dir"
+                      >
+                        Wybierz folder PDF
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </article>
             </div>
 
             <article class="card">
@@ -318,6 +358,46 @@
       <footer class="statusbar">
         <span id="status-text">Gotowe.</span>
       </footer>
+    </div>
+
+    <div id="print-status-modal" class="modal" hidden>
+      <div class="modal__backdrop"></div>
+      <section class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="print-status-title">
+        <div class="card__title-row">
+          <h2 id="print-status-title">Status druku</h2>
+          <button
+            type="button"
+            id="print-status-close"
+            class="button--minimal"
+            data-action="close-print-status"
+          >
+            Zamknij
+          </button>
+        </div>
+
+        <p id="print-status-summary" class="modal__summary">
+          Przygotowywanie dokumentu do druku.
+        </p>
+
+        <dl class="metrics metrics--compact modal__metrics">
+          <div>
+            <dt>Postep</dt>
+            <dd id="print-status-pages">0 / 0</dd>
+          </div>
+          <div>
+            <dt>Drukarka</dt>
+            <dd id="print-status-printer">domyslna systemowa</dd>
+          </div>
+        </dl>
+
+        <div class="print-progress-bar" aria-hidden="true">
+          <span id="print-status-progress-fill" class="print-progress-bar__fill"></span>
+        </div>
+
+        <p id="print-status-detail" class="modal__detail">
+          Oczekiwanie na rozpoczecie zadania.
+        </p>
+      </section>
     </div>
 
     <script type="module" src="./renderer.js"></script>
