@@ -478,50 +478,75 @@ function renderPrint(snapshot) {
   const secondPageContent = `
     <div class="document__table-block">
       <table class="document__summary">
+        <colgroup>
+          <col class="document__summary-col document__summary-col--label" />
+          <col class="document__summary-col document__summary-col--type" />
+          <col class="document__summary-col document__summary-col--base" />
+          <col class="document__summary-col document__summary-col--rate" />
+          <col class="document__summary-col document__summary-col--amount" />
+          <col class="document__summary-col document__summary-col--type" />
+          <col class="document__summary-col document__summary-col--base" />
+          <col class="document__summary-col document__summary-col--rate" />
+          <col class="document__summary-col document__summary-col--amount" />
+        </colgroup>
         <thead>
           <tr>
             <th></th>
-            <th>JEST:</th>
-            <th>WINNO BYC:</th>
+            <th colspan="4">JEST:</th>
+            <th colspan="4">WINNO BYC:</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td>Calkowita zafakt. kwota 1406</td>
-            <td>EUR ${snapshot.totals.formatted.originalEur}</td>
-            <td>EUR ${snapshot.totals.formatted.correctedEurRounded}</td>
+            <td colspan="4" class="document__summary-value">EUR ${snapshot.totals.formatted.originalEur}</td>
+            <td colspan="4" class="document__summary-value">EUR ${snapshot.totals.formatted.correctedEurRounded}</td>
           </tr>
           <tr>
             <td>Wartosc fakt. pozycji 1408</td>
-            <td>${snapshot.totals.formatted.originalEur}</td>
-            <td>${snapshot.totals.formatted.correctedEurRounded}</td>
+            <td colspan="4" class="document__summary-value">${snapshot.totals.formatted.originalEur}</td>
+            <td colspan="4" class="document__summary-value">${snapshot.totals.formatted.correctedEurRounded}</td>
           </tr>
           <tr>
             <td>Dokumenty zalaczone 1203</td>
-            <td>${escapeHtml(snapshot.meta.invoiceNumbersList)}</td>
-            <td>${escapeHtml(snapshot.meta.paymentDocumentsList)}</td>
+            <td colspan="4">${escapeHtml(snapshot.meta.invoiceNumbersList)}</td>
+            <td colspan="4">${escapeHtml(snapshot.meta.paymentDocumentsList)}</td>
           </tr>
           <tr>
             <td>Wartosc statystyczna 9906</td>
-            <td>${snapshot.totals.formatted.originalStatValue}</td>
-            <td>${snapshot.totals.formatted.correctedStatValue}</td>
+            <td colspan="4" class="document__summary-value">${snapshot.totals.formatted.originalStatValue}</td>
+            <td colspan="4" class="document__summary-value">${snapshot.totals.formatted.correctedStatValue}</td>
           </tr>
-          <tr>
-            <td>Kalkulacje podatkowe 1403</td>
-            <td>
-              <table class="document__tax">
-                <tr><th>Typ</th><th>Podstawa oplaty</th><th>Stawka</th><th>Kwota</th></tr>
-                <tr><td>A00</td><td>${snapshot.totals.formatted.originalStatValue}</td><td>0</td><td>0</td></tr>
-                <tr><td>B00</td><td>${snapshot.totals.formatted.vatBaseOriginal}</td><td>23</td><td>${snapshot.totals.formatted.vatAmountOriginal}</td></tr>
-              </table>
-            </td>
-            <td>
-              <table class="document__tax">
-                <tr><th>Typ</th><th>Podstawa oplaty</th><th>Stawka</th><th>Kwota</th></tr>
-                <tr><td>A00</td><td>${snapshot.totals.formatted.correctedStatValue}</td><td>0</td><td>0</td></tr>
-                <tr><td>B00</td><td>${snapshot.totals.formatted.vatBaseCorrected}</td><td>23</td><td>${snapshot.totals.formatted.vatAmountCorrected}</td></tr>
-              </table>
-            </td>
+          <tr class="document__summary-tax-head">
+            <td rowspan="3">Kalkulacje podatkowe 1403</td>
+            <th>Typ</th>
+            <th>Podstawa oplaty</th>
+            <th>Stawka</th>
+            <th>Kwota</th>
+            <th>Typ</th>
+            <th>Podstawa oplaty</th>
+            <th>Stawka</th>
+            <th>Kwota</th>
+          </tr>
+          <tr class="document__summary-tax-row">
+            <td class="document__summary-code">A00</td>
+            <td class="document__summary-value">${snapshot.totals.formatted.originalStatValue}</td>
+            <td class="document__summary-value">0</td>
+            <td class="document__summary-value">0</td>
+            <td class="document__summary-code">A00</td>
+            <td class="document__summary-value">${snapshot.totals.formatted.correctedStatValue}</td>
+            <td class="document__summary-value">0</td>
+            <td class="document__summary-value">0</td>
+          </tr>
+          <tr class="document__summary-tax-row">
+            <td class="document__summary-code">B00</td>
+            <td class="document__summary-value">${snapshot.totals.formatted.vatBaseOriginal}</td>
+            <td class="document__summary-value">23</td>
+            <td class="document__summary-value">${snapshot.totals.formatted.vatAmountOriginal}</td>
+            <td class="document__summary-code">B00</td>
+            <td class="document__summary-value">${snapshot.totals.formatted.vatBaseCorrected}</td>
+            <td class="document__summary-value">23</td>
+            <td class="document__summary-value">${snapshot.totals.formatted.vatAmountCorrected}</td>
           </tr>
         </tbody>
       </table>

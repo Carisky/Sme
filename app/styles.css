@@ -584,10 +584,31 @@ button:hover {
 .document__summary {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   margin: 0.8rem 0 0;
   font-size: 0.9rem;
   break-inside: avoid-page;
   page-break-inside: avoid;
+}
+
+.document__summary-col--label {
+  width: 20%;
+}
+
+.document__summary-col--type {
+  width: 6%;
+}
+
+.document__summary-col--base {
+  width: 14%;
+}
+
+.document__summary-col--rate {
+  width: 7%;
+}
+
+.document__summary-col--amount {
+  width: 13%;
 }
 
 .document__summary th,
@@ -599,23 +620,41 @@ button:hover {
 
 .document__summary th {
   background: rgba(90, 90, 90, 0.08);
+  text-align: center;
 }
 
-.document__summary tr,
-.document__tax {
+.document__summary tr {
   break-inside: avoid-page;
   page-break-inside: avoid;
 }
 
-.document__tax {
-  width: 100%;
-  border-collapse: collapse;
+.document__summary td:first-child,
+.document__summary th:first-child {
+  font-size: 0.82rem;
+  line-height: 1.22;
 }
 
-.document__tax td,
-.document__tax th {
-  border: 1px solid #343434;
-  padding: 0.25rem 0.35rem;
+.document__summary-tax-head th {
+  vertical-align: middle;
+  padding: 0.3rem 0.22rem;
+  font-size: 0.82rem;
+  line-height: 1.15;
+}
+
+.document__summary-tax-head th:nth-child(n + 2),
+.document__summary-tax-row td {
+  text-align: center;
+}
+
+.document__summary-tax-row td {
+  padding: 0.28rem 0.22rem;
+  font-size: 0.82rem;
+  line-height: 1.12;
+}
+
+.document__summary-value,
+.document__summary-code {
+  white-space: nowrap;
 }
 
 .document__table-block {
