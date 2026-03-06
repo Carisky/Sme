@@ -108,7 +108,7 @@ async function saveCustomsOffice(prisma, office) {
   };
 
   if (!payload.code || !payload.name || !payload.addressLine1 || !payload.addressLine2) {
-    throw new Error("Kod, nazwa i dwa wiersze adresu urzedu sa wymagane.");
+    throw new Error("Kod, nazwa i dwa wiersze adresu urzędu są wymagane.");
   }
 
   if (office?.id) {

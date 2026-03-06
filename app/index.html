@@ -15,12 +15,12 @@
         <div class="topbar__brand">
           <p class="eyebrow">Electron Portable for Windows</p>
           <h1>SME Trade Rewrite</h1>
-          <p class="project-indicator" id="project-indicator">Projekt w pamieci</p>
+          <p class="project-indicator" id="project-indicator">Projekt w pamięci</p>
         </div>
 
         <div class="toolbar">
           <button data-action="new">Nowy</button>
-          <button data-action="open">Otworz</button>
+          <button data-action="open">Otwórz</button>
           <button data-action="import" class="button--accent">Pobierz dane</button>
           <button data-action="save">Zapisz</button>
           <button data-action="saveAs">Zapisz jako</button>
@@ -56,7 +56,7 @@
 
             <article class="card card--compact">
               <div class="card__title-row">
-                <h2>Wprowadz dane dodatkowe</h2>
+                <h2>Wprowadź dane dodatkowe</h2>
                 <span class="badge badge--warn" data-output="meta.noteCount"></span>
               </div>
               <div class="form-grid form-grid--wide">
@@ -65,15 +65,15 @@
                   <input type="text" inputmode="decimal" data-path="eurRate" />
                 </label>
                 <label class="field">
-                  <span>Numer wlasny</span>
+                  <span>Numer własny</span>
                   <input type="text" data-path="ownNumber" />
                 </label>
                 <label class="field">
-                  <span>Urzad celny</span>
+                  <span>Urząd celny</span>
                   <select data-path="customsOfficeCode" id="customs-office"></select>
                 </label>
                 <label class="field">
-                  <span>Data zgloszenia</span>
+                  <span>Data zgłoszenia</span>
                   <input type="text" data-path="entryDate" placeholder="dd-mm-rrrr" />
                 </label>
                 <label class="field">
@@ -120,9 +120,9 @@
                     <tr>
                       <th>L.p.</th>
                       <th>Nr faktury</th>
-                      <th>Waga wyzsza w tonach</th>
+                      <th>Waga wyższa w tonach</th>
                       <th>Cena w EUR</th>
-                      <th>Wartosc w EUR</th>
+                      <th>Wartość w EUR</th>
                     </tr>
                   </thead>
                   <tbody id="original-table-body"></tbody>
@@ -136,10 +136,10 @@
                 </div>
                 <div>
                   <dt>Kurs</dt>
-                  <dd><span data-output="totals.eurRate"></span> zl = 1 EUR</dd>
+                  <dd><span data-output="totals.eurRate"></span> zł = 1 EUR</dd>
                 </div>
                 <div>
-                  <dt>Wartosc</dt>
+                  <dt>Wartość</dt>
                   <dd><span data-output="totals.originalPlnExact"></span> PLN</dd>
                 </div>
                 <div>
@@ -153,7 +153,7 @@
               <div class="sheet-card__header">
                 <div>
                   <p class="sheet-card__eyebrow">Wniosek</p>
-                  <h2>WINNO BYC</h2>
+                  <h2>WINNO BYĆ</h2>
                 </div>
                 <button data-action="show-print" class="button--minimal">Oblicz</button>
               </div>
@@ -164,11 +164,11 @@
                     <tr>
                       <th>L.p.</th>
                       <th>Nr faktury</th>
-                      <th>Waga wyzsza w tonach</th>
+                      <th>Waga wyższa w tonach</th>
                       <th>Cena w EUR</th>
-                      <th>Wartosc w EUR</th>
-                      <th>Nota numer</th>
-                      <th>Nota data</th>
+                      <th>Wartość w EUR</th>
+                      <th>Numer noty</th>
+                      <th>Data noty</th>
                     </tr>
                   </thead>
                   <tbody id="correction-table-body"></tbody>
@@ -182,10 +182,10 @@
                 </div>
                 <div>
                   <dt>Kurs</dt>
-                  <dd><span data-output="totals.eurRate"></span> zl = 1 EUR</dd>
+                  <dd><span data-output="totals.eurRate"></span> zł = 1 EUR</dd>
                 </div>
                 <div>
-                  <dt>Wartosc</dt>
+                  <dt>Wartość</dt>
                   <dd><span data-output="totals.correctedPlnExact"></span> PLN</dd>
                 </div>
                 <div>
@@ -214,7 +214,7 @@
             <div class="settings-stack">
               <article class="card">
                 <div class="card__title-row">
-                  <h2>Sciezki i projekt</h2>
+                  <h2>Ścieżki i projekt</h2>
                   <span class="badge badge--muted">rzadziej zmieniane</span>
                 </div>
                 <div class="form-grid">
@@ -227,12 +227,12 @@
 
               <article class="card">
                 <div class="card__title-row">
-                  <h2>Urzedy celne</h2>
-                  <span class="badge badge--muted">slownik SQLite</span>
+                  <h2>Urzędy celne</h2>
+                  <span class="badge badge--muted">słownik SQLite</span>
                 </div>
                 <div class="form-grid settings-office-grid">
                   <label class="field field--wide">
-                    <span>Wybierz urzad</span>
+                    <span>Wybierz urząd</span>
                     <select id="settings-customs-office"></select>
                   </label>
                   <label class="field field--wide">
@@ -254,9 +254,9 @@
                   <div class="field field--wide field--actions">
                     <span>Operacje</span>
                     <div class="toolbar">
-                      <button type="button" data-action="office-new">Nowy urzad</button>
+                      <button type="button" data-action="office-new">Nowy urząd</button>
                       <button type="button" data-action="office-save" class="button--strong">
-                        Zapisz urzad
+                        Zapisz urząd
                       </button>
                     </div>
                   </div>
@@ -306,12 +306,12 @@
 
             <article class="card">
               <div class="card__title-row">
-                <h2>Naglowek wydruku</h2>
+                <h2>Nagłówek wydruku</h2>
                 <span class="badge badge--muted">nadawca i podpis</span>
               </div>
               <div class="form-grid">
                 <label class="field">
-                  <span>Miejscowosc</span>
+                  <span>Miejscowość</span>
                   <input type="text" data-path="letter.printCity" />
                 </label>
                 <label class="field">
@@ -346,7 +346,7 @@
 
         <section class="panel" data-panel="wydruk">
           <div class="print-toolbar">
-            <button data-action="back">Powrot</button>
+            <button data-action="back">Powrót</button>
             <button data-action="save">Zapisz</button>
             <button data-action="print" class="button--strong">Drukuj</button>
           </div>
@@ -381,12 +381,12 @@
 
         <dl class="metrics metrics--compact modal__metrics">
           <div>
-            <dt>Postep</dt>
+            <dt>Postęp</dt>
             <dd id="print-status-pages">0 / 0</dd>
           </div>
           <div>
             <dt>Drukarka</dt>
-            <dd id="print-status-printer">domyslna systemowa</dd>
+            <dd id="print-status-printer">domyślna systemowa</dd>
           </div>
         </dl>
 
@@ -395,7 +395,7 @@
         </div>
 
         <p id="print-status-detail" class="modal__detail">
-          Oczekiwanie na rozpoczecie zadania.
+          Oczekiwanie na rozpoczęcie zadania.
         </p>
       </section>
     </div>

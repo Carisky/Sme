@@ -1,14 +1,14 @@
 module.exports = [
   {
     code: "40101",
-    name: "Podkarpacki Urzad Celno Skarbowy",
+    name: "Podkarpacki Urząd Celno-Skarbowy",
     addressLine1: "ul. Zaciszna 4",
-    addressLine2: "37-700 Przemysl",
+    addressLine2: "37-700 Przemyśl",
   },
   {
     code: "30102",
-    name: "Lubelski Urzad Celno Skarbowy",
-    addressLine1: "ul. Celnikow Polskich 21",
-    addressLine2: "21-500 Biala Podlaska",
+    name: "Lubelski Urząd Celno-Skarbowy",
+    addressLine1: "ul. Celników Polskich 21",
+    addressLine2: "21-500 Biała Podlaska",
   },
 ];

@@ -146,9 +146,9 @@ function setPrintProgress(printedPages, totalPages) {
 function openPrintStatusModal(pageCount) {
   stateRef.isPrinting = true;
   elements.printStatusModal.hidden = false;
-  elements.printStatusPrinter.textContent = "domyslna systemowa";
+  elements.printStatusPrinter.textContent = "domyślna systemowa";
   elements.printStatusSummary.textContent = "Przygotowywanie dokumentu do druku";
-  elements.printStatusDetail.textContent = "Budowanie podgladu i przygotowanie zadania.";
+  elements.printStatusDetail.textContent = "Budowanie podglądu i przygotowanie zadania.";
   setPrintProgress(0, pageCount);
   setPrintStatusModalBusy(true);
 }
@@ -161,22 +161,22 @@ function closePrintStatusModal() {
 
 function updatePrintStatusModalAfterPrepare(pageCount) {
   elements.printStatusSummary.textContent = "Dokument gotowy, rozpoczynam drukowanie";
-  elements.printStatusDetail.textContent = `Przygotowano ${pageCount} stron i rozpoczeto wysylanie do drukarki.`;
+  elements.printStatusDetail.textContent = `Przygotowano ${pageCount} stron i rozpoczęto wysyłanie do drukarki.`;
   setPrintProgress(0, pageCount);
 }
 
 function updatePrintStatusModalSuccess(result, pageCount) {
-  const modeLabel = result.colorMode === "grayscale" ? "czarno-bialy" : "kolor";
+  const modeLabel = result.colorMode === "grayscale" ? "czarno-biały" : "kolor";
   const printedPages = Number(result.printedPages) || pageCount;
   const totalPages = Number(result.totalPages) || pageCount;
-  elements.printStatusPrinter.textContent = result.printerName || "domyslna systemowa";
+  elements.printStatusPrinter.textContent = result.printerName || "domyślna systemowa";
   elements.printStatusSummary.textContent = "Gotowe";
-  elements.printStatusDetail.textContent = `Wydrukowano ${printedPages} z ${totalPages} stron na ${result.printerName || "drukarce domyslnej"} (${modeLabel}).`;
+  elements.printStatusDetail.textContent = `Wydrukowano ${printedPages} z ${totalPages} stron na ${result.printerName || "drukarce domyślnej"} (${modeLabel}).`;
   setPrintProgress(printedPages, totalPages);
 
   if (result.pdfError) {
     elements.printStatusSummary.textContent =
-      "Wydruk wyslany, ale zapis PDF zakonczyl sie bledem.";
+      "Wydruk wysłany, ale zapis PDF zakończył się błędem.";
     elements.printStatusDetail.textContent = result.pdfError;
   } else if (result.pdfPath) {
     elements.printStatusDetail.textContent = `Wydrukowano ${printedPages} z ${totalPages} stron, PDF zapisano jako ${basename(
@@ -189,7 +189,7 @@ function updatePrintStatusModalSuccess(result, pageCount) {
 }
 
 function updatePrintStatusModalError(error) {
-  elements.printStatusSummary.textContent = "Nie udalo sie uruchomic drukowania.";
+  elements.printStatusSummary.textContent = "Nie udało się uruchomić drukowania.";
   elements.printStatusDetail.textContent = error.message;
   stateRef.isPrinting = false;
   setPrintStatusModalBusy(false);
@@ -208,7 +208,7 @@ function handlePrintStatusEvent(payload = {}) {
   const printedPages = Number(payload.printedPages) || 0;
 
   if (payload.phase === "spooling") {
-    elements.printStatusSummary.textContent = "Wysylanie dokumentu do drukarki";
+    elements.printStatusSummary.textContent = "Wysyłanie dokumentu do drukarki";
     elements.printStatusDetail.textContent =
       payload.message || "Trwa przekazywanie zadania do kolejki drukarki.";
     setPrintProgress(printedPages, totalPages);
@@ -278,7 +278,7 @@ function renderProjectIndicator() {
   if (stateRef.currentProjectPath) {
     elements.projectIndicator.textContent = `${stateRef.currentProjectPath}${suffix}`;
   } else {
-    elements.projectIndicator.textContent = `Projekt w pamieci${suffix}`;
+    elements.projectIndicator.textContent = `Projekt w pamięci${suffix}`;
   }
 
   const titleBase = stateRef.currentProjectPath
@@ -375,7 +375,7 @@ function renderCustomsOfficeOptions() {
     .join("");
 
   elements.settingsCustomsOffice.innerHTML = [
-    '<option value="">Nowy urzad...</option>',
+    '<option value="">Nowy urząd...</option>',
     ...stateRef.customsOffices.map(
       (office) =>
         `<option value="${office.id}">${escapeHtml(
@@ -521,7 +521,7 @@ function renderOutputs() {
       ? snapshot.validation.errors
           .map((item) => `<li>${escapeHtml(item)}</li>`)
           .join("")
-      : "<li>Brak bledow walidacji.</li>";
+      : "<li>Brak błędów walidacji.</li>";
 
   document.querySelectorAll("#correction-table-body tr").forEach((rowNode, index) => {
     const correction = snapshot.rows[index].correction;
@@ -537,14 +537,14 @@ function renderOutputs() {
     elements.printRoot.innerHTML = `
       <div class="document document--error">
         <p class="document__paragraph">
-          Nie udalo sie zbudowac podgladu wydruku.
+          Nie udało się zbudować podglądu wydruku.
         </p>
         <p class="document__paragraph">
           ${escapeHtml(error.message)}
         </p>
       </div>
     `;
-    showStatus(`Blad podgladu wydruku: ${error.message}`);
+    showStatus(`Błąd podglądu wydruku: ${error.message}`);
   }
   renderProjectIndicator();
 }
@@ -593,19 +593,19 @@ function renderPrint(snapshot) {
     <p class="document__subject">Sprawa: ${escapeHtml(snapshot.state.documentNumber)}</p>
 
     <p class="document__paragraph">
-      Dzialajac w imieniu i z upowaznienia ArcelorMittal Poland S.A. w dniu
+      Działając w imieniu i z upoważnienia ArcelorMittal Poland S.A. w dniu
       ${escapeHtml(snapshot.state.entryDate)} ${escapeHtml(snapshot.state.letter.senderCompany)}
     </p>
     <p class="document__paragraph">
-      Dzialajac jako przedstawiciel bezposredni dokonala zgloszenia w procedurze
+      Działając jako przedstawiciel bezpośredni dokonała zgłoszenia w procedurze
       standardowej MRN
     </p>
     <p class="document__paragraph">
-      ${escapeHtml(snapshot.state.documentNumber)} dla towaru - ruda zelaza
+      ${escapeHtml(snapshot.state.documentNumber)} dla towaru - ruda żelaza
       ${escapeHtml(snapshot.state.oreType)} ${escapeHtml(snapshot.state.oreKind)}
     </p>
     <p class="document__paragraph">
-      pochodzacego i przywiezionego z ${escapeHtml(
+      pochodzącego i przywiezionego z ${escapeHtml(
         snapshot.state.originCountry
       )} oraz zaklasyfikowanego do kodu CN${escapeHtml(snapshot.meta.cnCode)}.
     </p>
@@ -613,9 +613,9 @@ function renderPrint(snapshot) {
     ${paragraphs}
 
     <p class="document__paragraph">
-      Na podstawie art. 173 ust. 3 Rozporzadzenia Parlamentu Europejskiego i
-      Rady (UE) nr 952/2013 z dn. 09.10.2013 r. ustanawiajacego UKC z
-      pozniejszymi zmianami, prosze o dokonanie zmian w polach SAD na:
+      Na podstawie art. 173 ust. 3 Rozporządzenia Parlamentu Europejskiego i
+      Rady (UE) nr 952/2013 z dn. 09.10.2013 r. ustanawiającego UKC z
+      późniejszymi zmianami, proszę o dokonanie zmian w polach SAD na:
     </p>
   `;
 
@@ -637,38 +637,38 @@ function renderPrint(snapshot) {
           <tr>
             <th></th>
             <th colspan="4">JEST:</th>
-            <th colspan="4">WINNO BYC:</th>
+            <th colspan="4">WINNO BYĆ:</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Calkowita zafakt. kwota 1406</td>
+            <td>Całkowita zafakt. kwota 1406</td>
             <td colspan="4" class="document__summary-value">EUR ${snapshot.totals.formatted.originalEur}</td>
             <td colspan="4" class="document__summary-value">EUR ${snapshot.totals.formatted.correctedEurRounded}</td>
           </tr>
           <tr>
-            <td>Wartosc fakt. pozycji 1408</td>
+            <td>Wartość fakt. pozycji 1408</td>
             <td colspan="4" class="document__summary-value">${snapshot.totals.formatted.originalEur}</td>
             <td colspan="4" class="document__summary-value">${snapshot.totals.formatted.correctedEurRounded}</td>
           </tr>
           <tr>
-            <td>Dokumenty zalaczone 1203</td>
+            <td>Dokumenty załączone 1203</td>
             <td colspan="4">${escapeHtml(snapshot.meta.invoiceNumbersList)}</td>
             <td colspan="4">${escapeHtml(snapshot.meta.paymentDocumentsList)}</td>
           </tr>
           <tr>
-            <td>Wartosc statystyczna 9906</td>
+            <td>Wartość statystyczna 9906</td>
             <td colspan="4" class="document__summary-value">${snapshot.totals.formatted.originalStatValue}</td>
             <td colspan="4" class="document__summary-value">${snapshot.totals.formatted.correctedStatValue}</td>
           </tr>
           <tr class="document__summary-tax-head">
             <td rowspan="3">Kalkulacje podatkowe 1403</td>
             <th>Typ</th>
-            <th>Podstawa oplaty</th>
+            <th>Podstawa opłaty</th>
             <th>Stawka</th>
             <th>Kwota</th>
             <th>Typ</th>
-            <th>Podstawa oplaty</th>
+            <th>Podstawa opłaty</th>
             <th>Stawka</th>
             <th>Kwota</th>
           </tr>
@@ -697,18 +697,18 @@ function renderPrint(snapshot) {
 
       <p class="document__paragraph document__paragraph--after-table">
         Kwota ${escapeHtml(snapshot.totals.vatDescriptor)} podatku VAT wynosi:
-        ${snapshot.totals.formatted.vatDifference} zl
+        ${snapshot.totals.formatted.vatDifference} zł
       </p>
     </div>
 
     <div class="document__closing-block">
       <div class="document__attachments">
-        <strong>Zalaczniki:</strong>
+        <strong>Załączniki:</strong>
         <ul>${attachmentItems}</ul>
       </div>
 
       <p class="document__signature">
-        Z powazaniem<br />${escapeHtml(snapshot.state.letter.signatory)}
+        Z poważaniem<br />${escapeHtml(snapshot.state.letter.signatory)}
       </p>
     </div>
   `;
@@ -792,7 +792,7 @@ async function confirmDiscardIfNeeded() {
     return true;
   }
 
-  return window.confirm("Sa niezapisane zmiany. Kontynuowac?");
+  return window.confirm("Są niezapisane zmiany. Kontynuować?");
 }
 
 function applyCatalogs(result) {
@@ -857,13 +857,13 @@ async function handleOfficeSave() {
   renderCustomsOfficeOptions();
   populateInputs();
   recompute();
-  showStatus(`Zapisano urzad ${result.savedOffice?.code || ""}.`);
+  showStatus(`Zapisano urząd ${result.savedOffice?.code || ""}.`);
 }
 
 function handleOfficeNew() {
   stateRef.officeDraftId = null;
   renderCustomsOfficeEditor(null);
-  showStatus("Wprowadz dane nowego urzedu i zapisz je do slownika.");
+  showStatus("Wprowadź dane nowego urzędu i zapisz je do słownika.");
 }
 
 async function handleChoosePdfOutputDir() {
@@ -892,7 +892,7 @@ async function handleAction(action) {
       applyCatalogs(result);
       buildSelectOptions();
       setState(result.state, { currentProjectPath: null, dirty: false });
-      showStatus(result.error || result.catalogError || "Zaladowano szablon startowy.");
+      showStatus(result.error || result.catalogError || "Załadowano szablon startowy.");
       return;
     }
 
@@ -951,14 +951,14 @@ async function handleAction(action) {
 
     if (action === "show-print") {
       if (stateRef.snapshot.validation.errors.length > 0) {
-        alert("Uzupelnij numer i date noty we wszystkich rozpoczetych wierszach korekty.");
+        alert("Uzupełnij numer i datę noty we wszystkich rozpoczętych wierszach korekty.");
         setActiveTab("dane");
         return;
       }
 
       setActiveTab("wydruk");
       await waitForPrintPreviewReady();
-      showStatus("Podglad wydruku jest gotowy.");
+      showStatus("Podgląd wydruku jest gotowy.");
       return;
     }
 
@@ -968,7 +968,7 @@ async function handleAction(action) {
       }
 
       if (stateRef.snapshot.validation.errors.length > 0) {
-        alert("Nie mozna drukowac, dopoki sa bledy walidacji.");
+        alert("Nie można drukować, dopóki są błędy walidacji.");
         setActiveTab("dane");
         return;
       }
@@ -977,7 +977,7 @@ async function handleAction(action) {
         stateRef.state.print?.savePdfAfterPrint &&
         !String(stateRef.state.print?.pdfOutputDir || "").trim()
       ) {
-        alert("Wlaczono zapis PDF po wydruku, ale nie ustawiono folderu docelowego.");
+        alert("Włączono zapis PDF po wydruku, ale nie ustawiono folderu docelowego.");
         setActiveTab("ustawienia");
         return;
       }
@@ -995,11 +995,11 @@ async function handleAction(action) {
           pageCount: resolvedPageCount,
         },
       });
-      const modeLabel = result.colorMode === "grayscale" ? "czarno-bialy" : "kolor";
+      const modeLabel = result.colorMode === "grayscale" ? "czarno-biały" : "kolor";
       updatePrintStatusModalSuccess(result, resolvedPageCount);
       if (result.pdfError) {
         showStatus(
-          `Wydrukowano na ${result.printerName} (${modeLabel}), ale zapis PDF nie udal sie: ${result.pdfError}`
+          `Wydrukowano na ${result.printerName} (${modeLabel}), ale zapis PDF nie udał się: ${result.pdfError}`
         );
         return;
       }
@@ -1113,7 +1113,7 @@ async function bootstrap() {
   applyCatalogs(result);
   buildSelectOptions();
   setState(result.state, { currentProjectPath: null, dirty: false });
-  showStatus(result.error || result.catalogError || "Zaladowano szablon Trade_N.xls.");
+  showStatus(result.error || result.catalogError || "Załadowano szablon Trade_N.xls.");
 }
 
 bootstrap();

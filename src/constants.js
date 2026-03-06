@@ -29,17 +29,17 @@ const DOCUMENT_PRESETS = {
 const ORE_TYPES = ["aglomerowana", "nieaglomerowana"];
 
 const STATIC_HINTS = [
-  "Aby wypelnic tabele WINNO BYC, najpierw wpisz numer i date korekty, a dopiero potem zmien cene lub numer faktury.",
-  "Do wydruku przechodza tylko linie z tabeli WINNO BYC, ktore maja komplet danych: numer noty i date.",
+  "Aby wypełnić tabelę WINNO BYĆ, najpierw wpisz numer i datę korekty, a dopiero potem zmień cenę lub numer faktury.",
+  "Do wydruku przechodzą tylko linie z tabeli WINNO BYĆ, które mają komplet danych: numer noty i datę.",
 ];
 
 const DEFAULT_LETTER = {
-  printCity: "Slawkow",
+  printCity: "Sławków",
   senderCompany: "TSL Silesia Sp. z o.o.",
-  senderAddressLine1: "ul. Debowa Gora 29",
-  senderAddressLine2: "41-260 Slawkow",
+  senderAddressLine1: "ul. Dębowa Góra 29",
+  senderAddressLine2: "41-260 Sławków",
   uniqueDocumentNumber: "PPO 0-373-120-512",
-  signatory: "Urszula Sowka",
+  signatory: "Urszula Sówka",
 };
 
 const SAMPLE_WORKBOOK_PATH = path.join(

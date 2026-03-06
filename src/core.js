@@ -24,6 +24,13 @@ function asText(value) {
   return String(value).trim();
 }
 
+function normalizeForComparison(value) {
+  return asText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 function parseNumber(value) {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -154,7 +161,7 @@ function inferCustomsOfficeCode(input = {}) {
     input.letter?.recipientAddressLine1,
     input.letter?.recipientAddressLine2,
   ]
-    .map((value) => asText(value).toLowerCase())
+    .map((value) => normalizeForComparison(value))
     .join(" ");
 
   if (
@@ -389,19 +396,19 @@ function calculateCnCode(oreType) {
 function getNoteLabel(direction, form = "single") {
   const labels = {
     credit: {
-      single: "note kredytowa",
+      single: "notę kredytową",
       genitive: "noty kredytowej",
       plural: "noty kredytowe",
     },
     debit: {
-      single: "note debetowa",
+      single: "notę debetową",
       genitive: "noty debetowej",
       plural: "noty debetowe",
     },
     error: {
-      single: "note korygujaca",
-      genitive: "noty korygujacej",
-      plural: "noty korygujace",
+      single: "notę korygującą",
+      genitive: "noty korygującej",
+      plural: "noty korygujące",
     },
   };
 
@@ -414,7 +421,7 @@ function getChangeVerb(direction) {
   }
 
   if (direction === "debit") {
-    return "powiekszona";
+    return "powiększona";
   }
 
   return "zmieniona";
@@ -476,15 +483,15 @@ function computeSnapshot(state) {
   );
   const vatDescriptor =
     (vatAmountOriginal || 0) >= (vatAmountCorrected || 0)
-      ? "nadplaconego"
-      : "niedoplaconego";
+      ? "nadpłaconego"
+      : "niedopłaconego";
 
   const activeCorrections = rows.filter((row) => row.correction.isActive);
   const validationErrors = rows
     .filter((row) => row.correction.isIncomplete)
     .map(
       (row) =>
-        `Wiersz ${row.index}: brak daty lub numeru noty w sekcji WINNO BYC.`
+        `Wiersz ${row.index}: brak daty lub numeru noty w sekcji WINNO BYĆ.`
     );
 
   const noteNumbersList = joinDistinct(
@@ -517,11 +524,11 @@ function computeSnapshot(state) {
       : `- kopia SAD ${normalized.documentType}${normalized.documentNumber}`;
 
   const printParagraphs = activeCorrections.map((row) => ({
-    noteLine: `Importer otrzymal od sprzedajacego ${getNoteLabel(
+    noteLine: `Importer otrzymał od sprzedającego ${getNoteLabel(
       row.correction.direction,
       "single"
     )} nr. ${row.correction.noteNumber} z dnia ${row.correction.noteDate}, do faktury handlowej nr. ${row.correction.invoiceNumber}`,
-    correctionLine: `Korekta dotyczy ceny jednostkowej za 1 tone towaru - wartosc zostala ${getChangeVerb(
+    correctionLine: `Korekta dotyczy ceny jednostkowej za 1 tonę towaru - wartość została ${getChangeVerb(
       row.correction.direction
     )} z kwoty ${formatLocalizedNumber(row.original.priceNumber || 0, 4, {
       trimZeros: true,
@@ -583,11 +590,11 @@ function computeSnapshot(state) {
         ? `- faktura handlowa nr ${invoiceNumbersList}`
         : "",
       uniqueDocumentLine: normalized.letter.uniqueDocumentNumber
-        ? `- unikalny numer dokumentu zgloszenia: ${normalized.letter.uniqueDocumentNumber}`
+        ? `- unikalny numer dokumentu zgłoszenia: ${normalized.letter.uniqueDocumentNumber}`
         : "",
-      paymentConfirmationLine: "- dokument potwierdzajacy platnosc",
+      paymentConfirmationLine: "- dokument potwierdzający płatność",
       paymentDocumentsLine: paymentDocumentsList
-        ? `- dokument potwierdzajacy platnosc za faktury i noty: ${paymentDocumentsList}`
+        ? `- dokument potwierdzający płatność za faktury i noty: ${paymentDocumentsList}`
         : "",
     },
     printParagraphs,
