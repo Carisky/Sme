@@ -8,6 +8,8 @@ const stateRef = {
   activeTab: "dane",
   lastWorkTab: "dane",
   oreKinds: [],
+  customsOffices: [],
+  officeDraftId: null,
 };
 
 const elements = {
@@ -16,12 +18,18 @@ const elements = {
   originalTableBody: document.getElementById("original-table-body"),
   correctionTableBody: document.getElementById("correction-table-body"),
   documentType: document.getElementById("document-type"),
+  documentNumberLabel: document.getElementById("document-number-label"),
   oreKind: document.getElementById("ore-kind"),
   oreType: document.getElementById("ore-type"),
-  documentNumberLabel: document.getElementById("document-number-label"),
+  customsOffice: document.getElementById("customs-office"),
   hintList: document.getElementById("hint-list"),
   validationList: document.getElementById("validation-list"),
   printRoot: document.getElementById("print-root"),
+  settingsCustomsOffice: document.getElementById("settings-customs-office"),
+  settingsOfficeCode: document.getElementById("settings-office-code"),
+  settingsOfficeName: document.getElementById("settings-office-name"),
+  settingsOfficeAddress1: document.getElementById("settings-office-address-1"),
+  settingsOfficeAddress2: document.getElementById("settings-office-address-2"),
 };
 
 function escapeHtml(value) {
@@ -84,7 +92,7 @@ function showStatus(message) {
 }
 
 function renderProjectIndicator() {
-  const suffix = stateRef.dirty ? " • niezapisane zmiany" : "";
+  const suffix = stateRef.dirty ? " * niezapisane zmiany" : "";
 
   if (stateRef.currentProjectPath) {
     elements.projectIndicator.textContent = `${stateRef.currentProjectPath}${suffix}`;
@@ -96,6 +104,42 @@ function renderProjectIndicator() {
     ? basename(stateRef.currentProjectPath)
     : "SME Portable";
   bridge.setWindowTitle(`${titleBase}${stateRef.dirty ? " *" : ""}`);
+}
+
+function ensureCustomsOfficeSelection() {
+  if (!stateRef.customsOffices.length || !stateRef.state) {
+    return;
+  }
+
+  const hasSelectedCode = stateRef.customsOffices.some(
+    (office) => office.code === stateRef.state.customsOfficeCode
+  );
+  if (!hasSelectedCode) {
+    stateRef.state.customsOfficeCode = stateRef.customsOffices[0].code;
+  }
+
+  const hasDraft = stateRef.customsOffices.some(
+    (office) => office.id === stateRef.officeDraftId
+  );
+  if (!hasDraft) {
+    stateRef.officeDraftId = stateRef.customsOffices[0].id;
+  }
+}
+
+function resolveCustomsOffice(state = stateRef.state) {
+  const selectedOffice = stateRef.customsOffices.find(
+    (office) => office.code === state?.customsOfficeCode
+  );
+  if (selectedOffice) {
+    return selectedOffice;
+  }
+
+  return {
+    code: state?.customsOfficeCode || "",
+    name: state?.letter?.recipientOffice || "",
+    addressLine1: state?.letter?.recipientAddressLine1 || "",
+    addressLine2: state?.letter?.recipientAddressLine2 || "",
+  };
 }
 
 function buildSelectOptions() {
@@ -111,6 +155,7 @@ function buildSelectOptions() {
     .join("");
 
   renderOreKindOptions();
+  renderCustomsOfficeOptions();
 }
 
 function getOreKindOptions(currentValue = "") {
@@ -134,6 +179,59 @@ function renderOreKindOptions(currentValue = stateRef.state?.oreKind || "") {
     ),
   ].join("");
   elements.oreKind.value = normalizedValue;
+}
+
+function renderCustomsOfficeOptions() {
+  const currentCode = stateRef.state?.customsOfficeCode || "";
+
+  elements.customsOffice.innerHTML = stateRef.customsOffices
+    .map(
+      (office) =>
+        `<option value="${escapeHtml(office.code)}">${escapeHtml(
+          `${office.code} - ${office.name}`
+        )}</option>`
+    )
+    .join("");
+
+  elements.settingsCustomsOffice.innerHTML = [
+    '<option value="">Nowy urzad...</option>',
+    ...stateRef.customsOffices.map(
+      (office) =>
+        `<option value="${office.id}">${escapeHtml(
+          `${office.code} - ${office.name}`
+        )}</option>`
+    ),
+  ].join("");
+
+  if (elements.customsOffice.options.length > 0) {
+    const normalizedCode =
+      currentCode && stateRef.customsOffices.some((office) => office.code === currentCode)
+        ? currentCode
+        : stateRef.customsOffices[0].code;
+
+    if (stateRef.state) {
+      stateRef.state.customsOfficeCode = normalizedCode;
+    }
+
+    elements.customsOffice.value = normalizedCode;
+  } else {
+    elements.customsOffice.innerHTML = '<option value=""></option>';
+    elements.customsOffice.value = "";
+  }
+
+  renderCustomsOfficeEditor();
+}
+
+function renderCustomsOfficeEditor(targetId = stateRef.officeDraftId) {
+  const office =
+    stateRef.customsOffices.find((item) => item.id === Number(targetId)) || null;
+
+  stateRef.officeDraftId = office?.id ?? null;
+  elements.settingsCustomsOffice.value = office ? String(office.id) : "";
+  elements.settingsOfficeCode.value = office?.code || "";
+  elements.settingsOfficeName.value = office?.name || "";
+  elements.settingsOfficeAddress1.value = office?.addressLine1 || "";
+  elements.settingsOfficeAddress2.value = office?.addressLine2 || "";
 }
 
 function buildTables() {
@@ -244,14 +342,14 @@ function renderOutputs() {
 }
 
 function renderPrint(snapshot) {
+  const office = resolveCustomsOffice(snapshot.state);
   const paragraphs =
     snapshot.printParagraphs.length > 0
       ? snapshot.printParagraphs
           .map(
             (paragraph) => `
-              <p class="document__paragraph">${escapeHtml(paragraph.line1)}</p>
-              <p class="document__paragraph">${escapeHtml(paragraph.line2)}</p>
-              <p class="document__paragraph">${escapeHtml(paragraph.line3)}</p>
+              <p class="document__paragraph">${escapeHtml(paragraph.noteLine)}</p>
+              <p class="document__paragraph">${escapeHtml(paragraph.correctionLine)}</p>
             `
           )
           .join("")
@@ -259,8 +357,8 @@ function renderPrint(snapshot) {
 
   const attachmentItems = [
     snapshot.attachments.noteAttachmentLine,
-    snapshot.attachments.copySadLine,
     snapshot.attachments.invoiceLine,
+    snapshot.attachments.copySadLine,
     snapshot.attachments.uniqueDocumentLine,
     snapshot.attachments.paymentConfirmationLine,
     snapshot.attachments.paymentDocumentsLine,
@@ -280,47 +378,32 @@ function renderPrint(snapshot) {
       </div>
 
       <div class="document__address-grid">
+        <div class="document__address"></div>
         <div class="document__address">
-          <div class="document__label">Adres do korespondencji:</div>
-          <strong>${escapeHtml(snapshot.state.letter.senderCompany)}</strong>
-          <div>${escapeHtml(snapshot.state.letter.senderAddressLine1)}</div>
-          <div>${escapeHtml(snapshot.state.letter.senderAddressLine2)}</div>
-        </div>
-
-        <div class="document__address">
-          <strong>${escapeHtml(snapshot.state.letter.recipientOffice)}</strong>
-          <div>${escapeHtml(snapshot.state.letter.recipientAddressLine1)}</div>
-          <div>${escapeHtml(snapshot.state.letter.recipientAddressLine2)}</div>
+          <strong>${escapeHtml(String(office.name || "").toUpperCase())}</strong>
+          <div>${escapeHtml(office.addressLine1)}</div>
+          <div>${escapeHtml(office.addressLine2)}</div>
         </div>
       </div>
 
-      <p class="document__subject">Sprawa: WPIS DO REJESTRU ${escapeHtml(
-        snapshot.state.entryNumber
-      )} z dnia ${escapeHtml(snapshot.state.entryDate)}</p>
-      <p class="document__subject document__subject--secondary">
-        SAD UZUPELNIAJACY ${escapeHtml(snapshot.meta.documentDisplay)}
-      </p>
+      <p class="document__subject">Sprawa: ${escapeHtml(snapshot.state.documentNumber)}</p>
 
       <p class="document__paragraph">
         Dzialajac w imieniu i z upowaznienia ArcelorMittal Poland S.A. w dniu
-        ${escapeHtml(snapshot.state.entryDate)} TSL Silesia Sp. z o.o.
+        ${escapeHtml(snapshot.state.entryDate)} ${escapeHtml(snapshot.state.letter.senderCompany)}
       </p>
       <p class="document__paragraph">
-        dokonala wpisu do rejestru towarow objetych procedura uproszczona pod
-        pozycja ${escapeHtml(snapshot.state.entryNumber)} oraz sporzadzila
+        Dzialajac jako przedstawiciel bezposredni dokonala zgloszenia w procedurze
+        standardowej MRN
       </p>
       <p class="document__paragraph">
-        uzupelniajace zgloszenie celne towaru - ruda zelaza
+        ${escapeHtml(snapshot.state.documentNumber)} dla towaru - ruda zelaza
         ${escapeHtml(snapshot.state.oreType)} ${escapeHtml(snapshot.state.oreKind)}
       </p>
       <p class="document__paragraph">
-        zarejestrowanej w ewidencji pod pozycja nr ${escapeHtml(
-          snapshot.meta.documentDisplay
-        )} pochodzacego i przywiezionego
-      </p>
-      <p class="document__paragraph">
-        z ${escapeHtml(snapshot.state.originCountry)} oraz zaklasyfikowanego do
-        kodu CN ${escapeHtml(snapshot.meta.cnCode)}.
+        pochodzacego i przywiezionego z ${escapeHtml(
+          snapshot.state.originCountry
+        )} oraz zaklasyfikowanego do kodu CN${escapeHtml(snapshot.meta.cnCode)}.
       </p>
 
       ${paragraphs}
@@ -390,9 +473,9 @@ function renderPrint(snapshot) {
         <ul>${attachmentItems}</ul>
       </div>
 
-      <p class="document__signature">Z powazaniem ${escapeHtml(
-        snapshot.state.letter.signatory
-      )}</p>
+      <p class="document__signature">
+        Z powazaniem<br />${escapeHtml(snapshot.state.letter.signatory)}
+      </p>
     </div>
   `;
 }
@@ -429,6 +512,16 @@ function handlePathInput(target) {
     }
   }
 
+  if (target.dataset.path === "customsOfficeCode") {
+    const selectedOffice = stateRef.customsOffices.find(
+      (office) => office.code === target.value
+    );
+    if (selectedOffice) {
+      stateRef.officeDraftId = selectedOffice.id;
+      renderCustomsOfficeEditor(selectedOffice.id);
+    }
+  }
+
   markDirty();
   recompute();
 }
@@ -441,6 +534,11 @@ async function confirmDiscardIfNeeded() {
   return window.confirm("Sa niezapisane zmiany. Kontynuowac?");
 }
 
+function applyCatalogs(result) {
+  stateRef.oreKinds = result.oreKinds || stateRef.oreKinds;
+  stateRef.customsOffices = result.customsOffices || stateRef.customsOffices;
+}
+
 function setState(nextState, options = {}) {
   stateRef.state = bridge.normalizeState(nextState);
   stateRef.currentProjectPath =
@@ -448,9 +546,63 @@ function setState(nextState, options = {}) {
       ? options.currentProjectPath
       : stateRef.currentProjectPath;
   stateRef.dirty = options.dirty ?? stateRef.dirty;
+  ensureCustomsOfficeSelection();
   renderOreKindOptions(stateRef.state.oreKind);
+  renderCustomsOfficeOptions();
   populateInputs();
   recompute();
+}
+
+function collectOfficeDraft() {
+  return {
+    id: stateRef.officeDraftId,
+    code: elements.settingsOfficeCode.value.trim(),
+    name: elements.settingsOfficeName.value.trim(),
+    addressLine1: elements.settingsOfficeAddress1.value.trim(),
+    addressLine2: elements.settingsOfficeAddress2.value.trim(),
+    sortOrder: (() => {
+      const current = stateRef.customsOffices.find(
+        (office) => office.id === stateRef.officeDraftId
+      );
+      return current?.sortOrder ?? stateRef.customsOffices.length;
+    })(),
+  };
+}
+
+async function handleOfficeSave() {
+  const existingOffice = stateRef.customsOffices.find(
+    (office) => office.id === stateRef.officeDraftId
+  );
+  const previousCode = existingOffice?.code || "";
+  const payload = collectOfficeDraft();
+  const result = await bridge.saveCustomsOffice(payload);
+
+  stateRef.customsOffices = result.customsOffices || stateRef.customsOffices;
+  stateRef.officeDraftId = result.savedOffice?.id ?? null;
+
+  const shouldSwitchSelectedOffice =
+    !stateRef.state.customsOfficeCode ||
+    stateRef.state.customsOfficeCode === previousCode ||
+    !stateRef.customsOffices.some(
+      (office) => office.code === stateRef.state.customsOfficeCode
+    );
+
+  if (shouldSwitchSelectedOffice && result.savedOffice?.code) {
+    stateRef.state.customsOfficeCode = result.savedOffice.code;
+    markDirty();
+  }
+
+  ensureCustomsOfficeSelection();
+  renderCustomsOfficeOptions();
+  populateInputs();
+  recompute();
+  showStatus(`Zapisano urzad ${result.savedOffice?.code || ""}.`);
+}
+
+function handleOfficeNew() {
+  stateRef.officeDraftId = null;
+  renderCustomsOfficeEditor(null);
+  showStatus("Wprowadz dane nowego urzedu i zapisz je do slownika.");
 }
 
 async function handleAction(action) {
@@ -461,7 +613,7 @@ async function handleAction(action) {
       }
 
       const result = await bridge.bootstrap();
-      stateRef.oreKinds = result.oreKinds || [];
+      applyCatalogs(result);
       buildSelectOptions();
       setState(result.state, { currentProjectPath: null, dirty: false });
       showStatus(result.error || result.catalogError || "Zaladowano szablon startowy.");
@@ -547,6 +699,16 @@ async function handleAction(action) {
 
     if (action === "back") {
       setActiveTab(stateRef.lastWorkTab || "dane");
+      return;
+    }
+
+    if (action === "office-new") {
+      handleOfficeNew();
+      return;
+    }
+
+    if (action === "office-save") {
+      await handleOfficeSave();
     }
   } catch (error) {
     alert(error.message);
@@ -581,6 +743,23 @@ function wireEvents() {
     handlePathInput(target);
   });
 
+  document.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) {
+      return;
+    }
+
+    if (!target.dataset.path) {
+      return;
+    }
+
+    handlePathInput(target);
+  });
+
+  elements.settingsCustomsOffice.addEventListener("change", (event) => {
+    renderCustomsOfficeEditor(event.target.value);
+  });
+
   window.addEventListener("keydown", async (event) => {
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
@@ -594,7 +773,7 @@ async function bootstrap() {
   wireEvents();
 
   const result = await bridge.bootstrap();
-  stateRef.oreKinds = result.oreKinds || [];
+  applyCatalogs(result);
   buildSelectOptions();
   setState(result.state, { currentProjectPath: null, dirty: false });
   showStatus(result.error || result.catalogError || "Zaladowano szablon Trade_N.xls.");

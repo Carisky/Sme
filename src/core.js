@@ -1,4 +1,5 @@
 const {
+  DEFAULT_CUSTOMS_OFFICE_CODE,
   DEFAULT_LETTER,
   DOCUMENT_PRESETS,
   MAX_LINES,
@@ -133,6 +134,48 @@ function getDocumentPreset(documentType) {
   return DOCUMENT_PRESETS[documentType] || DOCUMENT_PRESETS[""];
 }
 
+function inferCustomsOfficeCode(input = {}) {
+  const explicitCode = asText(input.customsOfficeCode);
+  if (explicitCode) {
+    return explicitCode;
+  }
+
+  const documentNumber = asText(input.documentNumber).toUpperCase();
+  if (documentNumber.includes("40101")) {
+    return "40101";
+  }
+
+  if (documentNumber.includes("30102") || documentNumber.includes("33102")) {
+    return "30102";
+  }
+
+  const officeText = [
+    input.letter?.recipientOffice,
+    input.letter?.recipientAddressLine1,
+    input.letter?.recipientAddressLine2,
+  ]
+    .map((value) => asText(value).toLowerCase())
+    .join(" ");
+
+  if (
+    officeText.includes("podkarpack") ||
+    officeText.includes("przemysl") ||
+    officeText.includes("zaciszna")
+  ) {
+    return "40101";
+  }
+
+  if (
+    officeText.includes("lubelsk") ||
+    officeText.includes("biala") ||
+    officeText.includes("celnik")
+  ) {
+    return "30102";
+  }
+
+  return DEFAULT_CUSTOMS_OFFICE_CODE;
+}
+
 function createOriginalRow(overrides = {}) {
   return {
     invoiceNumber: "",
@@ -162,6 +205,7 @@ function createBaseState() {
     ownNumber: "",
     entryNumber: "",
     entryDate: "",
+    customsOfficeCode: DEFAULT_CUSTOMS_OFFICE_CODE,
     documentType: "MRN",
     documentNumber: "18PL",
     oreKind: "",
@@ -213,6 +257,7 @@ function normalizeState(input = {}) {
     ownNumber: asText(input.ownNumber ?? base.ownNumber),
     entryNumber: asText(input.entryNumber ?? base.entryNumber),
     entryDate: asText(input.entryDate ?? base.entryDate),
+    customsOfficeCode: inferCustomsOfficeCode(input),
     documentType,
     documentNumber: asText(documentNumber),
     oreKind: asText(input.oreKind ?? base.oreKind),
@@ -291,37 +336,13 @@ function buildCorrectionMetrics(row, original) {
       : null;
 
   let direction = "error";
-  if (valueNumber !== null && original.valueNumber !== null) {
-    if (valueNumber < original.valueNumber) {
+  if (priceNumber !== null && original.priceNumber !== null) {
+    if (priceNumber < original.priceNumber) {
       direction = "credit";
-    } else if (valueNumber > original.valueNumber) {
+    } else if (priceNumber > original.priceNumber) {
       direction = "debit";
     }
   }
-
-  const directionCopy = {
-    credit: {
-      noteAccusative: "kredytową",
-      noteGenitive: "kredytowej",
-      notePlural: "kredytowych",
-      changeVerb: "pomniejszona",
-      attachmentLabel: "nota",
-    },
-    debit: {
-      noteAccusative: "debetową",
-      noteGenitive: "debetowej",
-      notePlural: "debetowych",
-      changeVerb: "powiększona",
-      attachmentLabel: "nota",
-    },
-    error: {
-      noteAccusative: "korygującą",
-      noteGenitive: "korygującej",
-      notePlural: "korygujących",
-      changeVerb: "zmieniona",
-      attachmentLabel: "korekta",
-    },
-  }[direction];
 
   return {
     invoiceNumber,
@@ -342,7 +363,6 @@ function buildCorrectionMetrics(row, original) {
         ? round(Math.abs(original.priceNumber - priceNumber), 4)
         : null,
     direction,
-    ...directionCopy,
   };
 }
 
@@ -356,6 +376,40 @@ function calculateCnCode(oreType) {
   }
 
   return "";
+}
+
+function getNoteLabel(direction, form = "single") {
+  const labels = {
+    credit: {
+      single: "note kredytowa",
+      genitive: "noty kredytowej",
+      plural: "noty kredytowe",
+    },
+    debit: {
+      single: "note debetowa",
+      genitive: "noty debetowej",
+      plural: "noty debetowe",
+    },
+    error: {
+      single: "note korygujaca",
+      genitive: "noty korygujacej",
+      plural: "noty korygujace",
+    },
+  };
+
+  return labels[direction]?.[form] || labels.error[form];
+}
+
+function getChangeVerb(direction) {
+  if (direction === "credit") {
+    return "pomniejszona";
+  }
+
+  if (direction === "debit") {
+    return "powiekszona";
+  }
+
+  return "zmieniona";
 }
 
 function suggestProjectName(state) {
@@ -399,25 +453,30 @@ function computeSnapshot(state) {
   const correctedStatValue = round(correctedPlnExact, 0);
   const transportRoundedOne = round(round(transportCostNumber, 2), 1);
   const transportRoundedZero = round(transportRoundedOne, 0);
-  const vatBaseOriginal = round((originalStatValue || 0) + (transportRoundedZero || 0), 0);
+  const vatBaseOriginal = round(
+    (originalStatValue || 0) + (transportRoundedZero || 0),
+    0
+  );
   const vatBaseCorrected = round(
     (correctedStatValue || 0) + (transportRoundedZero || 0),
     0
   );
   const vatAmountOriginal = round((vatBaseOriginal || 0) * 0.23, 0);
   const vatAmountCorrected = round((vatBaseCorrected || 0) * 0.23, 0);
-  const vatDifference = Math.abs((vatAmountOriginal || 0) - (vatAmountCorrected || 0));
+  const vatDifference = Math.abs(
+    (vatAmountOriginal || 0) - (vatAmountCorrected || 0)
+  );
   const vatDescriptor =
     (vatAmountOriginal || 0) >= (vatAmountCorrected || 0)
-      ? "nadpłaconego"
-      : "niedopłaconego";
+      ? "nadplaconego"
+      : "niedoplaconego";
 
   const activeCorrections = rows.filter((row) => row.correction.isActive);
   const validationErrors = rows
     .filter((row) => row.correction.isIncomplete)
     .map(
       (row) =>
-        `Wiersz ${row.index}: brak daty lub numeru noty w sekcji WINNO BYĆ.`
+        `Wiersz ${row.index}: brak daty lub numeru noty w sekcji WINNO BYC.`
     );
 
   const noteNumbersList = joinDistinct(
@@ -435,13 +494,13 @@ function computeSnapshot(state) {
   const firstActiveCorrection = activeCorrections[0]?.correction;
   const noteAttachmentLine = firstActiveCorrection
     ? activeCorrections.length > 1
-      ? `- noty ${firstActiveCorrection.notePlural} nr ${noteNumbersList}`
-      : `- ${firstActiveCorrection.attachmentLabel} ${firstActiveCorrection.noteGenitive} nr ${noteNumbersList}`
+      ? `- ${getNoteLabel(firstActiveCorrection.direction, "plural")} nr ${noteNumbersList}`
+      : `- ${getNoteLabel(firstActiveCorrection.direction, "genitive")} nr ${noteNumbersList}`
     : "";
 
   const documentDisplay =
     normalized.documentType === "MRN"
-      ? `MRN${normalized.documentNumber}`
+      ? normalized.documentNumber
       : `${preset.printPrefix}${normalized.documentType}${normalized.documentNumber}`.trim();
 
   const copySadLine =
@@ -450,15 +509,23 @@ function computeSnapshot(state) {
       : `- kopia SAD ${normalized.documentType}${normalized.documentNumber}`;
 
   const printParagraphs = activeCorrections.map((row) => ({
-    line1: `Importer otrzymał od sprzedającego notę ${row.correction.noteAccusative} nr ${row.correction.noteNumber} z dnia ${row.correction.noteDate} do faktury handlowej`,
-    line2: `nr ${row.correction.invoiceNumber}. Korekta dotyczy ceny jednostkowej za 1 tonę towaru - wartość została ${row.correction.changeVerb} z kwoty`,
-    line3: `${formatLocalizedNumber(row.original.priceNumber || 0, 5, {
+    noteLine: `Importer otrzymal od sprzedajacego ${getNoteLabel(
+      row.correction.direction,
+      "single"
+    )} nr. ${row.correction.noteNumber} z dnia ${row.correction.noteDate}, do faktury handlowej nr. ${row.correction.invoiceNumber}`,
+    correctionLine: `Korekta dotyczy ceny jednostkowej za 1 tone towaru - wartosc zostala ${getChangeVerb(
+      row.correction.direction
+    )} z kwoty ${formatLocalizedNumber(row.original.priceNumber || 0, 4, {
       trimZeros: true,
     })} EUR/T o ${formatLocalizedNumber(row.correction.deltaPrice || 0, 4, {
       trimZeros: true,
-    })} EUR/T na ${formatLocalizedNumber(row.correction.priceNumber || 0, 5, {
-      trimZeros: true,
-    })} EUR/T dostarczonego produktu.`,
+    })} EUR/T cena po korekcie wynosi ${formatLocalizedNumber(
+      row.correction.priceNumber || 0,
+      4,
+      {
+        trimZeros: true,
+      }
+    )} EUR/T dostarczonego produktu.`,
   }));
 
   return {
@@ -508,11 +575,11 @@ function computeSnapshot(state) {
         ? `- faktura handlowa nr ${invoiceNumbersList}`
         : "",
       uniqueDocumentLine: normalized.letter.uniqueDocumentNumber
-        ? `- unikalny numer dokumentu zgłoszenia: ${normalized.letter.uniqueDocumentNumber}`
+        ? `- unikalny numer dokumentu zgloszenia: ${normalized.letter.uniqueDocumentNumber}`
         : "",
-      paymentConfirmationLine: "- potwierdzenie płatności",
+      paymentConfirmationLine: "- dokument potwierdzajacy platnosc",
       paymentDocumentsLine: paymentDocumentsList
-        ? `- dokument potwierdzający płatność za faktury: ${paymentDocumentsList}`
+        ? `- dokument potwierdzajacy platnosc za faktury i noty: ${paymentDocumentsList}`
         : "",
     },
     printParagraphs,

@@ -9,7 +9,12 @@ const {
 } = require("./src/core");
 const { SAMPLE_WORKBOOK_PATH } = require("./src/constants");
 const { importSourceWorkbook, readTemplateWorkbook } = require("./src/excel");
-const { disconnectOreCatalog, listOreKinds } = require("./src/ore-catalog");
+const {
+  disconnectOreCatalog,
+  listCustomsOffices,
+  listOreKinds,
+  saveCustomsOffice,
+} = require("./src/ore-catalog");
 
 let mainWindow;
 
@@ -63,12 +68,14 @@ app.whenReady().then(() => {
 
 ipcMain.handle("app:bootstrap", async () => {
   let oreKinds = [];
+  let customsOffices = [];
   let catalogError = null;
 
   try {
     oreKinds = await listOreKinds();
+    customsOffices = await listCustomsOffices();
   } catch (error) {
-    catalogError = `Nie udalo sie odczytac slownika rodzajow rudy: ${error.message}`;
+    catalogError = `Nie udalo sie odczytac slownikow aplikacji: ${error.message}`;
   }
 
   try {
@@ -76,12 +83,14 @@ ipcMain.handle("app:bootstrap", async () => {
       state: readTemplateWorkbook(SAMPLE_WORKBOOK_PATH),
       source: SAMPLE_WORKBOOK_PATH,
       oreKinds,
+      customsOffices,
       catalogError,
     };
   } catch (error) {
     return {
       state: createEmptyState(),
       oreKinds,
+      customsOffices,
       catalogError,
       error: `Nie udało się odczytać szablonu Trade_N.xls: ${error.message}`,
     };
@@ -153,6 +162,10 @@ ipcMain.handle("source:import", async (_event, currentState) => {
     filePath,
     state: importSourceWorkbook(filePath, currentState),
   };
+});
+
+ipcMain.handle("catalog:save-customs-office", async (_event, office) => {
+  return saveCustomsOffice(office);
 });
 
 ipcMain.on("window:set-title", (_event, title) => {

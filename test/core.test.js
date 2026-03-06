@@ -1,12 +1,20 @@
 const assert = require("node:assert/strict");
 const path = require("path");
-const { computeSnapshot, parseNumber } = require("../src/core");
+const { computeSnapshot, normalizeState, parseNumber } = require("../src/core");
 const { readTemplateWorkbook } = require("../src/excel");
 
 assert.equal(parseNumber("380,206.02550"), 380206.0255);
 assert.equal(parseNumber("4,2628"), 4.2628);
 assert.equal(parseNumber("1 598 271"), 1598271);
 assert.equal(parseNumber("25-04-2025"), null);
+assert.equal(
+  normalizeState({ documentNumber: "25PL40101D00013JR3" }).customsOfficeCode,
+  "40101"
+);
+assert.equal(
+  normalizeState({ documentNumber: "25PL33102A00093VR1" }).customsOfficeCode,
+  "30102"
+);
 
 const state = readTemplateWorkbook(
   path.join(__dirname, "..", "samples", "files", "Trade_N.xls")

@@ -69,11 +69,11 @@
                   <input type="text" data-path="ownNumber" />
                 </label>
                 <label class="field">
-                  <span>Numer wpisu</span>
-                  <input type="text" data-path="entryNumber" />
+                  <span>Urzad celny</span>
+                  <select data-path="customsOfficeCode" id="customs-office"></select>
                 </label>
                 <label class="field">
-                  <span>Z dnia</span>
+                  <span>Data zgloszenia</span>
                   <input type="text" data-path="entryDate" placeholder="dd-mm-rrrr" />
                 </label>
                 <label class="field">
@@ -227,7 +227,7 @@
             <article class="card">
               <div class="card__title-row">
                 <h2>Naglowek wydruku</h2>
-                <span class="badge badge--muted">osobna zakladka</span>
+                <span class="badge badge--muted">nadawca i podpis</span>
               </div>
               <div class="form-grid">
                 <label class="field">
@@ -251,18 +251,6 @@
                   <input type="text" data-path="letter.senderAddressLine2" />
                 </label>
                 <label class="field field--wide">
-                  <span>Urzad</span>
-                  <input type="text" data-path="letter.recipientOffice" />
-                </label>
-                <label class="field field--wide">
-                  <span>Adres urzedu 1</span>
-                  <input type="text" data-path="letter.recipientAddressLine1" />
-                </label>
-                <label class="field field--wide">
-                  <span>Adres urzedu 2</span>
-                  <input type="text" data-path="letter.recipientAddressLine2" />
-                </label>
-                <label class="field field--wide">
                   <span>Unikalny numer dokumentu</span>
                   <input type="text" data-path="letter.uniqueDocumentNumber" />
                 </label>
@@ -270,6 +258,44 @@
                   <span>Podpis</span>
                   <input type="text" data-path="letter.signatory" />
                 </label>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card__title-row">
+                <h2>Urzedy celne</h2>
+                <span class="badge badge--muted">slownik SQLite</span>
+              </div>
+              <div class="form-grid">
+                <label class="field field--wide">
+                  <span>Wybierz urzad</span>
+                  <select id="settings-customs-office"></select>
+                </label>
+                <label class="field">
+                  <span>Kod</span>
+                  <input type="text" id="settings-office-code" />
+                </label>
+                <label class="field field--wide">
+                  <span>Nazwa</span>
+                  <input type="text" id="settings-office-name" />
+                </label>
+                <label class="field field--wide">
+                  <span>Adres 1</span>
+                  <input type="text" id="settings-office-address-1" />
+                </label>
+                <label class="field field--wide">
+                  <span>Adres 2</span>
+                  <input type="text" id="settings-office-address-2" />
+                </label>
+                <div class="field field--wide">
+                  <span>Operacje</span>
+                  <div class="toolbar">
+                    <button type="button" data-action="office-new">Nowy urzad</button>
+                    <button type="button" data-action="office-save" class="button--strong">
+                      Zapisz urzad
+                    </button>
+                  </div>
+                </div>
               </div>
             </article>
           </section>

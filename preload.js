@@ -28,5 +28,7 @@ contextBridge.exposeInMainWorld("bridge", {
   saveProjectAs: (state) => ipcRenderer.invoke("project:saveAs", state),
   importSourceWorkbook: (state) =>
     ipcRenderer.invoke("source:import", state),
+  saveCustomsOffice: (office) =>
+    ipcRenderer.invoke("catalog:save-customs-office", office),
   setWindowTitle: (title) => ipcRenderer.send("window:set-title", title),
 });

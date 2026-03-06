@@ -1,6 +1,7 @@
 const path = require("path");
 const {
   createOreCatalogClient,
+  seedDefaultCustomsOffices,
   seedDefaultOreKinds,
 } = require("../src/ore-catalog-store");
 
@@ -14,6 +15,7 @@ async function main() {
 
   try {
     await seedDefaultOreKinds(prisma);
+    await seedDefaultCustomsOffices(prisma);
   } finally {
     await prisma.$disconnect();
   }

@@ -16,3 +16,14 @@ model OreKind {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
+
+model CustomsOffice {
+  id           Int      @id @default(autoincrement())
+  code         String   @unique
+  name         String
+  addressLine1 String
+  addressLine2 String
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

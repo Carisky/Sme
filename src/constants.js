@@ -1,6 +1,7 @@
 const path = require("path");
 
 const MAX_LINES = 10;
+const DEFAULT_CUSTOMS_OFFICE_CODE = "40101";
 
 const DOCUMENT_PRESETS = {
   MRN: {
@@ -28,20 +29,17 @@ const DOCUMENT_PRESETS = {
 const ORE_TYPES = ["aglomerowana", "nieaglomerowana"];
 
 const STATIC_HINTS = [
-  "Aby wypełnić tabelę WINNO BYĆ, najpierw wpisz numer i datę korekty, a dopiero potem zmień cenę lub numer faktury.",
-  "Do wydruku przechodzą tylko linie z tabeli WINNO BYĆ, które mają komplet danych: numer noty i datę.",
+  "Aby wypelnic tabele WINNO BYC, najpierw wpisz numer i date korekty, a dopiero potem zmien cene lub numer faktury.",
+  "Do wydruku przechodza tylko linie z tabeli WINNO BYC, ktore maja komplet danych: numer noty i date.",
 ];
 
 const DEFAULT_LETTER = {
-  printCity: "Bytom",
-  senderCompany: "TSL Silesia sp. z o.o.",
-  senderAddressLine1: "ul. Dębowa Góra 29",
-  senderAddressLine2: "41-260 Sławków",
-  recipientOffice: "ŚLĄSKI URZĄD CELNO SKARBOWY",
-  recipientAddressLine1: "ul. Plac Grunwaldzki 8 - 10",
-  recipientAddressLine2: "40-127 Katowice",
+  printCity: "Slawkow",
+  senderCompany: "TSL Silesia Sp. z o.o.",
+  senderAddressLine1: "ul. Debowa Gora 29",
+  senderAddressLine2: "41-260 Slawkow",
   uniqueDocumentNumber: "PPO 0-373-120-512",
-  signatory: "Urszula Sówka",
+  signatory: "Urszula Sowka",
 };
 
 const SAMPLE_WORKBOOK_PATH = path.join(
@@ -53,6 +51,7 @@ const SAMPLE_WORKBOOK_PATH = path.join(
 );
 
 module.exports = {
+  DEFAULT_CUSTOMS_OFFICE_CODE,
   DEFAULT_LETTER,
   DOCUMENT_PRESETS,
   MAX_LINES,
