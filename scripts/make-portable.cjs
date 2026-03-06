@@ -21,6 +21,24 @@ async function compressDirectory(sourceDir, destinationZip) {
   });
 }
 
+async function runNodeScript(scriptPath, cwd) {
+  await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [scriptPath], {
+      cwd,
+      stdio: "inherit",
+    });
+
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(`${scriptPath} failed with code ${code}.`));
+    });
+  });
+}
+
 async function main() {
   const rootDir = path.resolve(__dirname, "..");
   const distDir = path.join(rootDir, "dist");
@@ -32,6 +50,7 @@ async function main() {
   const outDir = path.join(buildsDir, stamp);
 
   await fs.mkdir(outDir, { recursive: true });
+  await runNodeScript(path.join("prisma", "seed.js"), rootDir);
 
   const packagedPaths = await packager({
     dir: rootDir,
@@ -41,6 +60,9 @@ async function main() {
     arch: "x64",
     name: "SME Portable",
     executableName: "SMEPortable",
+    asar: {
+      unpackDir: "prisma",
+    },
     prune: true,
     ignore: [/^\/dist$/, /^\/test$/, /^\/samples\/macro$/],
   });

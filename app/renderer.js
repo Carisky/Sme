@@ -7,6 +7,7 @@ const stateRef = {
   dirty: false,
   activeTab: "dane",
   lastWorkTab: "dane",
+  oreKinds: [],
 };
 
 const elements = {
@@ -15,6 +16,7 @@ const elements = {
   originalTableBody: document.getElementById("original-table-body"),
   correctionTableBody: document.getElementById("correction-table-body"),
   documentType: document.getElementById("document-type"),
+  oreKind: document.getElementById("ore-kind"),
   oreType: document.getElementById("ore-type"),
   documentNumberLabel: document.getElementById("document-number-label"),
   hintList: document.getElementById("hint-list"),
@@ -107,6 +109,31 @@ function buildSelectOptions() {
   elements.oreType.innerHTML = bridge.meta.oreTypes
     .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
     .join("");
+
+  renderOreKindOptions();
+}
+
+function getOreKindOptions(currentValue = "") {
+  const options = stateRef.oreKinds.map((item) => item.name);
+
+  if (currentValue && !options.includes(currentValue)) {
+    options.push(currentValue);
+  }
+
+  return options;
+}
+
+function renderOreKindOptions(currentValue = stateRef.state?.oreKind || "") {
+  const options = getOreKindOptions(currentValue);
+  const normalizedValue = options.includes(currentValue) ? currentValue : "";
+
+  elements.oreKind.innerHTML = [
+    '<option value=""></option>',
+    ...options.map(
+      (value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`
+    ),
+  ].join("");
+  elements.oreKind.value = normalizedValue;
 }
 
 function buildTables() {
@@ -392,6 +419,16 @@ function handlePathInput(target) {
     }
   }
 
+  if (target.dataset.path === "oreKind") {
+    renderOreKindOptions(target.value);
+
+    const oreKind = stateRef.oreKinds.find((item) => item.name === target.value);
+    if (oreKind?.defaultOreType) {
+      stateRef.state.oreType = oreKind.defaultOreType;
+      elements.oreType.value = oreKind.defaultOreType;
+    }
+  }
+
   markDirty();
   recompute();
 }
@@ -411,6 +448,7 @@ function setState(nextState, options = {}) {
       ? options.currentProjectPath
       : stateRef.currentProjectPath;
   stateRef.dirty = options.dirty ?? stateRef.dirty;
+  renderOreKindOptions(stateRef.state.oreKind);
   populateInputs();
   recompute();
 }
@@ -423,8 +461,10 @@ async function handleAction(action) {
       }
 
       const result = await bridge.bootstrap();
+      stateRef.oreKinds = result.oreKinds || [];
+      buildSelectOptions();
       setState(result.state, { currentProjectPath: null, dirty: false });
-      showStatus("Zaladowano szablon startowy.");
+      showStatus(result.error || result.catalogError || "Zaladowano szablon startowy.");
       return;
     }
 
@@ -550,13 +590,14 @@ function wireEvents() {
 }
 
 async function bootstrap() {
-  buildSelectOptions();
   buildTables();
   wireEvents();
 
   const result = await bridge.bootstrap();
+  stateRef.oreKinds = result.oreKinds || [];
+  buildSelectOptions();
   setState(result.state, { currentProjectPath: null, dirty: false });
-  showStatus(result.error || "Zaladowano szablon Trade_N.xls.");
+  showStatus(result.error || result.catalogError || "Zaladowano szablon Trade_N.xls.");
 }
 
 bootstrap();

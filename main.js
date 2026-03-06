@@ -9,6 +9,7 @@ const {
 } = require("./src/core");
 const { SAMPLE_WORKBOOK_PATH } = require("./src/constants");
 const { importSourceWorkbook, readTemplateWorkbook } = require("./src/excel");
+const { disconnectOreCatalog, listOreKinds } = require("./src/ore-catalog");
 
 let mainWindow;
 
@@ -61,14 +62,27 @@ app.whenReady().then(() => {
 });
 
 ipcMain.handle("app:bootstrap", async () => {
+  let oreKinds = [];
+  let catalogError = null;
+
+  try {
+    oreKinds = await listOreKinds();
+  } catch (error) {
+    catalogError = `Nie udalo sie odczytac slownika rodzajow rudy: ${error.message}`;
+  }
+
   try {
     return {
       state: readTemplateWorkbook(SAMPLE_WORKBOOK_PATH),
       source: SAMPLE_WORKBOOK_PATH,
+      oreKinds,
+      catalogError,
     };
   } catch (error) {
     return {
       state: createEmptyState(),
+      oreKinds,
+      catalogError,
       error: `Nie udało się odczytać szablonu Trade_N.xls: ${error.message}`,
     };
   }
@@ -151,4 +165,8 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("before-quit", () => {
+  disconnectOreCatalog().catch(() => {});
 });

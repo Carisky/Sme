@@ -5,18 +5,26 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "seed": "node prisma/seed.js",
     "test": "node test/core.test.js",
-    "make:portable": "node scripts/make-portable.cjs"
+    "make:portable": "node scripts/make-portable.cjs",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev --name init_ore_catalog",
+    "prisma:seed": "prisma db seed"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@libsql/client": "^0.17.0",
+    "@prisma/adapter-libsql": "^7.2.0",
+    "@prisma/client": "^7.2.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@electron/packager": "^19.0.5",
-    "electron": "^40.7.0"
+    "electron": "^40.7.0",
+    "prisma": "^7.2.0"
   }
 }

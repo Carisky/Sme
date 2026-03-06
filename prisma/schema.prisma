@@ -1,0 +1,18 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model OreKind {
+  id             Int      @id @default(autoincrement())
+  key            String   @unique
+  name           String   @unique
+  defaultOreType String?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
