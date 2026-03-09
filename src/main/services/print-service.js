@@ -1,7 +1,10 @@
 const path = require("path");
 const fs = require("fs/promises");
+const os = require("os");
+const { pathToFileURL } = require("url");
 const { execFile } = require("child_process");
 const { promisify } = require("util");
+const { BrowserWindow } = require("electron");
 const { normalizeState, suggestProjectName } = require("../../core");
 
 const execFileAsync = promisify(execFile);
@@ -95,6 +98,29 @@ async function listWindowsPrintJobs() {
   }
 }
 
+async function createTemporaryPrintPdf(state, pdfBuffer) {
+  const tempDir = path.join(os.tmpdir(), "sme-print-jobs");
+  await fs.mkdir(tempDir, { recursive: true });
+
+  const tempPdfPath = path.join(tempDir, createPdfFileName(state));
+  await fs.writeFile(tempPdfPath, pdfBuffer);
+  return tempPdfPath;
+}
+
+function scheduleTemporaryFileCleanup(filePath, delayMs = 120000) {
+  if (!filePath) {
+    return;
+  }
+
+  const cleanupTimer = setTimeout(() => {
+    fs.unlink(filePath).catch(() => {});
+  }, delayMs);
+
+  if (typeof cleanupTimer.unref === "function") {
+    cleanupTimer.unref();
+  }
+}
+
 function filterJobsForPrinter(jobs, printerName) {
   const normalizedPrinterName = String(printerName || "").toLowerCase();
   if (!normalizedPrinterName) {
@@ -114,7 +140,16 @@ function createPrintStatusSender(windowController) {
   };
 }
 
-async function monitorPrintQueue(windowController, printerName, fallbackPageCount) {
+async function capturePrinterJobNames(printerName) {
+  return new Set(filterJobsForPrinter(await listWindowsPrintJobs(), printerName).map((job) => job.Name));
+}
+
+async function monitorPrintQueue(
+  windowController,
+  printerName,
+  fallbackPageCount,
+  jobsBeforeSnapshot = null
+) {
   if (process.platform !== "win32") {
     return {
       printedPages: fallbackPageCount,
@@ -124,9 +159,7 @@ async function monitorPrintQueue(windowController, printerName, fallbackPageCoun
   }
 
   const sendPrintStatus = createPrintStatusSender(windowController);
-  const jobsBefore = new Set(
-    filterJobsForPrinter(await listWindowsPrintJobs(), printerName).map((job) => job.Name)
-  );
+  const jobsBefore = jobsBeforeSnapshot || (await capturePrinterJobNames(printerName));
 
   let trackedJobName = "";
   let lastPrintedPages = 0;
@@ -166,7 +199,7 @@ async function monitorPrintQueue(windowController, printerName, fallbackPageCoun
       };
     }
 
-    await sleep(900);
+    await sleep(500);
   }
 
   return {
@@ -174,6 +207,52 @@ async function monitorPrintQueue(windowController, printerName, fallbackPageCoun
     totalPages: lastTotalPages || fallbackPageCount,
     monitored: Boolean(trackedJobName),
   };
+}
+
+async function printPdfWithElectron(pdfPath, printer) {
+  const pdfWindow = new BrowserWindow({
+    show: false,
+    width: 1280,
+    height: 1024,
+    backgroundColor: "#ffffff",
+    webPreferences: {
+      sandbox: false,
+      plugins: true,
+    },
+  });
+
+  try {
+    await pdfWindow.loadURL(pathToFileURL(pdfPath).href);
+    await sleep(1200);
+
+    await new Promise((resolve, reject) => {
+      pdfWindow.webContents.print(
+        {
+          silent: true,
+          printBackground: true,
+          color: printer.colorSupported,
+          landscape: false,
+          pageSize: "A4",
+          deviceName: printer.printerName || undefined,
+          margins: {
+            marginType: "none",
+          },
+        },
+        (success, failureReason) => {
+          if (success) {
+            resolve();
+            return;
+          }
+
+          reject(new Error(failureReason || "Nie udalo sie wydrukowac dokumentu PDF."));
+        }
+      );
+    });
+  } finally {
+    if (!pdfWindow.isDestroyed()) {
+      pdfWindow.destroy();
+    }
+  }
 }
 
 async function resolveDefaultPrinter(webContents) {
@@ -217,50 +296,28 @@ function createPrintService({ windowController }) {
       printerName: printer.printerName || "domyslna drukarka systemowa",
       printedPages: 0,
       totalPages: fallbackPageCount,
-      message: "Trwa wysylanie dokumentu do kolejki drukarki.",
+      message: "Trwa przygotowanie PDF do wydruku.",
     });
 
-    const printResult = await new Promise((resolve, reject) => {
-      mainWindow.webContents.print(
-        {
-          silent: true,
-          printBackground: true,
-          color: printer.colorSupported,
-          landscape: false,
-          pageSize: "A4",
-          margins: {
-            marginType: "none",
-          },
-        },
-        (success, failureReason) => {
-          if (success) {
-            resolve({ success: true });
-            return;
-          }
-
-          reject(new Error(failureReason || "Nie udalo sie wydrukowac dokumentu."));
-        }
-      );
+    const pdfBuffer = await mainWindow.webContents.printToPDF({
+      printBackground: true,
+      pageSize: "A4",
+      margins: {
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+      },
+      preferCSSPageSize: true,
     });
-
-    const queueResult = await monitorPrintQueue(
-      windowController,
-      printer.printerName || "domyslna drukarka systemowa",
-      fallbackPageCount
-    );
 
     let pdfPath = null;
     let pdfError = null;
+    let printPdfPath = null;
+    let shouldCleanupPrintPdf = false;
+
     if (normalizedState.print.savePdfAfterPrint) {
       try {
-        sendPrintStatus({
-          phase: "pdf",
-          printerName: printer.printerName || "domyslna drukarka systemowa",
-          printedPages: queueResult.totalPages || fallbackPageCount,
-          totalPages: queueResult.totalPages || fallbackPageCount,
-          message: "Druk zakonczony, trwa zapisywanie kopii PDF.",
-        });
-
         const outputDir = normalizedState.print.pdfOutputDir;
         if (!outputDir) {
           throw new Error(
@@ -269,26 +326,45 @@ function createPrintService({ windowController }) {
         }
 
         await fs.mkdir(outputDir, { recursive: true });
-        const pdfBuffer = await mainWindow.webContents.printToPDF({
-          printBackground: true,
-          pageSize: "A4",
-          margins: {
-            top: 0,
-            bottom: 0,
-            left: 0,
-            right: 0,
-          },
-          preferCSSPageSize: true,
-        });
         pdfPath = path.join(outputDir, createPdfFileName(normalizedState));
         await fs.writeFile(pdfPath, pdfBuffer);
+        printPdfPath = pdfPath;
       } catch (error) {
         pdfError = error.message;
       }
     }
 
+    if (!printPdfPath) {
+      printPdfPath = await createTemporaryPrintPdf(normalizedState, pdfBuffer);
+      shouldCleanupPrintPdf = true;
+    }
+
+    sendPrintStatus({
+      phase: "spooling",
+      printerName: printer.printerName || "domyslna drukarka systemowa",
+      printedPages: 0,
+      totalPages: fallbackPageCount,
+      message: "Trwa wysylanie gotowego PDF do drukarki.",
+    });
+
+    const monitoredPrinterName = printer.printerName || "";
+    const queueMonitorPromise = monitorPrintQueue(
+      windowController,
+      monitoredPrinterName,
+      fallbackPageCount,
+      await capturePrinterJobNames(monitoredPrinterName)
+    );
+
+    await printPdfWithElectron(printPdfPath, printer);
+
+    const queueResult = await queueMonitorPromise;
+
+    if (shouldCleanupPrintPdf) {
+      scheduleTemporaryFileCleanup(printPdfPath);
+    }
+
     return {
-      ...printResult,
+      success: true,
       printerName: printer.printerName || "domyslna drukarka systemowa",
       colorMode: printer.colorSupported ? "color" : "grayscale",
       pdfPath,

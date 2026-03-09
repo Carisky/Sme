@@ -1,0 +1,171 @@
+{
+  "version": 2,
+  "savedAt": "2026-03-09T11:22:13.641Z",
+  "state": {
+    "fileLocation": "C:\\Users\\egork\\Desktop",
+    "fileName": "3-H-2022",
+    "eurRate": "",
+    "ownNumber": "3/H/2022",
+    "entryNumber": "",
+    "entryDate": "",
+    "customsOfficeCode": "40101",
+    "documentType": "MRN",
+    "documentNumber": "18PL",
+    "oreKind": "Koncentrat In-GOK",
+    "oreType": "nieaglomerowana",
+    "originCountry": "Ukrainy",
+    "controlNumber": "38072",
+    "transportCost": "144910.54000",
+    "originalRows": [
+      {
+        "invoiceNumber": "94517971",
+        "weightTons": "905.700",
+        "priceEur": "131.50140",
+        "valueEur": "119100.81798"
+      },
+      {
+        "invoiceNumber": "94517971",
+        "weightTons": "902.350",
+        "priceEur": "131.50140",
+        "valueEur": "118660.28829"
+      },
+      {
+        "invoiceNumber": "94517971",
+        "weightTons": "1045.000",
+        "priceEur": "131.50140",
+        "valueEur": "137418.96300"
+      },
+      {
+        "invoiceNumber": "94517971",
+        "weightTons": "278.200",
+        "priceEur": "131.50140",
+        "valueEur": "36583.68948"
+      },
+      {
+        "invoiceNumber": "94517971",
+        "weightTons": "276.250",
+        "priceEur": "131.50140",
+        "valueEur": "36327.26175"
+      },
+      {
+        "invoiceNumber": "94517971",
+        "weightTons": "276.250",
+        "priceEur": "131.50140",
+        "valueEur": "36327.26175"
+      },
+      {
+        "invoiceNumber": "0",
+        "weightTons": "0.000",
+        "priceEur": "0.00000",
+        "valueEur": "0.00000"
+      },
+      {
+        "invoiceNumber": "0",
+        "weightTons": "0.000",
+        "priceEur": "0.00000",
+        "valueEur": "0.00000"
+      },
+      {
+        "invoiceNumber": "0",
+        "weightTons": "0.000",
+        "priceEur": "0.00000",
+        "valueEur": "0.00000"
+      },
+      {
+        "invoiceNumber": "0",
+        "weightTons": "0.000",
+        "priceEur": "0.00000",
+        "valueEur": "0.00000"
+      }
+    ],
+    "correctionRows": [
+      {
+        "invoiceNumber": "94517971",
+        "weightTons": "905.700",
+        "priceEur": "131.50140",
+        "noteNumber": "1",
+        "noteDate": "14-03-2026"
+      },
+      {
+        "invoiceNumber": "94517971",
+        "weightTons": "902.350",
+        "priceEur": "131.50140",
+        "noteNumber": "2",
+        "noteDate": "07-03-2026"
+      },
+      {
+        "invoiceNumber": "94517971",
+        "weightTons": "1045.000",
+        "priceEur": "131.50140",
+        "noteNumber": "3",
+        "noteDate": "21-03-2026"
+      },
+      {
+        "invoiceNumber": "94517971",
+        "weightTons": "278.200",
+        "priceEur": "131.50140",
+        "noteNumber": "4",
+        "noteDate": "02-04-2026"
+      },
+      {
+        "invoiceNumber": "94517971",
+        "weightTons": "276.250",
+        "priceEur": "131.50140",
+        "noteNumber": "5",
+        "noteDate": "04-04-2026"
+      },
+      {
+        "invoiceNumber": "94517971",
+        "weightTons": "276.250",
+        "priceEur": "131.50140",
+        "noteNumber": "6",
+        "noteDate": "28-03-2026"
+      },
+      {
+        "invoiceNumber": "0",
+        "weightTons": "0.000",
+        "priceEur": "0.00000",
+        "noteNumber": "",
+        "noteDate": ""
+      },
+      {
+        "invoiceNumber": "0",
+        "weightTons": "0.000",
+        "priceEur": "0.00000",
+        "noteNumber": "",
+        "noteDate": ""
+      },
+      {
+        "invoiceNumber": "0",
+        "weightTons": "0.000",
+        "priceEur": "0.00000",
+        "noteNumber": "",
+        "noteDate": ""
+      },
+      {
+        "invoiceNumber": "0",
+        "weightTons": "0.000",
+        "priceEur": "0.00000",
+        "noteNumber": "",
+        "noteDate": ""
+      }
+    ],
+    "print": {
+      "savePdfAfterPrint": true,
+      "pdfOutputDir": "C:\\Users\\egork\\Documents\\SME"
+    },
+    "letter": {
+      "printCity": "Slawków",
+      "senderCompany": "TSL Silesia Sp. z o.o.",
+      "senderAddressLine1": "ul. Debowa Gora 29",
+      "senderAddressLine2": "41-260 Slawkow",
+      "uniqueDocumentNumber": "PPO 0-373-120-512",
+      "signatory": "Urszula Sowka",
+      "printDate": "09.03.2026",
+      "recipientOffice": "",
+      "recipientAddressLine1": "",
+      "recipientAddressLine2": ""
+    }
+  },
+  "modules": {}
+}

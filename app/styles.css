@@ -623,9 +623,7 @@ button:hover {
 }
 
 .document__generated-pages {
-  display: flex;
-  flex-direction: column;
-  gap: inherit;
+  display: block;
 }
 
 .document__page {
@@ -636,8 +634,8 @@ button:hover {
   margin: 0 auto;
   background: white;
   box-shadow: 0 20px 52px rgba(55, 42, 28, 0.16);
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
   break-inside: avoid-page;
   page-break-inside: avoid;
@@ -657,16 +655,14 @@ button:hover {
 }
 
 .document__content {
-  flex: 1 1 auto;
   min-height: 0;
   padding: 9mm 12mm 8mm;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
-.document__flow-block {
-  flex-shrink: 0;
+.document__flow-block,
+.document__paragraph-group {
   break-inside: avoid-page;
   page-break-inside: avoid;
 }
@@ -994,31 +990,50 @@ body.is-update-locked .shell {
     display: none !important;
   }
 
+  html,
   body {
+    min-height: 0;
+    height: auto;
     background: white !important;
   }
 
   body::before,
   .topbar,
+  .tabs-row,
   .tabs,
+  .tabs-slot,
   .statusbar,
   [data-panel="dane"],
   [data-panel="ustawienia"],
+  [data-ui-slot="print:after"],
   .print-toolbar {
     display: none !important;
   }
 
   .shell {
+    display: block;
+    min-height: 0;
     padding: 0;
+    gap: 0;
+  }
+
+  .content {
+    display: block;
+    min-height: 0;
+    gap: 0;
   }
 
   .panel,
   .panel.is-active {
     display: block;
+    min-height: 0;
+    gap: 0;
   }
 
   [data-panel="wydruk"] {
     display: block !important;
+    margin: 0;
+    padding: 0;
   }
 
   .document-sheet {
@@ -1032,10 +1047,12 @@ body.is-update-locked .shell {
   }
 
   .document {
+    display: block;
     gap: 0;
   }
 
   .document__generated-pages {
+    display: block;
     gap: 0;
   }
 
@@ -1056,7 +1073,7 @@ body.is-update-locked .shell {
     page-break-after: always;
   }
 
-  .document__page:last-child {
+  .document__page--final {
     break-after: auto;
     page-break-after: auto;
   }

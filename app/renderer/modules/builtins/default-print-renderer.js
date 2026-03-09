@@ -9,6 +9,8 @@ const PRINT_ASSETS = {
   footer: resolveAssetUrl("../samples/files/doc_footer.png"),
 };
 
+const MAX_PARAGRAPH_GROUPS_PER_PAGE = 4;
+
 function resolveCustomsOffice(snapshot, customsOffices = []) {
   const selectedOffice = customsOffices.find(
     (office) => office.code === snapshot.state?.customsOfficeCode
@@ -25,28 +27,43 @@ function resolveCustomsOffice(snapshot, customsOffices = []) {
   };
 }
 
-export function renderDefaultPrint(snapshot, context = {}) {
-  const office = resolveCustomsOffice(snapshot, context.customsOffices || []);
-  const paragraphBlocks =
-    snapshot.printParagraphs.length > 0
-      ? snapshot.printParagraphs
-          .map(
-            (paragraph) => `
-              <div class="document__flow-block document__flow-block--paragraph-group">
-                <p class="document__paragraph">${escapeHtml(paragraph.noteLine)}</p>
-                <p class="document__paragraph">${escapeHtml(paragraph.correctionLine)}</p>
-              </div>
-            `
-          )
-          .join("")
-      : `
-        <div class="document__flow-block document__flow-block--paragraph-group">
+function renderParagraphGroups(snapshot) {
+  if (snapshot.printParagraphs.length === 0) {
+    return [
+      `
+        <div class="document__paragraph-group">
           <p class="document__paragraph document__empty">
             Brak pozycji korekty z kompletem numeru i daty noty.
           </p>
         </div>
-      `;
+      `,
+    ];
+  }
 
+  return snapshot.printParagraphs.map(
+    (paragraph) => `
+      <div class="document__paragraph-group">
+        <p class="document__paragraph">${escapeHtml(paragraph.noteLine)}</p>
+        <p class="document__paragraph">${escapeHtml(paragraph.correctionLine)}</p>
+      </div>
+    `
+  );
+}
+
+function chunkParagraphGroups(paragraphGroups) {
+  const chunks = [];
+
+  for (let index = 0; index < paragraphGroups.length; index += MAX_PARAGRAPH_GROUPS_PER_PAGE) {
+    chunks.push(paragraphGroups.slice(index, index + MAX_PARAGRAPH_GROUPS_PER_PAGE));
+  }
+
+  return chunks;
+}
+
+export function renderDefaultPrint(snapshot, context = {}) {
+  const office = resolveCustomsOffice(snapshot, context.customsOffices || []);
+  const paragraphGroups = renderParagraphGroups(snapshot);
+  const paragraphChunks = chunkParagraphGroups(paragraphGroups);
   const attachmentItems = [
     snapshot.attachments.noteAttachmentLine,
     snapshot.attachments.invoiceLine,
@@ -59,52 +76,48 @@ export function renderDefaultPrint(snapshot, context = {}) {
     .map((line) => `<li>${escapeHtml(line)}</li>`)
     .join("");
 
-  const letterFlow = `
-    <div class="document__flow-block document__flow-block--intro">
-      <div class="document__header">
-        <div class="document__case">${escapeHtml(snapshot.meta.caseNumber)}</div>
-        <div class="document__place">
-          <strong>${escapeHtml(snapshot.state.letter.printCity)}</strong><br />
-          ${escapeHtml(snapshot.state.letter.printDate)}
-        </div>
+  const firstPageIntro = `
+    <div class="document__header">
+      <div class="document__case">${escapeHtml(snapshot.meta.caseNumber)}</div>
+      <div class="document__place">
+        <strong>${escapeHtml(snapshot.state.letter.printCity)}</strong><br />
+        ${escapeHtml(snapshot.state.letter.printDate)}
       </div>
-
-      <div class="document__office-block">
-        <strong>${escapeHtml(String(office.name || "").toUpperCase())}</strong>
-        <div>${escapeHtml(office.addressLine1)}</div>
-        <div>${escapeHtml(office.addressLine2)}</div>
-      </div>
-
-      <p class="document__subject">Sprawa: ${escapeHtml(snapshot.meta.subjectReference)}</p>
-
-      <p class="document__paragraph">
-        Dzialajac w imieniu i z upowaznienia ArcelorMittal Poland S.A. w dniu
-        ${escapeHtml(snapshot.state.entryDate)} ${escapeHtml(snapshot.state.letter.senderCompany)}
-      </p>
-      <p class="document__paragraph">
-        Dzialajac jako przedstawiciel bezposredni dokonano zgloszenia w procedurze
-        standardowej MRN
-      </p>
-      <p class="document__paragraph">
-        ${escapeHtml(snapshot.state.documentNumber)} dla towaru - ruda zelaza
-        ${escapeHtml(snapshot.state.oreType)} ${escapeHtml(snapshot.state.oreKind)}
-      </p>
-      <p class="document__paragraph">
-        pochodzacego i przywiezionego z ${escapeHtml(
-          snapshot.state.originCountry
-        )} oraz zaklasyfikowanego do kodu CN ${escapeHtml(snapshot.meta.cnCode)}.
-      </p>
     </div>
 
-    ${paragraphBlocks}
-
-    <div class="document__flow-block document__flow-block--closing">
-      <p class="document__paragraph">
-        Na podstawie art. 173 ust. 3 Rozporzadzenia Parlamentu Europejskiego i
-        Rady (UE) nr 952/2013 z dn. 09.10.2013 r. ustanawiajacego UKC z
-        pozniejszymi zmianami, prosze o dokonanie zmian w polach SAD na:
-      </p>
+    <div class="document__office-block">
+      <strong>${escapeHtml(String(office.name || "").toUpperCase())}</strong>
+      <div>${escapeHtml(office.addressLine1)}</div>
+      <div>${escapeHtml(office.addressLine2)}</div>
     </div>
+
+    <p class="document__subject">Sprawa: ${escapeHtml(snapshot.meta.subjectReference)}</p>
+
+    <p class="document__paragraph">
+      Dzialajac w imieniu i z upowaznienia ArcelorMittal Poland S.A. w dniu
+      ${escapeHtml(snapshot.state.entryDate)} ${escapeHtml(snapshot.state.letter.senderCompany)}
+    </p>
+    <p class="document__paragraph">
+      Dzialajac jako przedstawiciel bezposredni dokonano zgloszenia w procedurze
+      standardowej MRN
+    </p>
+    <p class="document__paragraph">
+      ${escapeHtml(snapshot.state.documentNumber)} dla towaru - ruda zelaza
+      ${escapeHtml(snapshot.state.oreType)} ${escapeHtml(snapshot.state.oreKind)}
+    </p>
+    <p class="document__paragraph">
+      pochodzacego i przywiezionego z ${escapeHtml(
+        snapshot.state.originCountry
+      )} oraz zaklasyfikowanego do kodu CN ${escapeHtml(snapshot.meta.cnCode)}.
+    </p>
+  `;
+
+  const closingParagraph = `
+    <p class="document__paragraph">
+      Na podstawie art. 173 ust. 3 Rozporzadzenia Parlamentu Europejskiego i
+      Rady (UE) nr 952/2013 z dn. 09.10.2013 r. ustanawiajacego UKC z
+      pozniejszymi zmianami, prosze o dokonanie zmian w polach SAD na:
+    </p>
   `;
 
   const secondPageContent = `
@@ -201,13 +214,13 @@ export function renderDefaultPrint(snapshot, context = {}) {
     </div>
   `;
 
-  function renderPage(pageContent, extraClass = "", contentAttributes = "") {
+  function renderPage(pageContent, extraClass = "") {
     return `
       <section class="document__page ${extraClass}">
         <div class="document__page-header">
           <img src="${escapeHtml(PRINT_ASSETS.header)}" alt="Header" />
         </div>
-        <div class="document__content" ${contentAttributes}>
+        <div class="document__content">
           ${pageContent}
         </div>
         <div class="document__page-footer">
@@ -217,16 +230,25 @@ export function renderDefaultPrint(snapshot, context = {}) {
     `;
   }
 
+  const letterPages = paragraphChunks.map((chunk, index) => {
+    const isFirstPage = index === 0;
+    const isLastLetterPage = index === paragraphChunks.length - 1;
+    const pageContent = `
+      ${isFirstPage ? firstPageIntro : ""}
+      ${chunk.join("")}
+      ${isLastLetterPage ? closingParagraph : ""}
+    `;
+
+    return renderPage(
+      pageContent,
+      isFirstPage ? "document__page--first" : "document__page--continuation"
+    );
+  });
+
   return `
-    <div class="document" data-print-layout="paginated-letter">
-      <template data-print-template="letter-page">
-        ${renderPage("", "document__page--letter", 'data-page-content')}
-      </template>
-      <div class="document__flow-source" data-print-flow hidden>
-        ${letterFlow}
-      </div>
-      <div class="document__generated-pages" data-generated-pages></div>
-      ${renderPage(secondPageContent, "document__page--summary")}
+    <div class="document">
+      ${letterPages.join("")}
+      ${renderPage(secondPageContent, "document__page--summary document__page--final")}
     </div>
   `;
 }
