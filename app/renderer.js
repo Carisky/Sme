@@ -9,7 +9,9 @@ const stateRef = {
   lastWorkTab: "dane",
   oreKinds: [],
   customsOffices: [],
+  originCountries: [],
   officeDraftId: null,
+  originCountryDraftId: null,
   isPrinting: false,
 };
 
@@ -22,6 +24,7 @@ const elements = {
   documentNumberLabel: document.getElementById("document-number-label"),
   oreKind: document.getElementById("ore-kind"),
   oreType: document.getElementById("ore-type"),
+  originCountry: document.getElementById("origin-country"),
   customsOffice: document.getElementById("customs-office"),
   hintList: document.getElementById("hint-list"),
   validationList: document.getElementById("validation-list"),
@@ -31,6 +34,8 @@ const elements = {
   settingsOfficeName: document.getElementById("settings-office-name"),
   settingsOfficeAddress1: document.getElementById("settings-office-address-1"),
   settingsOfficeAddress2: document.getElementById("settings-office-address-2"),
+  settingsOriginCountry: document.getElementById("settings-origin-country"),
+  settingsOriginCountryName: document.getElementById("settings-origin-country-name"),
   settingsSavePdfAfterPrint: document.getElementById("settings-save-pdf-after-print"),
   settingsPdfOutputDir: document.getElementById("settings-pdf-output-dir"),
   settingsPdfOutputDirButton: document.getElementById("settings-pdf-output-dir-button"),
@@ -92,7 +97,100 @@ function readControlValue(input) {
     return input.checked;
   }
 
+  if (
+    input instanceof HTMLInputElement &&
+    input.type === "date" &&
+    input.dataset.path
+  ) {
+    return formatDateFromControlValue(input.dataset.path, input.value);
+  }
+
   return input.value;
+}
+
+function getDateSeparatorForPath(path = "") {
+  if (path === "entryDate") {
+    return "-";
+  }
+
+  if (path === "letter.printDate") {
+    return ".";
+  }
+
+  if (/^correctionRows\.\d+\.noteDate$/.test(path)) {
+    return "-";
+  }
+
+  return null;
+}
+
+function normalizeDateParts(yearText, monthText, dayText) {
+  let year = String(yearText || "").trim();
+  const month = String(monthText || "").trim().padStart(2, "0");
+  const day = String(dayText || "").trim().padStart(2, "0");
+
+  if (year.length === 2) {
+    year = Number(year) >= 70 ? `19${year}` : `20${year}`;
+  }
+
+  if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month) || !/^\d{2}$/.test(day)) {
+    return null;
+  }
+
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  if (
+    date.getUTCFullYear() !== Number(year) ||
+    date.getUTCMonth() !== Number(month) - 1 ||
+    date.getUTCDate() !== Number(day)
+  ) {
+    return null;
+  }
+
+  return { year, month, day };
+}
+
+function formatDateForControlValue(path, rawValue) {
+  const separator = getDateSeparatorForPath(path);
+  const text = String(rawValue ?? "").trim();
+  if (!separator || !text) {
+    return text;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return text;
+  }
+
+  const match = text.match(/^(\d{1,2})[-./](\d{1,2})[-./](\d{2,4})$/);
+  if (!match) {
+    return "";
+  }
+
+  const parts = normalizeDateParts(match[3], match[2], match[1]);
+  if (!parts) {
+    return "";
+  }
+
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function formatDateFromControlValue(path, rawValue) {
+  const separator = getDateSeparatorForPath(path);
+  const text = String(rawValue ?? "").trim();
+  if (!separator || !text) {
+    return text;
+  }
+
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return "";
+  }
+
+  const parts = normalizeDateParts(match[1], match[2], match[3]);
+  if (!parts) {
+    return "";
+  }
+
+  return `${parts.day}${separator}${parts.month}${separator}${parts.year}`;
 }
 
 function setActiveTab(tabName) {
@@ -307,6 +405,51 @@ function ensureCustomsOfficeSelection() {
   }
 }
 
+function ensureOreKindSelection() {
+  if (!stateRef.oreKinds.length || !stateRef.state) {
+    return;
+  }
+
+  const selectedOreKind =
+    stateRef.oreKinds.find((item) => item.name === stateRef.state.oreKind) ||
+    stateRef.oreKinds[0];
+
+  if (!stateRef.state.oreKind) {
+    stateRef.state.oreKind = selectedOreKind.name;
+    if (selectedOreKind?.defaultOreType) {
+      stateRef.state.oreType = selectedOreKind.defaultOreType;
+    }
+  }
+
+  if (
+    (!stateRef.state.oreType ||
+      !bridge.meta.oreTypes.includes(stateRef.state.oreType)) &&
+    selectedOreKind?.defaultOreType
+  ) {
+    stateRef.state.oreType = selectedOreKind.defaultOreType;
+  }
+}
+
+function ensureOriginCountrySelection() {
+  if (!stateRef.originCountries.length || !stateRef.state) {
+    return;
+  }
+
+  const hasSelectedCountry = stateRef.originCountries.some(
+    (country) => country.name === stateRef.state.originCountry
+  );
+  if (!hasSelectedCountry && !stateRef.state.originCountry) {
+    stateRef.state.originCountry = stateRef.originCountries[0].name;
+  }
+
+  const hasDraft = stateRef.originCountries.some(
+    (country) => country.id === stateRef.originCountryDraftId
+  );
+  if (!hasDraft) {
+    stateRef.originCountryDraftId = stateRef.originCountries[0].id;
+  }
+}
+
 function resolveCustomsOffice(state = stateRef.state) {
   const selectedOffice = stateRef.customsOffices.find(
     (office) => office.code === state?.customsOfficeCode
@@ -337,6 +480,7 @@ function buildSelectOptions() {
 
   renderOreKindOptions();
   renderCustomsOfficeOptions();
+  renderOriginCountryOptions();
 }
 
 function getOreKindOptions(currentValue = "") {
@@ -351,14 +495,12 @@ function getOreKindOptions(currentValue = "") {
 
 function renderOreKindOptions(currentValue = stateRef.state?.oreKind || "") {
   const options = getOreKindOptions(currentValue);
-  const normalizedValue = options.includes(currentValue) ? currentValue : "";
+  const fallbackValue = options[0] || "";
+  const normalizedValue = options.includes(currentValue) ? currentValue : fallbackValue;
 
-  elements.oreKind.innerHTML = [
-    '<option value=""></option>',
-    ...options.map(
-      (value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`
-    ),
-  ].join("");
+  elements.oreKind.innerHTML = options
+    .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+    .join("");
   elements.oreKind.value = normalizedValue;
 }
 
@@ -415,6 +557,50 @@ function renderCustomsOfficeEditor(targetId = stateRef.officeDraftId) {
   elements.settingsOfficeAddress2.value = office?.addressLine2 || "";
 }
 
+function getOriginCountryOptions(currentValue = "") {
+  const options = stateRef.originCountries.map((item) => item.name);
+
+  if (currentValue && !options.includes(currentValue)) {
+    options.push(currentValue);
+  }
+
+  return options;
+}
+
+function renderOriginCountryOptions(currentValue = stateRef.state?.originCountry || "") {
+  const options = getOriginCountryOptions(currentValue);
+  const fallbackValue = options[0] || "";
+  const normalizedValue = options.includes(currentValue) ? currentValue : fallbackValue;
+
+  elements.originCountry.innerHTML = options
+    .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+    .join("");
+  elements.originCountry.value = normalizedValue;
+
+  elements.settingsOriginCountry.innerHTML = [
+    '<option value="">Nowy kraj...</option>',
+    ...stateRef.originCountries.map(
+      (country) =>
+        `<option value="${country.id}">${escapeHtml(country.name)}</option>`
+    ),
+  ].join("");
+
+  if (stateRef.state) {
+    stateRef.state.originCountry = normalizedValue;
+  }
+
+  renderOriginCountryEditor();
+}
+
+function renderOriginCountryEditor(targetId = stateRef.originCountryDraftId) {
+  const country =
+    stateRef.originCountries.find((item) => item.id === Number(targetId)) || null;
+
+  stateRef.originCountryDraftId = country?.id ?? null;
+  elements.settingsOriginCountry.value = country ? String(country.id) : "";
+  elements.settingsOriginCountryName.value = country?.name || "";
+}
+
 function renderPrintSettingsControls() {
   const isEnabled = Boolean(stateRef.state?.print?.savePdfAfterPrint);
   elements.settingsPdfOutputDir.disabled = !isEnabled;
@@ -445,7 +631,7 @@ function buildTables() {
         <td><input type="text" inputmode="decimal" data-path="correctionRows.${index}.priceEur" /></td>
         <td class="cell--computed" data-output="row.${index}.correction.valueDisplay"></td>
         <td><input type="text" data-path="correctionRows.${index}.noteNumber" /></td>
-        <td><input type="text" data-path="correctionRows.${index}.noteDate" placeholder="dd-mm-rrrr" /></td>
+        <td><input type="date" data-path="correctionRows.${index}.noteDate" /></td>
       </tr>
     `
   ).join("");
@@ -456,6 +642,11 @@ function populateInputs() {
     const value = getValueAtPath(stateRef.state, input.dataset.path);
     if (input instanceof HTMLInputElement && input.type === "checkbox") {
       input.checked = Boolean(value);
+      return;
+    }
+
+    if (input instanceof HTMLInputElement && input.type === "date") {
+      input.value = formatDateForControlValue(input.dataset.path, value);
       return;
     }
 
@@ -590,7 +781,7 @@ function renderPrint(snapshot) {
       <div>${escapeHtml(office.addressLine2)}</div>
     </div>
 
-    <p class="document__subject">Sprawa: ${escapeHtml(snapshot.state.documentNumber)}</p>
+    <p class="document__subject">Sprawa: ${escapeHtml(snapshot.meta.subjectReference)}</p>
 
     <p class="document__paragraph">
       Działając w imieniu i z upoważnienia ArcelorMittal Poland S.A. w dniu
@@ -779,6 +970,16 @@ function handlePathInput(target) {
     }
   }
 
+  if (target.dataset.path === "originCountry") {
+    const selectedCountry = stateRef.originCountries.find(
+      (country) => country.name === target.value
+    );
+    if (selectedCountry) {
+      stateRef.originCountryDraftId = selectedCountry.id;
+      renderOriginCountryEditor(selectedCountry.id);
+    }
+  }
+
   if (target.dataset.path === "print.savePdfAfterPrint") {
     renderPrintSettingsControls();
   }
@@ -798,6 +999,7 @@ async function confirmDiscardIfNeeded() {
 function applyCatalogs(result) {
   stateRef.oreKinds = result.oreKinds || stateRef.oreKinds;
   stateRef.customsOffices = result.customsOffices || stateRef.customsOffices;
+  stateRef.originCountries = result.originCountries || stateRef.originCountries;
 }
 
 function setState(nextState, options = {}) {
@@ -807,9 +1009,12 @@ function setState(nextState, options = {}) {
       ? options.currentProjectPath
       : stateRef.currentProjectPath;
   stateRef.dirty = options.dirty ?? stateRef.dirty;
+  ensureOreKindSelection();
   ensureCustomsOfficeSelection();
+  ensureOriginCountrySelection();
   renderOreKindOptions(stateRef.state.oreKind);
   renderCustomsOfficeOptions();
+  renderOriginCountryOptions();
   populateInputs();
   recompute();
 }
@@ -826,6 +1031,19 @@ function collectOfficeDraft() {
         (office) => office.id === stateRef.officeDraftId
       );
       return current?.sortOrder ?? stateRef.customsOffices.length;
+    })(),
+  };
+}
+
+function collectOriginCountryDraft() {
+  return {
+    id: stateRef.originCountryDraftId,
+    name: elements.settingsOriginCountryName.value.trim(),
+    sortOrder: (() => {
+      const current = stateRef.originCountries.find(
+        (country) => country.id === stateRef.originCountryDraftId
+      );
+      return current?.sortOrder ?? stateRef.originCountries.length;
     })(),
   };
 }
@@ -864,6 +1082,42 @@ function handleOfficeNew() {
   stateRef.officeDraftId = null;
   renderCustomsOfficeEditor(null);
   showStatus("Wprowadź dane nowego urzędu i zapisz je do słownika.");
+}
+
+async function handleOriginCountrySave() {
+  const existingCountry = stateRef.originCountries.find(
+    (country) => country.id === stateRef.originCountryDraftId
+  );
+  const previousName = existingCountry?.name || "";
+  const payload = collectOriginCountryDraft();
+  const result = await bridge.saveOriginCountry(payload);
+
+  stateRef.originCountries = result.originCountries || stateRef.originCountries;
+  stateRef.originCountryDraftId = result.savedCountry?.id ?? null;
+
+  const shouldSwitchSelectedCountry =
+    !stateRef.state.originCountry ||
+    stateRef.state.originCountry === previousName ||
+    !stateRef.originCountries.some(
+      (country) => country.name === stateRef.state.originCountry
+    );
+
+  if (shouldSwitchSelectedCountry && result.savedCountry?.name) {
+    stateRef.state.originCountry = result.savedCountry.name;
+    markDirty();
+  }
+
+  ensureOriginCountrySelection();
+  renderOriginCountryOptions(stateRef.state.originCountry);
+  populateInputs();
+  recompute();
+  showStatus(`Zapisano kraj pochodzenia ${result.savedCountry?.name || ""}.`);
+}
+
+function handleOriginCountryNew() {
+  stateRef.originCountryDraftId = null;
+  renderOriginCountryEditor(null);
+  showStatus("Wprowadź dane nowego kraju pochodzenia i zapisz je do słownika.");
 }
 
 async function handleChoosePdfOutputDir() {
@@ -1032,6 +1286,16 @@ async function handleAction(action) {
       return;
     }
 
+    if (action === "origin-country-new") {
+      handleOriginCountryNew();
+      return;
+    }
+
+    if (action === "origin-country-save") {
+      await handleOriginCountrySave();
+      return;
+    }
+
     if (action === "choose-pdf-output-dir") {
       await handleChoosePdfOutputDir();
       return;
@@ -1067,6 +1331,10 @@ function wireEvents() {
       return;
     }
 
+    if (target instanceof HTMLInputElement && target.type === "date") {
+      return;
+    }
+
     if (!target.dataset.path) {
       return;
     }
@@ -1089,6 +1357,10 @@ function wireEvents() {
 
   elements.settingsCustomsOffice.addEventListener("change", (event) => {
     renderCustomsOfficeEditor(event.target.value);
+  });
+
+  elements.settingsOriginCountry.addEventListener("change", (event) => {
+    renderOriginCountryEditor(event.target.value);
   });
 
   window.addEventListener("keydown", async (event) => {

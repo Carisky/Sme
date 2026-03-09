@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("source:import", state),
   saveCustomsOffice: (office) =>
     ipcRenderer.invoke("catalog:save-customs-office", office),
+  saveOriginCountry: (country) =>
+    ipcRenderer.invoke("catalog:save-origin-country", country),
   chooseDirectory: (defaultPath) =>
     ipcRenderer.invoke("dialog:choose-directory", defaultPath),
   printToDefaultPrinter: (state) =>

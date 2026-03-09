@@ -74,7 +74,7 @@
                 </label>
                 <label class="field">
                   <span>Data zgłoszenia</span>
-                  <input type="text" data-path="entryDate" placeholder="dd-mm-rrrr" />
+                  <input type="date" data-path="entryDate" />
                 </label>
                 <label class="field">
                   <span>Typ dokumentu</span>
@@ -94,7 +94,7 @@
                 </label>
                 <label class="field">
                   <span>Kraj pochodzenia</span>
-                  <input type="text" data-path="originCountry" />
+                  <select data-path="originCountry" id="origin-country"></select>
                 </label>
                 <label class="field field--readonly">
                   <span>Kod CN</span>
@@ -265,6 +265,32 @@
 
               <article class="card">
                 <div class="card__title-row">
+                  <h2>Kraje pochodzenia</h2>
+                  <span class="badge badge--muted">slownik SQLite</span>
+                </div>
+                <div class="form-grid settings-print-grid">
+                  <label class="field field--wide">
+                    <span>Wybierz kraj</span>
+                    <select id="settings-origin-country"></select>
+                  </label>
+                  <label class="field field--wide">
+                    <span>Nazwa</span>
+                    <input type="text" id="settings-origin-country-name" />
+                  </label>
+                  <div class="field field--wide field--actions">
+                    <span>Operacje</span>
+                    <div class="toolbar">
+                      <button type="button" data-action="origin-country-new">Nowy kraj</button>
+                      <button type="button" data-action="origin-country-save" class="button--strong">
+                        Zapisz kraj
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="card">
+                <div class="card__title-row">
                   <h2>Druk i PDF</h2>
                   <span class="badge badge--muted">druk bez okna systemowego</span>
                 </div>
@@ -316,7 +342,7 @@
                 </label>
                 <label class="field">
                   <span>Data wydruku</span>
-                  <input type="text" data-path="letter.printDate" placeholder="dd.mm.rrrr" />
+                  <input type="date" data-path="letter.printDate" />
                 </label>
                 <label class="field field--wide">
                   <span>Nadawca</span>

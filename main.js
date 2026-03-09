@@ -13,8 +13,10 @@ const { importSourceWorkbook } = require("./src/excel");
 const {
   disconnectOreCatalog,
   listCustomsOffices,
+  listOriginCountries,
   listOreKinds,
   saveCustomsOffice,
+  saveOriginCountry,
 } = require("./src/ore-catalog");
 
 let mainWindow;
@@ -351,11 +353,13 @@ app.whenReady().then(() => {
 ipcMain.handle("app:bootstrap", async () => {
   let oreKinds = [];
   let customsOffices = [];
+  let originCountries = [];
   let catalogError = null;
 
   try {
     oreKinds = await listOreKinds();
     customsOffices = await listCustomsOffices();
+    originCountries = await listOriginCountries();
   } catch (error) {
     catalogError = `Nie udalo sie odczytac slownikow aplikacji: ${error.message}`;
   }
@@ -364,6 +368,7 @@ ipcMain.handle("app:bootstrap", async () => {
     state: createEmptyState(),
     oreKinds,
     customsOffices,
+    originCountries,
     catalogError,
   };
 });
@@ -437,6 +442,10 @@ ipcMain.handle("source:import", async (_event, currentState) => {
 
 ipcMain.handle("catalog:save-customs-office", async (_event, office) => {
   return saveCustomsOffice(office);
+});
+
+ipcMain.handle("catalog:save-origin-country", async (_event, country) => {
+  return saveOriginCountry(country);
 });
 
 ipcMain.handle("dialog:choose-directory", async (_event, defaultPath) => {

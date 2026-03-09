@@ -317,6 +317,17 @@ button:hover {
   background: rgba(255, 255, 255, 0.9);
 }
 
+.field input[type="date"],
+.sheet-table input[type="date"] {
+  color-scheme: light;
+}
+
+.field input[type="date"]::-webkit-calendar-picker-indicator,
+.sheet-table input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.82;
+}
+
 .field output {
   display: flex;
   align-items: center;

@@ -3,7 +3,9 @@ const fs = require("fs");
 const {
   createOreCatalogClient,
   saveCustomsOffice: persistCustomsOffice,
+  saveOriginCountry: persistOriginCountry,
   seedDefaultCustomsOffices,
+  seedDefaultOriginCountries,
   seedDefaultOreKinds,
 } = require("./ore-catalog-store");
 
@@ -61,6 +63,14 @@ async function listCustomsOffices() {
   });
 }
 
+async function listOriginCountries() {
+  const prisma = getPrismaClient();
+  await seedDefaultOriginCountries(prisma);
+  return prisma.$queryRawUnsafe(
+    'SELECT "id", "name", "sortOrder" FROM "OriginCountry" ORDER BY "sortOrder" ASC, "name" ASC'
+  );
+}
+
 async function saveCustomsOffice(office) {
   const prisma = getPrismaClient();
   const savedOffice = await persistCustomsOffice(prisma, office);
@@ -77,6 +87,19 @@ async function saveCustomsOffice(office) {
   };
 }
 
+async function saveOriginCountry(country) {
+  const prisma = getPrismaClient();
+  const savedCountry = await persistOriginCountry(prisma, country);
+  return {
+    savedCountry: {
+      id: savedCountry.id,
+      name: savedCountry.name,
+      sortOrder: savedCountry.sortOrder,
+    },
+    originCountries: await listOriginCountries(),
+  };
+}
+
 async function disconnectOreCatalog() {
   if (!prismaClient) {
     return;
@@ -89,6 +112,8 @@ async function disconnectOreCatalog() {
 module.exports = {
   disconnectOreCatalog,
   listCustomsOffices,
+  listOriginCountries,
   listOreKinds,
   saveCustomsOffice,
+  saveOriginCountry,
 };

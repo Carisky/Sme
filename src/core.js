@@ -518,6 +518,8 @@ function computeSnapshot(state) {
       ? normalized.documentNumber
       : `${preset.printPrefix}${normalized.documentType}${normalized.documentNumber}`.trim();
 
+  const subjectReference = documentDisplay;
+
   const copySadLine =
     normalized.documentType === "MRN"
       ? `- kopia SAD${normalized.documentNumber}`
@@ -559,6 +561,7 @@ function computeSnapshot(state) {
       invoiceNumbersList,
       paymentDocumentsList,
       caseNumber: normalized.ownNumber ? `TSL/${normalized.ownNumber}` : "TSL/",
+      subjectReference,
       sourceFileName: normalized.fileName ? `${normalized.fileName}.xls` : "",
     },
     totals: {

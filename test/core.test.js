@@ -1,5 +1,7 @@
 const assert = require("node:assert/strict");
+const path = require("node:path");
 const { computeSnapshot, normalizeState, parseNumber } = require("../src/core");
+const { importSourceWorkbook } = require("../src/excel");
 
 assert.equal(parseNumber("380,206.02550"), 380206.0255);
 assert.equal(parseNumber("4,2628"), 4.2628);
@@ -49,5 +51,30 @@ assert.equal(snapshot.totals.formatted.originalEur, "380 206,03");
 assert.equal(snapshot.totals.formatted.correctedEurRounded, "374 934,55");
 assert.equal(snapshot.totals.formatted.vatDifference, "5 169");
 assert.equal(snapshot.validation.errors.length, 0);
+assert.equal(snapshot.meta.caseNumber, "TSL/001");
+assert.equal(snapshot.meta.subjectReference, "25PL40101D00013JR3");
+
+const importedState = importSourceWorkbook(
+  path.join(__dirname, "..", "samples", "import_files", "3-H-2022.xls"),
+  normalizeState({ eurRate: "4.2628" })
+);
+assert.equal(importedState.eurRate, "4.2628");
+assert.equal(importedState.controlNumber, "38072");
+assert.equal(importedState.ownNumber, "3/H/2022");
+assert.equal(importedState.oreKind, "Koncentrat In-GOK");
+assert.equal(importedState.oreType, "nieaglomerowana");
+assert.equal(importedState.transportCost, "144910.54000");
+assert.equal(importedState.originalRows[0].invoiceNumber, "94517971");
+assert.equal(importedState.originalRows[0].weightTons, "905.700");
+assert.equal(importedState.originalRows[0].priceEur, "131.50140");
+
+const importedSnapshot = computeSnapshot(importedState);
+assert.equal(importedSnapshot.meta.cnCode, "26011100");
+assert.equal(importedSnapshot.meta.caseNumber, "TSL/3/H/2022");
+assert.equal(importedSnapshot.meta.subjectReference, "18PL");
+
+const blankSnapshot = computeSnapshot(normalizeState({}));
+assert.equal(blankSnapshot.meta.caseNumber, "TSL/");
+assert.equal(blankSnapshot.meta.subjectReference, "18PL");
 
 console.log("core smoke tests passed");
