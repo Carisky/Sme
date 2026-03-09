@@ -1,8 +1,17 @@
 const fs = require("fs/promises");
 const path = require("path");
-const { spawn } = require("child_process");
+const { execFileSync, spawn } = require("child_process");
 const { packager } = require("@electron/packager");
 const packageJson = require("../package.json");
+const {
+  RELEASE_MANIFEST_NAME,
+  buildInstallerFileName,
+  createReleaseManifest,
+  hashDirectory,
+  hashFile,
+  normalizeProductName,
+  parseGitHubRepository,
+} = require("../src/update-common");
 
 async function runProcess(command, args, cwd, extraEnv = {}) {
   await new Promise((resolve, reject) => {
@@ -181,10 +190,22 @@ async function withSeededDatabase(rootDir, tmpDir, action) {
     if (hadDatabase) {
       await fs.copyFile(backupPath, databasePath);
       await fs.rm(backupPath, { force: true });
-      return;
+    } else {
+      await fs.rm(databasePath, { force: true });
     }
+  }
+}
 
-    await fs.rm(databasePath, { force: true });
+function getGitCommitSha(rootDir) {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: rootDir,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      windowsHide: true,
+    }).trim();
+  } catch {
+    return "";
   }
 }
 
@@ -194,7 +215,10 @@ async function main() {
   const tmpDir = path.join(rootDir, "tmp", "installer-build");
   const packagedOutDir = path.join(tmpDir, "packaged");
   const iexpressDir = path.join(tmpDir, "iexpress");
-  const installerPath = path.join(distDir, `SME-Setup-${packageJson.version}.exe`);
+  const productName = normalizeProductName(packageJson);
+  const installerName = buildInstallerFileName(productName, packageJson.version);
+  const installerPath = path.join(distDir, installerName);
+  const manifestPath = path.join(distDir, RELEASE_MANIFEST_NAME);
 
   await cleanDistDirectory(distDir);
   await fs.rm(tmpDir, { recursive: true, force: true });
@@ -220,19 +244,36 @@ async function main() {
         /^\/samples\/macro$/,
       ],
     })
-  });
+  );
 
   const packagedDir = packagedPaths[0];
+  const packagedAppDir = path.join(packagedDir, "resources", "app");
   const payloadZipPath = path.join(iexpressDir, "payload.zip");
   const iexpressLogPath = path.join(iexpressDir, "iexpress.log");
+  const appSha256 = await hashDirectory(packagedAppDir);
 
   await compressDirectoryContents(packagedDir, payloadZipPath);
   const sedPath = await writeInstallerStage(iexpressDir, installerPath);
   await runIExpress(sedPath, iexpressLogPath, rootDir);
   await fs.access(installerPath);
 
+  const installerSha256 = await hashFile(installerPath);
+  const installerStats = await fs.stat(installerPath);
+  const manifest = createReleaseManifest({
+    packageJson,
+    repository: parseGitHubRepository(packageJson),
+    version: packageJson.version,
+    installerName,
+    installerSha256,
+    installerSize: installerStats.size,
+    appSha256,
+    sourceCommit: getGitCommitSha(rootDir),
+  });
+  await fs.writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
   await fs.rm(tmpDir, { recursive: true, force: true });
   console.log(`Installer exe: ${installerPath}`);
+  console.log(`Release manifest: ${manifestPath}`);
 }
 
 main().catch((error) => {

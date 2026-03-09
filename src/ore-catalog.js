@@ -3,9 +3,12 @@ const fs = require("fs");
 const fsp = require("fs/promises");
 const { app } = require("electron");
 const { normalizeAppSettings } = require("./core");
+const { VERIFIED_RELEASE_KEY } = require("./update-common");
 const {
   createOreCatalogClient,
+  loadAppSettingJson,
   loadAppSettingsJson: readAppSettingsJson,
+  saveAppSettingJson,
   saveCustomsOffice: persistCustomsOffice,
   saveAppSettingsJson: persistAppSettingsJson,
   saveOriginCountry: persistOriginCountry,
@@ -144,6 +147,25 @@ async function saveAppSettings(settings) {
   return normalizedSettings;
 }
 
+async function loadVerifiedRelease() {
+  const prisma = await getPrismaClient();
+
+  try {
+    return JSON.parse(await loadAppSettingJson(prisma, VERIFIED_RELEASE_KEY, "null"));
+  } catch {
+    return null;
+  }
+}
+
+async function saveVerifiedRelease(releaseState) {
+  const prisma = await getPrismaClient();
+  const normalizedState =
+    releaseState && typeof releaseState === "object" ? releaseState : null;
+
+  await saveAppSettingJson(prisma, VERIFIED_RELEASE_KEY, JSON.stringify(normalizedState));
+  return normalizedState;
+}
+
 async function disconnectOreCatalog() {
   if (!prismaClient) {
     return;
@@ -159,7 +181,9 @@ module.exports = {
   listOriginCountries,
   listOreKinds,
   loadAppSettings,
+  loadVerifiedRelease,
   saveCustomsOffice,
   saveAppSettings,
+  saveVerifiedRelease,
   saveOriginCountry,
 };

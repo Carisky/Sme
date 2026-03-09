@@ -10,13 +10,15 @@
     "test": "node test/core.test.js",
     "make:portable": "node scripts/make-portable.cjs",
     "make:installer": "node scripts/make-portable.cjs",
+    "push:remote": "node scripts/push-remote.cjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init_ore_catalog",
     "prisma:seed": "prisma db seed"
   },
-
-
-
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Carisky/Sme.git"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

@@ -10,6 +10,13 @@ const {
   parseNumber,
 } = require("../src/core");
 const { importSourceWorkbook } = require("../src/excel");
+const {
+  buildInstallerFileName,
+  buildReleaseTag,
+  compareVersions,
+  createReleaseManifest,
+  parseGitHubRepository,
+} = require("../src/update-common");
 
 assert.equal(parseNumber("380,206.02550"), 380206.0255);
 assert.equal(parseNumber("4,2628"), 4.2628);
@@ -127,5 +134,40 @@ assert.deepEqual(
   Object.keys(extractedAppSettings).sort(),
   [...APP_SETTINGS_PATHS].sort()
 );
+
+assert.equal(compareVersions("1.0.10", "1.0.2"), 1);
+assert.equal(compareVersions("1.0.0", "1.0.0"), 0);
+assert.equal(compareVersions("1.0.0", "1.0.1"), -1);
+assert.equal(buildInstallerFileName("SME", "1.2.3"), "SME-Setup-1.2.3.exe");
+assert.equal(buildReleaseTag("1.2.3"), "v1.2.3");
+assert.deepEqual(parseGitHubRepository("https://github.com/Carisky/Sme.git"), {
+  provider: "github",
+  owner: "Carisky",
+  repo: "Sme",
+});
+
+const releaseManifest = createReleaseManifest({
+  packageJson: {
+    name: "sme",
+    productName: "SME",
+    version: "1.0.0",
+    repository: {
+      type: "git",
+      url: "https://github.com/Carisky/Sme.git",
+    },
+  },
+  version: "1.0.0",
+  installerName: "SME-Setup-1.0.0.exe",
+  installerSha256: "ABC123",
+  installerSize: 42,
+  appSha256: "DEF456",
+  sourceCommit: "deadbeef",
+});
+assert.equal(releaseManifest.version, "1.0.0");
+assert.equal(releaseManifest.releaseTag, "v1.0.0");
+assert.equal(releaseManifest.repository.owner, "Carisky");
+assert.equal(releaseManifest.assets.installer.name, "SME-Setup-1.0.0.exe");
+assert.equal(releaseManifest.assets.installer.sha256, "abc123");
+assert.equal(releaseManifest.appSha256, "def456");
 
 console.log("core smoke tests passed");

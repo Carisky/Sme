@@ -15,6 +15,12 @@ const stateRef = {
   originCountryDraftId: null,
   isPrinting: false,
   settingsSaveTimer: null,
+  updateGate: {
+    locked: false,
+    busy: false,
+    status: "idle",
+    manifest: null,
+  },
 };
 
 const elements = {
@@ -48,6 +54,16 @@ const elements = {
   printStatusPrinter: document.getElementById("print-status-printer"),
   printStatusDetail: document.getElementById("print-status-detail"),
   printStatusProgressFill: document.getElementById("print-status-progress-fill"),
+  updateModal: document.getElementById("update-modal"),
+  updateTitle: document.getElementById("update-title"),
+  updateSummary: document.getElementById("update-summary"),
+  updateCurrentVersion: document.getElementById("update-current-version"),
+  updateRemoteVersion: document.getElementById("update-remote-version"),
+  updateProgressFill: document.getElementById("update-progress-fill"),
+  updateProgressText: document.getElementById("update-progress-text"),
+  updateDetail: document.getElementById("update-detail"),
+  updateRetry: document.getElementById("update-retry"),
+  updateInstall: document.getElementById("update-install"),
 };
 
 function resolveAssetUrl(relativePath) {
@@ -259,6 +275,141 @@ function setPrintProgress(printedPages, totalPages) {
     normalizedTotal > 0
       ? `${Math.max(6, Math.round((cappedPrinted / normalizedTotal) * 100))}%`
       : "8%";
+}
+
+function isUpdateLocked() {
+  return Boolean(stateRef.updateGate?.locked);
+}
+
+function isUpdateAction(action) {
+  return action === "update-retry" || action === "update-install";
+}
+
+function setUpdateProgress(percent = 0, text = "Oczekiwanie") {
+  const normalizedPercent = Math.max(0, Math.min(Number(percent) || 0, 100));
+  elements.updateProgressFill.style.width = `${Math.max(8, normalizedPercent)}%`;
+  elements.updateProgressText.textContent = text;
+}
+
+function setUpdateGateBusy(isBusy) {
+  stateRef.updateGate.busy = Boolean(isBusy);
+  elements.updateRetry.disabled = stateRef.updateGate.busy;
+  elements.updateInstall.disabled = stateRef.updateGate.busy;
+}
+
+function applyUpdateGate(updateGate = {}) {
+  stateRef.updateGate = {
+    locked: Boolean(updateGate.locked),
+    busy: false,
+    status: updateGate.status || "idle",
+    localVersion: updateGate.localVersion || "",
+    remoteVersion: updateGate.remoteVersion || "",
+    message: updateGate.message || "",
+    detail: updateGate.detail || "",
+    allowInstall: Boolean(updateGate.allowInstall),
+    allowRetry: Boolean(updateGate.allowRetry),
+    manifest: updateGate.manifest || null,
+  };
+
+  document.body.classList.toggle("is-update-locked", stateRef.updateGate.locked);
+  elements.updateModal.hidden = !stateRef.updateGate.locked;
+
+  if (!stateRef.updateGate.locked) {
+    setUpdateGateBusy(false);
+    setUpdateProgress(0, "Brak aktywnej aktualizacji.");
+    return;
+  }
+
+  const isIntegrityProblem =
+    stateRef.updateGate.status === "integrity-mismatch" ||
+    stateRef.updateGate.status === "verification-persist-failed";
+  const isConnectivityProblem = stateRef.updateGate.status === "server-unavailable";
+
+  elements.updateTitle.textContent = isConnectivityProblem
+    ? "Brak potwierdzenia wersji"
+    : isIntegrityProblem
+      ? "Wymagana ponowna instalacja"
+      : "Wymagana aktualizacja";
+  elements.updateSummary.textContent =
+    stateRef.updateGate.message || "Ta wersja aplikacji wymaga aktualizacji.";
+  elements.updateCurrentVersion.textContent = stateRef.updateGate.localVersion || "-";
+  elements.updateRemoteVersion.textContent = stateRef.updateGate.remoteVersion || "-";
+  elements.updateDetail.textContent =
+    stateRef.updateGate.detail ||
+    (stateRef.updateGate.allowInstall
+      ? "Kliknij Zaktualizuj, aby pobrac nowy instalator."
+      : "Kliknij Sprobuj ponownie, aby odswiezyc stan release.");
+  elements.updateRetry.hidden = !stateRef.updateGate.allowRetry;
+  elements.updateInstall.hidden = !stateRef.updateGate.allowInstall;
+  elements.updateInstall.textContent = isIntegrityProblem
+    ? "Zainstaluj ponownie"
+    : "Zaktualizuj";
+  setUpdateGateBusy(false);
+  setUpdateProgress(
+    0,
+    stateRef.updateGate.allowInstall
+      ? "Gotowe do pobrania aktualizacji."
+      : "Oczekiwanie na ponowna probe."
+  );
+}
+
+function handleUpdateStatusEvent(payload = {}) {
+  if (elements.updateModal.hidden) {
+    return;
+  }
+
+  if (payload.phase === "checking") {
+    setUpdateGateBusy(true);
+    elements.updateSummary.textContent = "Sprawdzanie release";
+    elements.updateDetail.textContent =
+      payload.message || "Trwa pobieranie manifestu aktualizacji.";
+    setUpdateProgress(8, "Sprawdzanie...");
+    return;
+  }
+
+  if (payload.phase === "downloading") {
+    setUpdateGateBusy(true);
+    elements.updateSummary.textContent = "Pobieranie aktualizacji";
+    elements.updateDetail.textContent =
+      payload.message || "Trwa pobieranie instalatora.";
+    const percent = Number(payload.percent) || 0;
+    setUpdateProgress(
+      percent,
+      payload.totalBytes
+        ? `${percent}%`
+        : `Pobrano ${Number(payload.receivedBytes) || 0} B`
+    );
+    return;
+  }
+
+  if (payload.phase === "verifying") {
+    setUpdateGateBusy(true);
+    elements.updateSummary.textContent = "Weryfikacja instalatora";
+    elements.updateDetail.textContent =
+      payload.message || "Trwa sprawdzanie hash pobranego pliku.";
+    setUpdateProgress(100, "Weryfikacja...");
+    return;
+  }
+
+  if (payload.phase === "launching") {
+    setUpdateGateBusy(true);
+    elements.updateSummary.textContent = "Uruchamianie instalatora";
+    elements.updateDetail.textContent =
+      payload.message || "Aplikacja uruchamia nowy instalator.";
+    setUpdateProgress(100, "Uruchamianie...");
+  }
+}
+
+async function refreshUpdateGate() {
+  const nextGate = await bridge.checkForUpdates();
+  applyUpdateGate(nextGate);
+  showStatus(nextGate.message || "Sprawdzono stan aktualizacji.");
+  return nextGate;
+}
+
+async function startMandatoryUpdateInstall() {
+  setUpdateGateBusy(true);
+  await bridge.downloadAndInstallUpdate();
 }
 
 function openPrintStatusModal(pageCount) {
@@ -954,6 +1105,10 @@ function recompute() {
 }
 
 function handlePathInput(target) {
+  if (isUpdateLocked()) {
+    return;
+  }
+
   const previousType = stateRef.state.documentType;
   const previousPreset = bridge.getDocumentPreset(previousType);
   setValueAtPath(stateRef.state, target.dataset.path, readControlValue(target));
@@ -1162,6 +1317,20 @@ async function handleChoosePdfOutputDir() {
 
 async function handleAction(action) {
   try {
+    if (action === "update-retry") {
+      await refreshUpdateGate();
+      return;
+    }
+
+    if (action === "update-install") {
+      await startMandatoryUpdateInstall();
+      return;
+    }
+
+    if (isUpdateLocked()) {
+      return;
+    }
+
     if (action === "new") {
       if (!(await confirmDiscardIfNeeded())) {
         return;
@@ -1171,7 +1340,14 @@ async function handleAction(action) {
       applyCatalogs(result);
       buildSelectOptions();
       setState(result.state, { currentProjectPath: null, dirty: false });
-      showStatus(result.error || result.catalogError || "Zaladowano pusty projekt startowy.");
+      applyUpdateGate(result.updateGate);
+      showStatus(
+        result.updateGate?.locked
+          ? result.updateGate.message
+          : result.updateGate?.status === "offline-verified"
+            ? result.updateGate.message
+            : result.error || result.catalogError || "Zaladowano pusty projekt startowy."
+      );
       return;
     }
 
@@ -1330,7 +1506,17 @@ async function handleAction(action) {
       closePrintStatusModal();
     }
   } catch (error) {
-    updatePrintStatusModalError(error);
+    if (action === "print" || stateRef.isPrinting) {
+      updatePrintStatusModalError(error);
+    }
+
+    if (isUpdateAction(action)) {
+      setUpdateGateBusy(false);
+      if (!elements.updateModal.hidden) {
+        elements.updateDetail.textContent = error.message;
+      }
+    }
+
     alert(error.message);
     showStatus(error.message);
   }
@@ -1345,7 +1531,7 @@ function wireEvents() {
     }
 
     const tabButton = event.target.closest(".tab");
-    if (tabButton) {
+    if (tabButton && !isUpdateLocked()) {
       setActiveTab(tabButton.dataset.tab);
     }
   });
@@ -1394,6 +1580,10 @@ function wireEvents() {
       return;
     }
 
+    if (isUpdateLocked()) {
+      return;
+    }
+
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
       await handleAction("save");
@@ -1404,13 +1594,21 @@ function wireEvents() {
 async function bootstrap() {
   buildTables();
   bridge.onPrintStatus(handlePrintStatusEvent);
+  bridge.onUpdateStatus(handleUpdateStatusEvent);
   wireEvents();
 
   const result = await bridge.bootstrap();
   applyCatalogs(result);
   buildSelectOptions();
   setState(result.state, { currentProjectPath: null, dirty: false });
-  showStatus(result.error || result.catalogError || "Zaladowano pusty projekt startowy.");
+  applyUpdateGate(result.updateGate);
+  showStatus(
+    result.updateGate?.locked
+      ? result.updateGate.message
+      : result.updateGate?.status === "offline-verified"
+        ? result.updateGate.message
+        : result.error || result.catalogError || "Zaladowano pusty projekt startowy."
+  );
 }
 
 bootstrap();

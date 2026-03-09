@@ -41,9 +41,16 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("dialog:choose-directory", defaultPath),
   printToDefaultPrinter: (state) =>
     ipcRenderer.invoke("print:to-default-printer", state),
+  checkForUpdates: () => ipcRenderer.invoke("update:check"),
+  downloadAndInstallUpdate: () =>
+    ipcRenderer.invoke("update:download-and-install"),
   onPrintStatus: (callback) => {
     ipcRenderer.removeAllListeners("print:status");
     ipcRenderer.on("print:status", (_event, payload) => callback(payload));
+  },
+  onUpdateStatus: (callback) => {
+    ipcRenderer.removeAllListeners("update:status");
+    ipcRenderer.on("update:status", (_event, payload) => callback(payload));
   },
   setWindowTitle: (title) => ipcRenderer.send("window:set-title", title),
 });

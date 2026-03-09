@@ -83,6 +83,45 @@ async function ensureAppSettingTable(prisma) {
   );
 }
 
+async function loadAppSettingJson(prisma, key, fallbackJson = "{}") {
+  await ensureAppSettingTable(prisma);
+
+  const rows = await prisma.$queryRawUnsafe(
+    'SELECT "valueJson" FROM "AppSetting" WHERE "key" = ? LIMIT 1',
+    key
+  );
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return fallbackJson;
+  }
+
+  return String(rows[0].valueJson || fallbackJson);
+}
+
+async function saveAppSettingJson(prisma, key, valueJson) {
+  await ensureAppSettingTable(prisma);
+
+  const existing = await prisma.$queryRawUnsafe(
+    'SELECT "id" FROM "AppSetting" WHERE "key" = ? LIMIT 1',
+    key
+  );
+
+  if (Array.isArray(existing) && existing.length > 0) {
+    await prisma.$executeRawUnsafe(
+      'UPDATE "AppSetting" SET "valueJson" = ?, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ?',
+      valueJson,
+      existing[0].id
+    );
+    return;
+  }
+
+  await prisma.$executeRawUnsafe(
+    'INSERT INTO "AppSetting" ("key", "valueJson", "updatedAt") VALUES (?, ?, CURRENT_TIMESTAMP)',
+    key,
+    valueJson
+  );
+}
+
 async function seedDefaultOreKinds(prisma) {
   await ensureOreKindTable(prisma);
 
@@ -225,47 +264,18 @@ async function saveOriginCountry(prisma, country) {
 }
 
 async function loadAppSettingsJson(prisma) {
-  await ensureAppSettingTable(prisma);
-
-  const rows = await prisma.$queryRawUnsafe(
-    'SELECT "valueJson" FROM "AppSetting" WHERE "key" = ? LIMIT 1',
-    APP_SETTINGS_KEY
-  );
-
-  if (!Array.isArray(rows) || rows.length === 0) {
-    return "{}";
-  }
-
-  return String(rows[0].valueJson || "{}");
+  return loadAppSettingJson(prisma, APP_SETTINGS_KEY, "{}");
 }
 
 async function saveAppSettingsJson(prisma, valueJson) {
-  await ensureAppSettingTable(prisma);
-
-  const existing = await prisma.$queryRawUnsafe(
-    'SELECT "id" FROM "AppSetting" WHERE "key" = ? LIMIT 1',
-    APP_SETTINGS_KEY
-  );
-
-  if (Array.isArray(existing) && existing.length > 0) {
-    await prisma.$executeRawUnsafe(
-      'UPDATE "AppSetting" SET "valueJson" = ?, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ?',
-      valueJson,
-      existing[0].id
-    );
-    return;
-  }
-
-  await prisma.$executeRawUnsafe(
-    'INSERT INTO "AppSetting" ("key", "valueJson", "updatedAt") VALUES (?, ?, CURRENT_TIMESTAMP)',
-    APP_SETTINGS_KEY,
-    valueJson
-  );
+  return saveAppSettingJson(prisma, APP_SETTINGS_KEY, valueJson);
 }
 
 module.exports = {
   createOreCatalogClient,
+  loadAppSettingJson,
   loadAppSettingsJson,
+  saveAppSettingJson,
   saveCustomsOffice,
   saveAppSettingsJson,
   saveOriginCountry,

@@ -771,6 +771,10 @@ button:hover {
   box-shadow: 0 28px 70px rgba(29, 24, 18, 0.28);
 }
 
+.modal__dialog--update {
+  width: min(100%, 36rem);
+}
+
 .modal__summary {
   margin: 0 0 0.8rem;
   font-size: 1rem;
@@ -781,10 +785,26 @@ button:hover {
   margin-bottom: 0.95rem;
 }
 
+.modal__metrics--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .modal__detail {
   margin: 0.9rem 0 0;
   color: var(--muted);
   line-height: 1.42;
+}
+
+.modal__progress-copy {
+  margin: 0.7rem 0 0;
+  color: var(--steel);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.modal__actions {
+  margin-top: 1rem;
+  justify-content: flex-end;
 }
 
 .print-progress-bar {
@@ -802,6 +822,12 @@ button:hover {
   border-radius: inherit;
   background: linear-gradient(90deg, #224f73, #2f6d97);
   transition: width 180ms ease;
+}
+
+body.is-update-locked .shell {
+  pointer-events: none;
+  user-select: none;
+  filter: saturate(0.88);
 }
 
 @page {
