@@ -147,6 +147,37 @@ async function saveAppSettings(settings) {
   return normalizedSettings;
 }
 
+async function loadModuleStorage(moduleId) {
+  const prisma = await getPrismaClient();
+  const normalizedId = String(moduleId || "").trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(
+      await loadAppSettingJson(prisma, `module.storage.${normalizedId}`, "null")
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function saveModuleStorage(moduleId, value) {
+  const prisma = await getPrismaClient();
+  const normalizedId = String(moduleId || "").trim();
+  if (!normalizedId) {
+    throw new Error("Module storage key is required.");
+  }
+
+  await saveAppSettingJson(
+    prisma,
+    `module.storage.${normalizedId}`,
+    JSON.stringify(value ?? null)
+  );
+  return value ?? null;
+}
+
 async function loadVerifiedRelease() {
   const prisma = await getPrismaClient();
 
@@ -181,9 +212,11 @@ module.exports = {
   listOriginCountries,
   listOreKinds,
   loadAppSettings,
+  loadModuleStorage,
   loadVerifiedRelease,
   saveCustomsOffice,
   saveAppSettings,
+  saveModuleStorage,
   saveVerifiedRelease,
   saveOriginCountry,
 };

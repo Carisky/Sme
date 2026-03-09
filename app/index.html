@@ -39,13 +39,17 @@
           <button data-action="saveAs">Zapisz jako</button>
           <button data-action="show-print" class="button--strong">Wydruk</button>
         </div>
+        <div class="toolbar toolbar--module" data-ui-slot="toolbar:end"></div>
       </header>
 
-      <nav class="tabs">
+      <div class="tabs-row">
+        <nav class="tabs">
         <button class="tab is-active" data-tab="dane">Dane</button>
         <button class="tab" data-tab="ustawienia">Ustawienia</button>
         <button class="tab" data-tab="wydruk">Wydruk</button>
-      </nav>
+        </nav>
+        <div class="tabs-slot" data-ui-slot="tabs:end"></div>
+      </div>
 
       <main class="content">
         <section class="panel is-active" data-panel="dane">
@@ -380,6 +384,7 @@
               </div>
             </article>
 
+            <div class="module-slot module-slot--stack" data-ui-slot="settings:after"></div>
           </section>
         </section>
 
@@ -391,6 +396,7 @@
           </div>
 
           <article id="print-root" class="document-sheet"></article>
+          <div class="module-slot module-slot--panel" data-ui-slot="print:after"></div>
         </section>
       </main>
 

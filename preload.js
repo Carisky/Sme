@@ -28,8 +28,14 @@ contextBridge.exposeInMainWorld("bridge", {
   bootstrap: () => ipcRenderer.invoke("app:bootstrap"),
   openProject: () => ipcRenderer.invoke("project:open"),
   saveProject: (state, currentPath) =>
-    ipcRenderer.invoke("project:save", state, currentPath),
-  saveProjectAs: (state) => ipcRenderer.invoke("project:saveAs", state),
+    ipcRenderer.invoke(
+      "project:save",
+      state?.state || state,
+      state?.modules || {},
+      currentPath
+    ),
+  saveProjectAs: (state) =>
+    ipcRenderer.invoke("project:saveAs", state?.state || state, state?.modules || {}),
   importSourceWorkbook: (state) =>
     ipcRenderer.invoke("source:import", state),
   saveCustomsOffice: (office) =>
@@ -44,6 +50,11 @@ contextBridge.exposeInMainWorld("bridge", {
   checkForUpdates: () => ipcRenderer.invoke("update:check"),
   downloadAndInstallUpdate: () =>
     ipcRenderer.invoke("update:download-and-install"),
+  listModules: () => ipcRenderer.invoke("modules:list"),
+  loadModuleStorage: (moduleId) =>
+    ipcRenderer.invoke("modules:storage:get", moduleId),
+  saveModuleStorage: (moduleId, value) =>
+    ipcRenderer.invoke("modules:storage:set", moduleId, value),
   onPrintStatus: (callback) => {
     ipcRenderer.removeAllListeners("print:status");
     ipcRenderer.on("print:status", (_event, payload) => callback(payload));

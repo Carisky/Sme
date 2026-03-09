@@ -17,6 +17,11 @@ const {
   createReleaseManifest,
   parseGitHubRepository,
 } = require("../src/update-common");
+const {
+  PROJECT_SCHEMA_VERSION,
+  createProjectPayload,
+  parseProjectPayload,
+} = require("../src/project-payload");
 
 assert.equal(parseNumber("380,206.02550"), 380206.0255);
 assert.equal(parseNumber("4,2628"), 4.2628);
@@ -169,5 +174,29 @@ assert.equal(releaseManifest.repository.owner, "Carisky");
 assert.equal(releaseManifest.assets.installer.name, "SME-Setup-1.0.0.exe");
 assert.equal(releaseManifest.assets.installer.sha256, "abc123");
 assert.equal(releaseManifest.appSha256, "def456");
+
+const projectPayload = createProjectPayload(
+  normalizeState({
+    ownNumber: "42",
+  }),
+  {
+    bookmarks: {
+      items: ["A", "B"],
+    },
+  }
+);
+assert.equal(projectPayload.version, PROJECT_SCHEMA_VERSION);
+assert.equal(projectPayload.state.ownNumber, "42");
+assert.deepEqual(projectPayload.modules.bookmarks.items, ["A", "B"]);
+
+const parsedProjectPayload = parseProjectPayload(projectPayload);
+assert.equal(parsedProjectPayload.state.ownNumber, "42");
+assert.deepEqual(parsedProjectPayload.modules.bookmarks.items, ["A", "B"]);
+
+const parsedLegacyPayload = parseProjectPayload({
+  ownNumber: "legacy",
+});
+assert.equal(parsedLegacyPayload.state.ownNumber, "legacy");
+assert.deepEqual(parsedLegacyPayload.modules, {});
 
 console.log("core smoke tests passed");
