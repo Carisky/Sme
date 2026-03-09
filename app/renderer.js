@@ -381,7 +381,7 @@ function renderProjectIndicator() {
 
   const titleBase = stateRef.currentProjectPath
     ? basename(stateRef.currentProjectPath)
-    : "SME Portable";
+    : "SME";
   bridge.setWindowTitle(`${titleBase}${stateRef.dirty ? " *" : ""}`);
 }
 

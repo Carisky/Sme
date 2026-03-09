@@ -1,17 +1,22 @@
 {
   "name": "sme",
+  "productName": "SME",
   "version": "1.0.0",
-  "description": "Portable Electron rewrite of the SME correction workflow",
+  "description": "Electron app for the SME correction workflow",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "seed": "node prisma/seed.js",
     "test": "node test/core.test.js",
     "make:portable": "node scripts/make-portable.cjs",
+    "make:installer": "node scripts/make-portable.cjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init_ore_catalog",
     "prisma:seed": "prisma db seed"
   },
+
+
+
   "keywords": [],
   "author": "",
   "license": "ISC",

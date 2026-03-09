@@ -1,5 +1,7 @@
 const path = require("path");
 const fs = require("fs");
+const fsp = require("fs/promises");
+const { app } = require("electron");
 const {
   createOreCatalogClient,
   saveCustomsOffice: persistCustomsOffice,
@@ -10,33 +12,54 @@ const {
 } = require("./ore-catalog-store");
 
 let prismaClient;
+let databasePathPromise;
 
-function getDatabasePath() {
-  const packagedPath = path.join(
-    __dirname,
-    "..",
-    "..",
-    "app.asar.unpacked",
-    "prisma",
-    "dev.db"
-  );
-  if (fs.existsSync(packagedPath)) {
-    return packagedPath;
-  }
+function getBundledDatabasePath() {
+  const candidates = [
+    path.join(process.resourcesPath || "", "prisma", "dev.db"),
+    path.join(__dirname, "..", "..", "app.asar.unpacked", "prisma", "dev.db"),
+    path.join(__dirname, "..", "prisma", "dev.db"),
+  ];
 
-  return path.join(__dirname, "..", "prisma", "dev.db");
+  return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || null;
 }
 
-function getPrismaClient() {
+function getWritableDatabasePath() {
+  if (!app.isPackaged) {
+    return path.join(__dirname, "..", "prisma", "dev.db");
+  }
+
+  return path.join(app.getPath("appData"), "SME", "dev.db");
+}
+
+async function ensureDatabasePath() {
+  if (!databasePathPromise) {
+    databasePathPromise = (async () => {
+      const targetPath = getWritableDatabasePath();
+      const sourcePath = getBundledDatabasePath();
+
+      await fsp.mkdir(path.dirname(targetPath), { recursive: true });
+      if (!fs.existsSync(targetPath) && sourcePath) {
+        await fsp.copyFile(sourcePath, targetPath);
+      }
+
+      return targetPath;
+    })();
+  }
+
+  return databasePathPromise;
+}
+
+async function getPrismaClient() {
   if (!prismaClient) {
-    prismaClient = createOreCatalogClient(getDatabasePath());
+    prismaClient = createOreCatalogClient(await ensureDatabasePath());
   }
 
   return prismaClient;
 }
 
 async function listOreKinds() {
-  const prisma = getPrismaClient();
+  const prisma = await getPrismaClient();
   await seedDefaultOreKinds(prisma);
   return prisma.oreKind.findMany({
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -48,7 +71,7 @@ async function listOreKinds() {
 }
 
 async function listCustomsOffices() {
-  const prisma = getPrismaClient();
+  const prisma = await getPrismaClient();
   await seedDefaultCustomsOffices(prisma);
   return prisma.customsOffice.findMany({
     orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
@@ -64,7 +87,7 @@ async function listCustomsOffices() {
 }
 
 async function listOriginCountries() {
-  const prisma = getPrismaClient();
+  const prisma = await getPrismaClient();
   await seedDefaultOriginCountries(prisma);
   return prisma.$queryRawUnsafe(
     'SELECT "id", "name", "sortOrder" FROM "OriginCountry" ORDER BY "sortOrder" ASC, "name" ASC'
@@ -72,7 +95,7 @@ async function listOriginCountries() {
 }
 
 async function saveCustomsOffice(office) {
-  const prisma = getPrismaClient();
+  const prisma = await getPrismaClient();
   const savedOffice = await persistCustomsOffice(prisma, office);
   return {
     savedOffice: {
@@ -88,7 +111,7 @@ async function saveCustomsOffice(office) {
 }
 
 async function saveOriginCountry(country) {
-  const prisma = getPrismaClient();
+  const prisma = await getPrismaClient();
   const savedCountry = await persistOriginCountry(prisma, country);
   return {
     savedCountry: {
