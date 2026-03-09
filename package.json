@@ -1,7 +1,7 @@
 {
   "name": "sme",
   "version": "1.0.0",
-  "description": "Portable Electron rewrite of the Trade_N VBA workflow",
+  "description": "Portable Electron rewrite of the SME correction workflow",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

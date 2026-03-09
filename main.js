@@ -9,8 +9,7 @@ const {
   sanitizeFileName,
   suggestProjectName,
 } = require("./src/core");
-const { SAMPLE_WORKBOOK_PATH } = require("./src/constants");
-const { importSourceWorkbook, readTemplateWorkbook } = require("./src/excel");
+const { importSourceWorkbook } = require("./src/excel");
 const {
   disconnectOreCatalog,
   listCustomsOffices,
@@ -361,23 +360,12 @@ ipcMain.handle("app:bootstrap", async () => {
     catalogError = `Nie udalo sie odczytac slownikow aplikacji: ${error.message}`;
   }
 
-  try {
-    return {
-      state: readTemplateWorkbook(SAMPLE_WORKBOOK_PATH),
-      source: SAMPLE_WORKBOOK_PATH,
-      oreKinds,
-      customsOffices,
-      catalogError,
-    };
-  } catch (error) {
-    return {
-      state: createEmptyState(),
-      oreKinds,
-      customsOffices,
-      catalogError,
-      error: `Nie udało się odczytać szablonu Trade_N.xls: ${error.message}`,
-    };
-  }
+  return {
+    state: createEmptyState(),
+    oreKinds,
+    customsOffices,
+    catalogError,
+  };
 });
 
 ipcMain.handle("project:open", async () => {

@@ -892,7 +892,7 @@ async function handleAction(action) {
       applyCatalogs(result);
       buildSelectOptions();
       setState(result.state, { currentProjectPath: null, dirty: false });
-      showStatus(result.error || result.catalogError || "Załadowano szablon startowy.");
+      showStatus(result.error || result.catalogError || "Zaladowano pusty projekt startowy.");
       return;
     }
 
@@ -1113,7 +1113,7 @@ async function bootstrap() {
   applyCatalogs(result);
   buildSelectOptions();
   setState(result.state, { currentProjectPath: null, dirty: false });
-  showStatus(result.error || result.catalogError || "Załadowano szablon Trade_N.xls.");
+  showStatus(result.error || result.catalogError || "Zaladowano pusty projekt startowy.");
 }
 
 bootstrap();
