@@ -42,6 +42,14 @@ let releaseManifestCache = null;
 let releaseManifestCacheTime = 0;
 const RELEASE_MANIFEST_CACHE_TTL_MS = 30000;
 
+function getWindowIconPath() {
+  return path.join(
+    __dirname,
+    "assets",
+    process.platform === "win32" ? "sme-icon.ico" : "sme-mark.png"
+  );
+}
+
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1520,
@@ -50,6 +58,7 @@ function createMainWindow() {
     minHeight: 820,
     backgroundColor: "#e6e0d2",
     autoHideMenuBar: true,
+    icon: getWindowIconPath(),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -66,7 +75,7 @@ async function chooseProjectPath(suggestedName) {
   return dialog.showSaveDialog(mainWindow, {
     title: "Zapisz projekt SME",
     defaultPath: path.join(app.getPath("documents"), defaultName),
-    filters: [{ name: "SME Project", extensions: ["json"] }],
+    filters: [{ name: "Projekt SME", extensions: ["json"] }],
   });
 }
 
@@ -564,7 +573,7 @@ async function fetchLatestReleaseManifest(options = {}) {
   const forceRefresh = Boolean(options.forceRefresh);
   const repository = getRepositoryInfo();
   if (!repository) {
-    throw new Error("package.json.repository is not configured for GitHub releases.");
+    throw new Error("package.json.repository nie jest skonfigurowane dla wydan GitHub.");
   }
 
   const cacheAge = Date.now() - releaseManifestCacheTime;
@@ -581,7 +590,7 @@ async function fetchLatestReleaseManifest(options = {}) {
 
   if (!manifestAsset?.browser_download_url) {
     throw new Error(
-      `Latest GitHub release does not contain ${RELEASE_MANIFEST_NAME}.`
+      `Najnowsze wydanie GitHub nie zawiera ${RELEASE_MANIFEST_NAME}.`
     );
   }
 
@@ -669,7 +678,7 @@ async function evaluateUpdateGate(options = {}) {
         status: "local-newer-than-remote",
         localVersion,
         remoteVersion,
-        message: `Lokalna wersja ${localVersion} jest nowsza niz release ${remoteVersion}.`,
+        message: `Lokalna wersja ${localVersion} jest nowsza niz wydanie ${remoteVersion}.`,
         detail: "",
         allowInstall: false,
         allowRetry: false,
@@ -686,8 +695,8 @@ async function evaluateUpdateGate(options = {}) {
         remoteVersion,
         localAppSha256,
         message:
-          "Wersja programu zgadza sie z serwerem, ale hash lokalnej aplikacji nie zgadza sie z manifestem release.",
-        detail: "Wymagana jest ponowna instalacja z aktualnego release.",
+          "Wersja programu zgadza sie z serwerem, ale hash lokalnej aplikacji nie zgadza sie z manifestem wydania.",
+        detail: "Wymagana jest ponowna instalacja z aktualnego wydania.",
         allowInstall: true,
         allowRetry: true,
         manifest,
@@ -796,7 +805,7 @@ async function downloadAndInstallLatestRelease() {
   const gate = await evaluateUpdateGate({ forceRefresh: true });
   const installer = gate.manifest?.assets?.installer;
   if (!installer?.downloadUrl || !installer?.sha256 || !installer?.name) {
-    throw new Error("Manifest release nie zawiera kompletnego opisu instalatora.");
+    throw new Error("Manifest wydania nie zawiera kompletnego opisu instalatora.");
   }
 
   const downloadDir = path.join(app.getPath("temp"), "SME-updates");
@@ -837,7 +846,7 @@ async function downloadAndInstallLatestRelease() {
 
   if (normalizeSha256(downloadResult.sha256) !== normalizeSha256(installer.sha256)) {
     await fs.rm(destinationPath, { force: true });
-    throw new Error("Hash pobranego instalatora nie zgadza sie z manifestem release.");
+    throw new Error("Hash pobranego instalatora nie zgadza sie z manifestem wydania.");
   }
 
   sendUpdateStatus({
@@ -894,7 +903,7 @@ ipcMain.handle("project:open", async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     title: "Otwórz projekt SME",
     properties: ["openFile"],
-    filters: [{ name: "SME Project", extensions: ["json"] }],
+    filters: [{ name: "Projekt SME", extensions: ["json"] }],
   });
 
   if (result.canceled || result.filePaths.length === 0) {

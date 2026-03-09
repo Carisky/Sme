@@ -1,8 +1,8 @@
 {
   "name": "sme",
   "productName": "SME",
-  "version": "1.0.0",
-  "description": "Electron app for the SME correction workflow",
+  "version": "1.0.1",
+  "description": "Aplikacja do korekt dokumentow SME",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

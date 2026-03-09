@@ -20,12 +20,15 @@ function resolveCommand(command) {
 
 function runCommand(command, args, cwd, options = {}) {
   const resolvedCommand = resolveCommand(command);
+  const needsShell =
+    process.platform === "win32" && /\.(cmd|bat)$/i.test(resolvedCommand);
 
   return new Promise((resolve, reject) => {
     const child = spawn(resolvedCommand, args, {
       cwd,
       env: process.env,
       stdio: options.capture ? ["ignore", "pipe", "pipe"] : "inherit",
+      shell: needsShell,
       windowsHide: true,
     });
 

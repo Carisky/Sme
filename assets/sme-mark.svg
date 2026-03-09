@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">SME ore mark</title>
+  <desc id="desc">Low poly iron ore emblem with dark rock and rust orange facets.</desc>
+  <defs>
+    <linearGradient id="shadow" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#525252" />
+      <stop offset="1" stop-color="#1c1c1d" />
+    </linearGradient>
+    <linearGradient id="metal" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffb44c" />
+      <stop offset="1" stop-color="#d45312" />
+    </linearGradient>
+  </defs>
+
+  <polygon points="256,38 292,74 292,120 336,120 380,164 412,164 450,202 450,248 62,248 62,202 100,164 132,164 176,120 220,120 220,74" fill="#6e6e70"/>
+  <polygon points="92,248 256,248 160,344 104,312" fill="#444447"/>
+  <polygon points="256,248 420,248 408,312 352,344" fill="#3a3a3d"/>
+  <polygon points="160,344 256,248 256,384 196,444" fill="#303034"/>
+  <polygon points="256,248 352,344 316,444 256,384" fill="#222326"/>
+  <polygon points="96,188 164,120 222,178 166,236" fill="#f47a08"/>
+  <polygon points="222,178 256,120 256,248 166,236" fill="#f08f23"/>
+  <polygon points="256,120 316,176 256,248" fill="#ff8d00"/>
+  <polygon points="316,176 416,176 346,236 256,248" fill="#d44f0d"/>
+  <polygon points="346,236 416,176 450,248 352,248" fill="#a73c08"/>
+  <polygon points="166,236 256,248 92,248" fill="#5a5a5d"/>
+  <polygon points="352,248 450,248 256,248" fill="#4d4d50"/>
+  <polygon points="256,38 256,120 222,178 222,120 220,74" fill="#5f5f61"/>
+  <polygon points="256,38 292,74 292,120 256,120" fill="#555557"/>
+</svg>
