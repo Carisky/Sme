@@ -7,6 +7,19 @@ const {
   STATIC_HINTS,
 } = require("./constants");
 
+const APP_SETTINGS_PATHS = [
+  "fileLocation",
+  "print.savePdfAfterPrint",
+  "print.pdfOutputDir",
+  "letter.printCity",
+  "letter.printDate",
+  "letter.senderCompany",
+  "letter.senderAddressLine1",
+  "letter.senderAddressLine2",
+  "letter.uniqueDocumentNumber",
+  "letter.signatory",
+];
+
 function round(value, decimals = 0) {
   if (!Number.isFinite(value)) {
     return null;
@@ -204,6 +217,28 @@ function createCorrectionRow(overrides = {}) {
   };
 }
 
+function getValueAtPath(object, targetPath) {
+  return String(targetPath || "")
+    .split(".")
+    .reduce((current, key) => current?.[key], object);
+}
+
+function setValueAtPath(object, targetPath, value) {
+  const parts = String(targetPath || "").split(".");
+  const lastKey = parts.pop();
+  let current = object;
+
+  for (const key of parts) {
+    if (!current[key] || typeof current[key] !== "object" || Array.isArray(current[key])) {
+      current[key] = {};
+    }
+
+    current = current[key];
+  }
+
+  current[lastKey] = value;
+}
+
 function createBaseState() {
   return {
     fileLocation: "",
@@ -233,6 +268,24 @@ function createBaseState() {
   };
 }
 
+function buildStateFromAppSettings(settings = {}) {
+  const state = {};
+
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+    return state;
+  }
+
+  for (const targetPath of APP_SETTINGS_PATHS) {
+    if (!Object.prototype.hasOwnProperty.call(settings, targetPath)) {
+      continue;
+    }
+
+    setValueAtPath(state, targetPath, settings[targetPath]);
+  }
+
+  return state;
+}
+
 function normalizeOriginalRow(row = {}) {
   return createOriginalRow({
     invoiceNumber: asText(row.invoiceNumber),
@@ -250,6 +303,28 @@ function normalizeCorrectionRow(row = {}) {
     noteNumber: asText(row.noteNumber),
     noteDate: asText(row.noteDate),
   });
+}
+
+function normalizeLetter(letter = {}) {
+  const normalized = {
+    ...DEFAULT_LETTER,
+    printDate: formatDateForUi(),
+    ...(letter || {}),
+  };
+
+  return {
+    ...normalized,
+    printCity: asText(normalized.printCity),
+    printDate: asText(normalized.printDate),
+    senderCompany: asText(normalized.senderCompany),
+    senderAddressLine1: asText(normalized.senderAddressLine1),
+    senderAddressLine2: asText(normalized.senderAddressLine2),
+    recipientOffice: asText(normalized.recipientOffice),
+    recipientAddressLine1: asText(normalized.recipientAddressLine1),
+    recipientAddressLine2: asText(normalized.recipientAddressLine2),
+    uniqueDocumentNumber: asText(normalized.uniqueDocumentNumber),
+    signatory: asText(normalized.signatory),
+  };
 }
 
 function normalizeState(input = {}) {
@@ -286,12 +361,30 @@ function normalizeState(input = {}) {
       savePdfAfterPrint: Boolean(input.print?.savePdfAfterPrint ?? base.print.savePdfAfterPrint),
       pdfOutputDir: asText(input.print?.pdfOutputDir ?? base.print.pdfOutputDir),
     },
-    letter: {
-      ...DEFAULT_LETTER,
-      printDate: formatDateForUi(),
-      ...(input.letter || {}),
-    },
+    letter: normalizeLetter(input.letter),
   };
+}
+
+function normalizeAppSettings(input = {}) {
+  const normalizedState = normalizeState(buildStateFromAppSettings(input));
+  const settings = {};
+
+  for (const targetPath of APP_SETTINGS_PATHS) {
+    settings[targetPath] = getValueAtPath(normalizedState, targetPath);
+  }
+
+  return settings;
+}
+
+function extractAppSettings(state = {}) {
+  const normalizedState = normalizeState(state);
+  const settings = {};
+
+  for (const targetPath of APP_SETTINGS_PATHS) {
+    settings[targetPath] = getValueAtPath(normalizedState, targetPath);
+  }
+
+  return settings;
 }
 
 function createEmptyState(overrides = {}) {
@@ -605,18 +698,22 @@ function computeSnapshot(state) {
 }
 
 module.exports = {
+  APP_SETTINGS_PATHS,
   DOCUMENT_PRESETS,
   MAX_LINES,
   ORE_TYPES,
   asText,
+  buildStateFromAppSettings,
   computeSnapshot,
   createCorrectionRow,
   createEmptyState,
   createOriginalRow,
+  extractAppSettings,
   formatDateForUi,
   formatEditableNumber,
   formatLocalizedNumber,
   getDocumentPreset,
+  normalizeAppSettings,
   normalizeState,
   parseNumber,
   round,

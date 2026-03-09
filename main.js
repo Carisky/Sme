@@ -4,6 +4,7 @@ const { execFile } = require("child_process");
 const { promisify } = require("util");
 const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const {
+  buildStateFromAppSettings,
   createEmptyState,
   normalizeState,
   sanitizeFileName,
@@ -15,7 +16,9 @@ const {
   listCustomsOffices,
   listOriginCountries,
   listOreKinds,
+  loadAppSettings,
   saveCustomsOffice,
+  saveAppSettings,
   saveOriginCountry,
 } = require("./src/ore-catalog");
 
@@ -351,12 +354,14 @@ app.whenReady().then(() => {
 });
 
 ipcMain.handle("app:bootstrap", async () => {
+  let appSettings = {};
   let oreKinds = [];
   let customsOffices = [];
   let originCountries = [];
   let catalogError = null;
 
   try {
+    appSettings = await loadAppSettings();
     oreKinds = await listOreKinds();
     customsOffices = await listCustomsOffices();
     originCountries = await listOriginCountries();
@@ -365,7 +370,7 @@ ipcMain.handle("app:bootstrap", async () => {
   }
 
   return {
-    state: createEmptyState(),
+    state: createEmptyState(buildStateFromAppSettings(appSettings)),
     oreKinds,
     customsOffices,
     originCountries,
@@ -446,6 +451,10 @@ ipcMain.handle("catalog:save-customs-office", async (_event, office) => {
 
 ipcMain.handle("catalog:save-origin-country", async (_event, country) => {
   return saveOriginCountry(country);
+});
+
+ipcMain.handle("settings:save", async (_event, settings) => {
+  return saveAppSettings(settings);
 });
 
 ipcMain.handle("dialog:choose-directory", async (_event, defaultPath) => {

@@ -1,10 +1,12 @@
 const { contextBridge, ipcRenderer } = require("electron");
 const {
+  APP_SETTINGS_PATHS,
   DOCUMENT_PRESETS,
   MAX_LINES,
   ORE_TYPES,
   computeSnapshot,
   createEmptyState,
+  extractAppSettings,
   getDocumentPreset,
   normalizeState,
   suggestProjectName,
@@ -15,9 +17,11 @@ contextBridge.exposeInMainWorld("bridge", {
     maxLines: MAX_LINES,
     oreTypes: ORE_TYPES,
     documentTypes: Object.keys(DOCUMENT_PRESETS),
+    persistedSettingsPaths: APP_SETTINGS_PATHS,
   },
   computeSnapshot,
   createEmptyState,
+  extractAppSettings,
   getDocumentPreset,
   normalizeState,
   suggestProjectName,
@@ -32,6 +36,7 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("catalog:save-customs-office", office),
   saveOriginCountry: (country) =>
     ipcRenderer.invoke("catalog:save-origin-country", country),
+  saveAppSettings: (settings) => ipcRenderer.invoke("settings:save", settings),
   chooseDirectory: (defaultPath) =>
     ipcRenderer.invoke("dialog:choose-directory", defaultPath),
   printToDefaultPrinter: (state) =>

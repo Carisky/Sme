@@ -1,6 +1,14 @@
 const assert = require("node:assert/strict");
 const path = require("node:path");
-const { computeSnapshot, normalizeState, parseNumber } = require("../src/core");
+const {
+  APP_SETTINGS_PATHS,
+  buildStateFromAppSettings,
+  computeSnapshot,
+  extractAppSettings,
+  normalizeAppSettings,
+  normalizeState,
+  parseNumber,
+} = require("../src/core");
 const { importSourceWorkbook } = require("../src/excel");
 
 assert.equal(parseNumber("380,206.02550"), 380206.0255);
@@ -76,5 +84,48 @@ assert.equal(importedSnapshot.meta.subjectReference, "18PL");
 const blankSnapshot = computeSnapshot(normalizeState({}));
 assert.equal(blankSnapshot.meta.caseNumber, "TSL/");
 assert.equal(blankSnapshot.meta.subjectReference, "18PL");
+
+const normalizedAppSettings = normalizeAppSettings({
+  fileLocation: "  C:\\SME  ",
+  "print.savePdfAfterPrint": 1,
+  "print.pdfOutputDir": " C:\\PDF ",
+  "letter.signatory": " Anna Kowalska ",
+  ignoredKey: "value",
+});
+assert.equal(normalizedAppSettings.fileLocation, "C:\\SME");
+assert.equal(normalizedAppSettings["print.savePdfAfterPrint"], true);
+assert.equal(normalizedAppSettings["print.pdfOutputDir"], "C:\\PDF");
+assert.equal(normalizedAppSettings["letter.signatory"], "Anna Kowalska");
+assert.equal("ignoredKey" in normalizedAppSettings, false);
+
+const appSettingsState = buildStateFromAppSettings({
+  fileLocation: "C:\\SME",
+  "print.savePdfAfterPrint": true,
+  "letter.signatory": "Anna Kowalska",
+});
+assert.equal(appSettingsState.fileLocation, "C:\\SME");
+assert.equal(appSettingsState.print.savePdfAfterPrint, true);
+assert.equal(appSettingsState.letter.signatory, "Anna Kowalska");
+
+const extractedAppSettings = extractAppSettings(
+  normalizeState({
+    fileLocation: "C:\\Workspace",
+    print: {
+      savePdfAfterPrint: true,
+      pdfOutputDir: "C:\\PDF",
+    },
+    letter: {
+      signatory: "Jan Nowak",
+    },
+  })
+);
+assert.equal(extractedAppSettings.fileLocation, "C:\\Workspace");
+assert.equal(extractedAppSettings["print.savePdfAfterPrint"], true);
+assert.equal(extractedAppSettings["print.pdfOutputDir"], "C:\\PDF");
+assert.equal(extractedAppSettings["letter.signatory"], "Jan Nowak");
+assert.deepEqual(
+  Object.keys(extractedAppSettings).sort(),
+  [...APP_SETTINGS_PATHS].sort()
+);
 
 console.log("core smoke tests passed");

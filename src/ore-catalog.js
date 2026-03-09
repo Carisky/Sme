@@ -2,9 +2,12 @@ const path = require("path");
 const fs = require("fs");
 const fsp = require("fs/promises");
 const { app } = require("electron");
+const { normalizeAppSettings } = require("./core");
 const {
   createOreCatalogClient,
+  loadAppSettingsJson: readAppSettingsJson,
   saveCustomsOffice: persistCustomsOffice,
+  saveAppSettingsJson: persistAppSettingsJson,
   saveOriginCountry: persistOriginCountry,
   seedDefaultCustomsOffices,
   seedDefaultOriginCountries,
@@ -123,6 +126,24 @@ async function saveOriginCountry(country) {
   };
 }
 
+async function loadAppSettings() {
+  const prisma = await getPrismaClient();
+
+  try {
+    return normalizeAppSettings(JSON.parse(await readAppSettingsJson(prisma)));
+  } catch {
+    return normalizeAppSettings({});
+  }
+}
+
+async function saveAppSettings(settings) {
+  const prisma = await getPrismaClient();
+  const normalizedSettings = normalizeAppSettings(settings);
+
+  await persistAppSettingsJson(prisma, JSON.stringify(normalizedSettings));
+  return normalizedSettings;
+}
+
 async function disconnectOreCatalog() {
   if (!prismaClient) {
     return;
@@ -137,6 +158,8 @@ module.exports = {
   listCustomsOffices,
   listOriginCountries,
   listOreKinds,
+  loadAppSettings,
   saveCustomsOffice,
+  saveAppSettings,
   saveOriginCountry,
 };

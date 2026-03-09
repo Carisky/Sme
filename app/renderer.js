@@ -1,4 +1,5 @@
 const { bridge } = window;
+const persistedSettingsPaths = new Set(bridge.meta.persistedSettingsPaths || []);
 
 const stateRef = {
   state: null,
@@ -13,6 +14,7 @@ const stateRef = {
   officeDraftId: null,
   originCountryDraftId: null,
   isPrinting: false,
+  settingsSaveTimer: null,
 };
 
 const elements = {
@@ -215,6 +217,24 @@ function markDirty(value = true) {
 
 function showStatus(message) {
   elements.statusText.textContent = message;
+}
+
+function isPersistedSettingPath(targetPath = "") {
+  return persistedSettingsPaths.has(targetPath);
+}
+
+function schedulePersistedSettingsSave() {
+  if (stateRef.settingsSaveTimer) {
+    clearTimeout(stateRef.settingsSaveTimer);
+  }
+
+  stateRef.settingsSaveTimer = window.setTimeout(async () => {
+    try {
+      await bridge.saveAppSettings(bridge.extractAppSettings(stateRef.state));
+    } catch (error) {
+      showStatus(`Nie udalo sie zapisac ustawien aplikacji: ${error.message}`);
+    }
+  }, 250);
 }
 
 function getPrintPageCount() {
@@ -986,6 +1006,10 @@ function handlePathInput(target) {
 
   markDirty();
   recompute();
+
+  if (isPersistedSettingPath(target.dataset.path)) {
+    schedulePersistedSettingsSave();
+  }
 }
 
 async function confirmDiscardIfNeeded() {
@@ -1132,6 +1156,7 @@ async function handleChoosePdfOutputDir() {
   renderPrintSettingsControls();
   markDirty();
   recompute();
+  schedulePersistedSettingsSave();
   showStatus(`Ustawiono folder PDF: ${result.filePath}.`);
 }
 

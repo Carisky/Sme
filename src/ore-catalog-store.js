@@ -5,6 +5,8 @@ const DEFAULT_ORE_KINDS = require("./default-ore-kinds");
 const DEFAULT_CUSTOMS_OFFICES = require("./default-customs-offices");
 const DEFAULT_ORIGIN_COUNTRIES = require("./default-origin-countries");
 
+const APP_SETTINGS_KEY = "ui.settings";
+
 function createOreCatalogClient(databasePath) {
   const adapter = new PrismaLibSql({
     url: pathToFileURL(databasePath).href,
@@ -63,6 +65,21 @@ async function ensureOriginCountryTable(prisma) {
   `);
   await prisma.$executeRawUnsafe(
     'CREATE UNIQUE INDEX IF NOT EXISTS "OriginCountry_name_key" ON "OriginCountry"("name")'
+  );
+}
+
+async function ensureAppSettingTable(prisma) {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "AppSetting" (
+      "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+      "key" TEXT NOT NULL,
+      "valueJson" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await prisma.$executeRawUnsafe(
+    'CREATE UNIQUE INDEX IF NOT EXISTS "AppSetting_key_key" ON "AppSetting"("key")'
   );
 }
 
@@ -207,9 +224,50 @@ async function saveOriginCountry(prisma, country) {
   return Array.isArray(inserted) ? inserted[0] : inserted;
 }
 
+async function loadAppSettingsJson(prisma) {
+  await ensureAppSettingTable(prisma);
+
+  const rows = await prisma.$queryRawUnsafe(
+    'SELECT "valueJson" FROM "AppSetting" WHERE "key" = ? LIMIT 1',
+    APP_SETTINGS_KEY
+  );
+
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return "{}";
+  }
+
+  return String(rows[0].valueJson || "{}");
+}
+
+async function saveAppSettingsJson(prisma, valueJson) {
+  await ensureAppSettingTable(prisma);
+
+  const existing = await prisma.$queryRawUnsafe(
+    'SELECT "id" FROM "AppSetting" WHERE "key" = ? LIMIT 1',
+    APP_SETTINGS_KEY
+  );
+
+  if (Array.isArray(existing) && existing.length > 0) {
+    await prisma.$executeRawUnsafe(
+      'UPDATE "AppSetting" SET "valueJson" = ?, "updatedAt" = CURRENT_TIMESTAMP WHERE "id" = ?',
+      valueJson,
+      existing[0].id
+    );
+    return;
+  }
+
+  await prisma.$executeRawUnsafe(
+    'INSERT INTO "AppSetting" ("key", "valueJson", "updatedAt") VALUES (?, ?, CURRENT_TIMESTAMP)',
+    APP_SETTINGS_KEY,
+    valueJson
+  );
+}
+
 module.exports = {
   createOreCatalogClient,
+  loadAppSettingsJson,
   saveCustomsOffice,
+  saveAppSettingsJson,
   saveOriginCountry,
   seedDefaultCustomsOffices,
   seedDefaultOriginCountries,
