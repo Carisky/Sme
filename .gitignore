@@ -2,3 +2,4 @@
 /dist
 /out
 /tmp
+/prisma/dev.db
