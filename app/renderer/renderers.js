@@ -1,5 +1,6 @@
 import { bridge } from "./bridge.js";
 import { elements } from "./dom.js";
+import { paginatePrintLayout } from "./print-layout.js";
 import {
   basename,
   escapeHtml,
@@ -11,6 +12,37 @@ import {
 
 export function createRenderers({ store, extensions }) {
   const stateRef = store.state;
+
+  function schedulePrintPreviewLayout() {
+    const layoutVersion = (stateRef.printLayoutVersion || 0) + 1;
+    stateRef.printLayoutVersion = layoutVersion;
+
+    stateRef.pendingPrintLayout = (async () => {
+      paginatePrintLayout(elements.printRoot);
+      await nextFrame();
+      await waitForImages(elements.printRoot);
+      await nextFrame();
+
+      if (stateRef.printLayoutVersion !== layoutVersion) {
+        return;
+      }
+
+      paginatePrintLayout(elements.printRoot);
+      await nextFrame();
+      await waitForImages(elements.printRoot);
+      await nextFrame();
+
+      if (stateRef.printLayoutVersion !== layoutVersion) {
+        return;
+      }
+
+      paginatePrintLayout(elements.printRoot);
+    })().catch((error) => {
+      if (stateRef.printLayoutVersion === layoutVersion) {
+        console.error("Print preview pagination failed:", error);
+      }
+    });
+  }
 
   function getPrintPageCount() {
     return elements.printRoot.querySelectorAll(".document__page").length;
@@ -274,6 +306,11 @@ export function createRenderers({ store, extensions }) {
   }
 
   async function waitForPrintPreviewReady() {
+    if (stateRef.pendingPrintLayout) {
+      await stateRef.pendingPrintLayout;
+      return;
+    }
+
     await nextFrame();
     await waitForImages(elements.printRoot);
     await nextFrame();
@@ -600,8 +637,10 @@ export function createRenderers({ store, extensions }) {
       elements.printRoot.innerHTML = printRenderer(snapshot, {
         customsOffices: stateRef.customsOffices,
       });
+      schedulePrintPreviewLayout();
     } catch (error) {
       console.error("Print preview render failed:", error);
+      stateRef.pendingPrintLayout = null;
       elements.printRoot.innerHTML = `
         <div class="document document--error">
           <p class="document__paragraph">Nie udalo sie zbudowac podgladu wydruku.</p>

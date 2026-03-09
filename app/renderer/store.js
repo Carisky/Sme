@@ -22,6 +22,8 @@ export function createAppStore() {
     officeDraftId: null,
     originCountryDraftId: null,
     isPrinting: false,
+    pendingPrintLayout: null,
+    printLayoutVersion: 0,
     settingsSaveTimer: null,
     projectModules: {},
     userModules: [],

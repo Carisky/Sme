@@ -614,12 +614,18 @@ button:hover {
 }
 
 .document {
-  font-family: var(--serif);
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
   color: #202020;
-  line-height: 1.38;
+  line-height: 1;
   display: flex;
   flex-direction: column;
   gap: 1.4rem;
+}
+
+.document__generated-pages {
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
 }
 
 .document__page {
@@ -630,9 +636,11 @@ button:hover {
   margin: 0 auto;
   background: white;
   box-shadow: 0 20px 52px rgba(55, 42, 28, 0.16);
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  break-inside: avoid-page;
+  page-break-inside: avoid;
 }
 
 .document__page-header,
@@ -649,10 +657,18 @@ button:hover {
 }
 
 .document__content {
+  flex: 1 1 auto;
   min-height: 0;
   padding: 9mm 12mm 8mm;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.document__flow-block {
+  flex-shrink: 0;
+  break-inside: avoid-page;
+  page-break-inside: avoid;
 }
 
 .document__header {
@@ -688,6 +704,7 @@ button:hover {
   margin: 0.28rem 0;
   text-align: justify;
   font-size: 0.98rem;
+  line-height: 1.2;
 }
 
 .document__subject {
@@ -1018,6 +1035,10 @@ body.is-update-locked .shell {
     gap: 0;
   }
 
+  .document__generated-pages {
+    gap: 0;
+  }
+
   .document__page {
     width: 210mm;
     height: 297mm;
@@ -1029,6 +1050,8 @@ body.is-update-locked .shell {
     overflow: hidden;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
     break-after: page;
     page-break-after: always;
   }

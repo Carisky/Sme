@@ -228,6 +228,9 @@ function createPrintService({ windowController }) {
           color: printer.colorSupported,
           landscape: false,
           pageSize: "A4",
+          margins: {
+            marginType: "none",
+          },
         },
         (success, failureReason) => {
           if (success) {
@@ -269,6 +272,12 @@ function createPrintService({ windowController }) {
         const pdfBuffer = await mainWindow.webContents.printToPDF({
           printBackground: true,
           pageSize: "A4",
+          margins: {
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+          },
           preferCSSPageSize: true,
         });
         pdfPath = path.join(outputDir, createPdfFileName(normalizedState));
