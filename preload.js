@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld("bridge", {
   bootstrapShell: () => ipcRenderer.invoke("shell:bootstrap"),
   openHome: () => ipcRenderer.invoke("shell:open-home"),
   openMiniApp: (miniAppId) => ipcRenderer.invoke("shell:open-mini-app", miniAppId),
+  installMiniApp: (miniAppId) => ipcRenderer.invoke("shell:install-mini-app", miniAppId),
   computeSnapshot,
   createEmptyState,
   extractAppSettings,

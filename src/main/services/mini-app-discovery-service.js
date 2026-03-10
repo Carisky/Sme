@@ -1,91 +1,62 @@
 const path = require("path");
 const fs = require("fs/promises");
-const { pathToFileURL } = require("url");
 const { app } = require("electron");
+const { listMiniAppsFromRoot } = require("../../mini-app-common");
 
-function getMiniAppsRootPath() {
+function getBundledMiniAppsRootPath() {
   return path.join(app.getAppPath(), "mini_apps");
 }
 
-function isObject(value) {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function normalizeMiniAppManifest(manifest = {}, directoryPath) {
-  if (!isObject(manifest)) {
-    return null;
-  }
-
-  const id = String(manifest.id || "").trim();
-  const page = String(manifest.page || "index.html").trim();
-  if (!id || !page) {
-    return null;
-  }
-
-  const icon = String(manifest.icon || "").trim();
-  const version = String(manifest.version || "0.0.0").trim() || "0.0.0";
-  const pagePath = path.resolve(directoryPath, page);
-
-  return {
-    id,
-    name: String(manifest.name || id).trim() || id,
-    description: String(manifest.description || "").trim(),
-    version,
-    order: Number.isFinite(Number(manifest.order)) ? Number(manifest.order) : 999,
-    directoryPath,
-    manifestPath: path.join(directoryPath, "mini-app.json"),
-    pagePath,
-    pageUrl: pathToFileURL(pagePath).href,
-    iconPath: icon ? path.resolve(directoryPath, icon) : "",
-    iconUrl: icon ? pathToFileURL(path.resolve(directoryPath, icon)).href : "",
-  };
-}
-
-function sortMiniApps(left, right) {
-  if (left.order !== right.order) {
-    return left.order - right.order;
-  }
-
-  return left.name.localeCompare(right.name, "pl");
+function getInstalledMiniAppsRootPath() {
+  return path.join(app.getPath("appData"), "SME", "mini_apps");
 }
 
 function createMiniAppDiscoveryService() {
+  async function ensureInstalledMiniAppsRoot() {
+    const miniAppsRoot = getInstalledMiniAppsRootPath();
+    await fs.mkdir(miniAppsRoot, { recursive: true });
+    return miniAppsRoot;
+  }
+
+  function mergeLaunchableMiniApps(bundledMiniApps = [], installedMiniApps = []) {
+    const merged = new Map();
+
+    for (const miniApp of installedMiniApps) {
+      merged.set(miniApp.id, miniApp);
+    }
+
+    for (const miniApp of bundledMiniApps) {
+      merged.set(miniApp.id, miniApp);
+    }
+
+    return Array.from(merged.values()).sort((left, right) => {
+      if (left.order !== right.order) {
+        return left.order - right.order;
+      }
+
+      return left.name.localeCompare(right.name, "pl");
+    });
+  }
+
+  async function listBundledMiniApps() {
+    return listMiniAppsFromRoot(getBundledMiniAppsRootPath(), {
+      source: "bundled",
+    });
+  }
+
+  async function listInstalledMiniApps() {
+    const miniAppsRoot = await ensureInstalledMiniAppsRoot();
+    return listMiniAppsFromRoot(miniAppsRoot, {
+      source: "installed",
+    });
+  }
+
   async function listMiniApps() {
-    const miniAppsRoot = getMiniAppsRootPath();
-    let entries = [];
-
-    try {
-      entries = await fs.readdir(miniAppsRoot, { withFileTypes: true });
-    } catch (error) {
-      if (error?.code === "ENOENT") {
-        return [];
-      }
-
-      throw error;
-    }
-
-    const miniApps = [];
-
-    for (const entry of entries) {
-      if (!entry.isDirectory()) {
-        continue;
-      }
-
-      const directoryPath = path.join(miniAppsRoot, entry.name);
-      const manifestPath = path.join(directoryPath, "mini-app.json");
-
-      try {
-        const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
-        const normalized = normalizeMiniAppManifest(manifest, directoryPath);
-        if (normalized) {
-          miniApps.push(normalized);
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    return miniApps.sort(sortMiniApps);
+    const [bundledMiniApps, installedMiniApps] = await Promise.all([
+      listBundledMiniApps(),
+      listInstalledMiniApps(),
+    ]);
+    return mergeLaunchableMiniApps(bundledMiniApps, installedMiniApps);
   }
 
   async function getMiniAppById(miniAppId) {
@@ -99,13 +70,18 @@ function createMiniAppDiscoveryService() {
   }
 
   return {
-    getMiniAppsRootPath,
+    ensureInstalledMiniAppsRoot,
+    getBundledMiniAppsRootPath,
+    getInstalledMiniAppsRootPath,
     getMiniAppById,
+    listBundledMiniApps,
+    listInstalledMiniApps,
     listMiniApps,
   };
 }
 
 module.exports = {
   createMiniAppDiscoveryService,
-  getMiniAppsRootPath,
+  getBundledMiniAppsRootPath,
+  getInstalledMiniAppsRootPath,
 };

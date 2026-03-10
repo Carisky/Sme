@@ -5,15 +5,13 @@ function registerIpcHandlers({
   projectService,
   catalogService,
   importService,
-  miniAppDiscoveryService,
+  miniAppCatalogService,
   printService,
   updateService,
   moduleDiscoveryService,
 }) {
   ipcMain.handle("shell:bootstrap", async () => {
-    return {
-      miniApps: await miniAppDiscoveryService.listMiniApps(),
-    };
+    return miniAppCatalogService.listCatalog();
   });
 
   ipcMain.handle("shell:open-home", async () => {
@@ -21,12 +19,16 @@ function registerIpcHandlers({
   });
 
   ipcMain.handle("shell:open-mini-app", async (_event, miniAppId) => {
-    const miniApp = await miniAppDiscoveryService.getMiniAppById(miniAppId);
+    const miniApp = await miniAppCatalogService.getLaunchableMiniAppById(miniAppId);
     if (!miniApp) {
       throw new Error(`Nie znaleziono modulu ${miniAppId}.`);
     }
 
     return windowController.loadFile(miniApp.pagePath);
+  });
+
+  ipcMain.handle("shell:install-mini-app", async (_event, miniAppId) => {
+    return miniAppCatalogService.installMiniApp(miniAppId);
   });
 
   ipcMain.handle("app:bootstrap", async () => {

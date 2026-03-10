@@ -5,14 +5,26 @@ const packageJson = require("../package.json");
 const {
   RELEASE_MANIFEST_NAME,
   buildInstallerFileName,
+  buildReleaseAssetUrl,
   buildReleaseTag,
+  hashFile,
   normalizeProductName,
   parseGitHubRepository,
 } = require("../src/update-common");
+const {
+  MINI_APP_REGISTRY_ASSET_NAME,
+  buildMiniAppBundleFileName,
+  createMiniAppRegistryManifest,
+  listMiniAppsFromRoot,
+} = require("../src/mini-app-common");
 
 function resolveCommand(command) {
   if (process.platform === "win32" && command === "npm") {
     return "npm.cmd";
+  }
+
+  if (process.platform === "win32" && command === "tar") {
+    return "tar.exe";
   }
 
   return command;
@@ -130,7 +142,61 @@ async function releaseExists(rootDir, releaseTag) {
   }
 }
 
-async function writeReleaseNotes(rootDir, manifest) {
+async function packMiniAppsForRelease(rootDir, repository, releaseTag) {
+  const sourceRoot = path.join(rootDir, "module_registry", "apps");
+  const outputDir = path.join(rootDir, "dist", "mini-apps");
+  const registryPath = path.join(rootDir, "dist", MINI_APP_REGISTRY_ASSET_NAME);
+  const miniApps = await listMiniAppsFromRoot(sourceRoot, {
+    source: "registry",
+  });
+
+  await fs.rm(outputDir, { recursive: true, force: true });
+  await fs.mkdir(outputDir, { recursive: true });
+
+  const assetPaths = [];
+  const registryEntries = [];
+
+  for (const miniApp of miniApps) {
+    const directoryName = path.basename(miniApp.directoryPath);
+    const bundleName = buildMiniAppBundleFileName(miniApp.id, miniApp.version);
+    const bundlePath = path.join(outputDir, bundleName);
+
+    await runCommand("tar", ["-czf", bundlePath, "-C", sourceRoot, directoryName], rootDir);
+
+    const bundleStat = await fs.stat(bundlePath);
+    const bundleSha256 = await hashFile(bundlePath);
+
+    assetPaths.push(bundlePath);
+    registryEntries.push({
+      id: miniApp.id,
+      name: miniApp.name,
+      description: miniApp.description,
+      version: miniApp.version,
+      order: miniApp.order,
+      bundle: {
+        name: bundleName,
+        downloadUrl: buildReleaseAssetUrl(repository, releaseTag, bundleName),
+        sha256: bundleSha256,
+        size: bundleStat.size,
+        format: "tar.gz",
+      },
+    });
+  }
+
+  const registry = createMiniAppRegistryManifest({
+    repository,
+    releaseTag,
+    miniApps: registryEntries,
+  });
+
+  await fs.writeFile(registryPath, `${JSON.stringify(registry, null, 2)}\n`, "utf8");
+  return {
+    registry,
+    assetPaths: [registryPath, ...assetPaths],
+  };
+}
+
+async function writeReleaseNotes(rootDir, manifest, miniAppRegistry) {
   const notesDir = path.join(rootDir, "tmp", "release");
   const notesPath = path.join(notesDir, "notes.md");
   const installer = manifest.assets?.installer || {};
@@ -142,6 +208,7 @@ async function writeReleaseNotes(rootDir, manifest) {
     `- Installer: ${installer.name || ""}`,
     `- Installer SHA256: ${installer.sha256 || ""}`,
     `- App SHA256: ${manifest.appSha256 || ""}`,
+    `- Mini-app registry entries: ${Array.isArray(miniAppRegistry?.miniApps) ? miniAppRegistry.miniApps.length : 0}`,
   ];
 
   if (manifest.sourceCommit) {
@@ -181,8 +248,10 @@ async function main() {
   await fs.access(manifestPath);
 
   const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
-  const notesPath = await writeReleaseNotes(rootDir, manifest);
   const currentCommit = await readGitOutput(rootDir, "rev-parse", "HEAD");
+  const miniAppRelease = await packMiniAppsForRelease(rootDir, repository, releaseTag);
+  const notesPath = await writeReleaseNotes(rootDir, manifest, miniAppRelease.registry);
+  const releaseAssetPaths = [installerPath, manifestPath, ...miniAppRelease.assetPaths];
 
   await runCommand("git", ["push", "origin", "HEAD"], rootDir);
   await ensureReleaseTag(rootDir, releaseTag, currentCommit);
@@ -194,7 +263,7 @@ async function main() {
       ["release", "edit", releaseTag, "--title", `${productName} ${version}`, "--notes-file", notesPath],
       rootDir
     );
-    await runCommand("gh", ["release", "upload", releaseTag, installerPath, manifestPath, "--clobber"], rootDir);
+    await runCommand("gh", ["release", "upload", releaseTag, ...releaseAssetPaths, "--clobber"], rootDir);
   } else {
     await runCommand(
       "gh",
@@ -202,8 +271,7 @@ async function main() {
         "release",
         "create",
         releaseTag,
-        installerPath,
-        manifestPath,
+        ...releaseAssetPaths,
         "--title",
         `${productName} ${version}`,
         "--notes-file",

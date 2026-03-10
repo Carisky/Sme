@@ -4,7 +4,9 @@ const { disconnectOreCatalog } = require("../ore-catalog");
 const { createWindowController } = require("./window-controller");
 const { createCatalogService } = require("./services/catalog-service");
 const { createImportService } = require("./services/import-service");
+const { createMiniAppCatalogService } = require("./services/mini-app-catalog-service");
 const { createMiniAppDiscoveryService } = require("./services/mini-app-discovery-service");
+const { createMiniAppRegistryService } = require("./services/mini-app-registry-service");
 const { createModuleDiscoveryService } = require("./services/module-discovery-service");
 const { createPrintService } = require("./services/print-service");
 const { createProjectService } = require("./services/project-service");
@@ -17,6 +19,14 @@ function bootstrapMainApp() {
   const projectService = createProjectService({ windowController });
   const importService = createImportService({ windowController });
   const miniAppDiscoveryService = createMiniAppDiscoveryService();
+  const miniAppRegistryService = createMiniAppRegistryService({
+    packageJson,
+    miniAppDiscoveryService,
+  });
+  const miniAppCatalogService = createMiniAppCatalogService({
+    miniAppDiscoveryService,
+    miniAppRegistryService,
+  });
   const printService = createPrintService({ windowController });
   const moduleDiscoveryService = createModuleDiscoveryService();
   const updateService = createUpdateService({
@@ -30,7 +40,7 @@ function bootstrapMainApp() {
     projectService,
     catalogService,
     importService,
-    miniAppDiscoveryService,
+    miniAppCatalogService,
     printService,
     updateService,
     moduleDiscoveryService,

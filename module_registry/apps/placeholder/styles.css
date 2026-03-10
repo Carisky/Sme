@@ -1,0 +1,85 @@
+:root {
+  color-scheme: light;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top right, rgba(242, 186, 90, 0.28), transparent 30%),
+    linear-gradient(160deg, #f4ecdc 0%, #e3cfad 52%, #d0b58c 100%);
+  color: #28190f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: transparent;
+}
+
+.placeholder-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+}
+
+.placeholder-card {
+  width: min(720px, 100%);
+  padding: 32px;
+  border-radius: 28px;
+  border: 1px solid rgba(66, 38, 10, 0.16);
+  background: rgba(255, 249, 239, 0.88);
+  box-shadow: 0 28px 60px rgba(66, 38, 10, 0.16);
+}
+
+.placeholder-eyebrow {
+  margin: 0 0 12px;
+  color: #8a5c2e;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.placeholder-card h1 {
+  margin: 0 0 12px;
+  font-size: clamp(2.2rem, 6vw, 4rem);
+  line-height: 0.95;
+}
+
+.placeholder-copy {
+  margin: 0 0 26px;
+  max-width: 48ch;
+  color: #5d4731;
+  line-height: 1.6;
+}
+
+.placeholder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.placeholder-grid article {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(248, 231, 205, 0.72);
+}
+
+.placeholder-grid strong {
+  font-size: 0.84rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .placeholder-shell {
+    padding: 18px;
+  }
+
+  .placeholder-card {
+    padding: 24px;
+  }
+}

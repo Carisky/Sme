@@ -11,6 +11,11 @@ const {
 } = require("../src/core");
 const { importSourceWorkbook } = require("../src/excel");
 const {
+  MINI_APP_REGISTRY_ASSET_NAME,
+  buildMiniAppBundleFileName,
+  createMiniAppRegistryManifest,
+} = require("../src/mini-app-common");
+const {
   buildInstallerFileName,
   buildReleaseTag,
   compareVersions,
@@ -175,6 +180,37 @@ assert.equal(releaseManifest.repository.owner, "Carisky");
 assert.equal(releaseManifest.assets.installer.name, "SME-Setup-1.0.0.exe");
 assert.equal(releaseManifest.assets.installer.sha256, "abc123");
 assert.equal(releaseManifest.appSha256, "def456");
+assert.equal(MINI_APP_REGISTRY_ASSET_NAME, "sme-mini-app-registry.json");
+assert.equal(
+  buildMiniAppBundleFileName("place holder", "0.1.0"),
+  "sme-mini-app-place-holder-0.1.0.tar.gz"
+);
+const miniAppRegistryManifest = createMiniAppRegistryManifest({
+  releaseTag: "v1.2.3",
+  repository: {
+    provider: "github",
+    owner: "Carisky",
+    repo: "Sme",
+  },
+  miniApps: [
+    {
+      id: "placeholder",
+      name: "Place Holder",
+      description: "Registry test module",
+      version: "0.1.0",
+      order: 20,
+      bundle: {
+        name: "placeholder.tar.gz",
+        downloadUrl: "https://example.invalid/placeholder.tar.gz",
+        sha256: "ABC123",
+        size: 123,
+      },
+    },
+  ],
+});
+assert.equal(miniAppRegistryManifest.releaseTag, "v1.2.3");
+assert.equal(miniAppRegistryManifest.repository.repo, "Sme");
+assert.equal(miniAppRegistryManifest.miniApps[0].bundle.sha256, "abc123");
 
 const projectPayload = createProjectPayload(
   normalizeState({
