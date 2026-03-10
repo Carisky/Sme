@@ -74,6 +74,28 @@ body {
   text-transform: uppercase;
 }
 
+.placeholder-actions {
+  margin-top: 22px;
+}
+
+.placeholder-button {
+  appearance: none;
+  border: 0;
+  border-radius: 16px;
+  padding: 12px 18px;
+  background: #312113;
+  color: #f7ead4;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.placeholder-button:hover,
+.placeholder-button:focus-visible {
+  transform: translateY(-1px);
+}
+
 @media (max-width: 640px) {
   .placeholder-shell {
     padding: 18px;

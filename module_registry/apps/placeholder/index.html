@@ -24,7 +24,28 @@
             <span>module_registry/apps/placeholder</span>
           </article>
         </div>
+        <div class="placeholder-actions">
+          <button type="button" class="placeholder-button" id="placeholder-back-button">
+            Wroc do listy modulow
+          </button>
+        </div>
       </section>
     </main>
+
+    <script>
+      const backButton = document.getElementById("placeholder-back-button");
+      backButton?.addEventListener("click", async () => {
+        try {
+          if (window.bridge?.openHome) {
+            await window.bridge.openHome();
+            return;
+          }
+        } catch (error) {
+          console.error(error);
+        }
+
+        window.history.back();
+      });
+    </script>
   </body>
 </html>

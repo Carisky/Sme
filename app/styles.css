@@ -67,8 +67,8 @@ code {
 
 .launcher-hero h1 {
   margin: 0;
-  font-size: clamp(2rem, 5vw, 3.8rem);
-  line-height: 0.95;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1;
 }
 
 .launcher-subtitle,
