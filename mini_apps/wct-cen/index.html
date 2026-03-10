@@ -44,12 +44,33 @@
         <section class="panel is-active" data-panel="dane">
           <section class="summary-grid">
             <article class="card">
-              <p class="card__eyebrow">Projekt</p>
-              <h2>Dane z pliku</h2>
+              <div class="card__header">
+                <div>
+                  <p class="card__eyebrow">Projekt</p>
+                  <h2 id="summary-project-title">Nowy projekt</h2>
+                </div>
+
+                <label class="field">
+                  <span>Nazwa projektu</span>
+                  <input
+                    type="text"
+                    id="project-name"
+                    list="project-name-options"
+                    placeholder="Wpisz lub wybierz nazwe projektu"
+                    autocomplete="off"
+                  />
+                  <datalist id="project-name-options"></datalist>
+                </label>
+              </div>
+
               <dl class="stats-list">
                 <div>
                   <dt>Plik Excel</dt>
                   <dd id="summary-source-file">-</dd>
+                </div>
+                <div>
+                  <dt>Synchronizacja</dt>
+                  <dd id="summary-project-sync">-</dd>
                 </div>
                 <div>
                   <dt>Liczba wierszy</dt>

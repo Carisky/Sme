@@ -9,7 +9,6 @@ function registerIpcHandlers({
   printService,
   updateService,
   moduleDiscoveryService,
-  wctCenProjectService,
   wctCenService,
 }) {
   ipcMain.handle("shell:bootstrap", async () => {
@@ -116,16 +115,23 @@ function registerIpcHandlers({
     return catalogService.saveModuleStorage(moduleId, value);
   });
 
-  ipcMain.handle("wct-cen:project:open", async () => {
-    return wctCenProjectService.openProject();
+  ipcMain.handle("wct-cen:project:list", async (_event, dbPath, options) => {
+    return wctCenService.listProjects(dbPath, options);
   });
 
-  ipcMain.handle("wct-cen:project:save", async (_event, state, currentPath) => {
-    return wctCenProjectService.saveProject(state, currentPath);
+  ipcMain.handle("wct-cen:project:open", async (_event, dbPath, selector) => {
+    return wctCenService.openProject(dbPath, selector);
   });
 
-  ipcMain.handle("wct-cen:project:saveAs", async (_event, state) => {
-    return wctCenProjectService.saveProjectAs(state);
+  ipcMain.handle("wct-cen:project:save", async (_event, dbPath, state, options) => {
+    return wctCenService.saveProject(dbPath, state, options);
+  });
+
+  ipcMain.handle("wct-cen:project:saveAs", async (_event, dbPath, state, options) => {
+    return wctCenService.saveProject(dbPath, state, {
+      ...options,
+      createOnly: true,
+    });
   });
 
   ipcMain.handle("wct-cen:import", async (_event, currentState) => {

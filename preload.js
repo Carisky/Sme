@@ -65,11 +65,14 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("modules:storage:get", moduleId),
   saveModuleStorage: (moduleId, value) =>
     ipcRenderer.invoke("modules:storage:set", moduleId, value),
-  openWctCenProject: () => ipcRenderer.invoke("wct-cen:project:open"),
-  saveWctCenProject: (state, currentPath) =>
-    ipcRenderer.invoke("wct-cen:project:save", state, currentPath),
-  saveWctCenProjectAs: (state) =>
-    ipcRenderer.invoke("wct-cen:project:saveAs", state),
+  listWctCenProjects: (dbPath, options) =>
+    ipcRenderer.invoke("wct-cen:project:list", dbPath, options),
+  openWctCenProject: (dbPath, selector) =>
+    ipcRenderer.invoke("wct-cen:project:open", dbPath, selector),
+  saveWctCenProject: (dbPath, state, options) =>
+    ipcRenderer.invoke("wct-cen:project:save", dbPath, state, options),
+  saveWctCenProjectAs: (dbPath, state, options) =>
+    ipcRenderer.invoke("wct-cen:project:saveAs", dbPath, state, options),
   importWctCenWorkbook: (state) =>
     ipcRenderer.invoke("wct-cen:import", state),
   updateWctCenProject: (state, dbPath) =>

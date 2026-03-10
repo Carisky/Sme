@@ -2,7 +2,7 @@
   "id": "wct-cen",
   "name": "WCT CEN",
   "description": "Import FPL/PLAN, lookup CEN oraz lokalna baza kontenerow.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "order": 20,
   "page": "index.html",
   "icon": "icon.svg"

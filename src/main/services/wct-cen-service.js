@@ -1,5 +1,6 @@
 const { app, dialog } = require("electron");
 const {
+  asText,
   normalizeContainerNumber,
   normalizeLookupRecord,
   normalizeProjectRow,
@@ -9,11 +10,15 @@ const { importWctCenWorkbook } = require("../../../mini_apps/wct-cen/core/excel.
 const { lookupContainers } = require("../../wct-cen-lookup");
 const {
   findLookupRecordsByContainers,
+  getProjectById,
+  getProjectByName,
   getDefaultWctCenDbPath,
   listLookupRecords,
+  listProjectSummaries,
   resolveWctCenDbPath,
   saveLookupRecord,
   saveLookupRecords,
+  saveProjectState,
 } = require("../../wct-cen-db");
 
 function createWctCenService({ windowController }) {
@@ -71,6 +76,67 @@ function createWctCenService({ windowController }) {
     return {
       dbPath: resolvedDbPath,
       record: await saveLookupRecord(resolvedDbPath, record, "manual"),
+    };
+  }
+
+  async function listProjects(dbPath, options = {}) {
+    const resolvedDbPath = resolveDbPath(dbPath);
+    return {
+      dbPath: resolvedDbPath,
+      projects: await listProjectSummaries(resolvedDbPath, options),
+    };
+  }
+
+  async function openProject(dbPath, selector = {}) {
+    const resolvedDbPath = resolveDbPath(dbPath);
+    const projectId = Number(selector?.projectId) || 0;
+    const projectName = asText(selector?.projectName);
+    const result = projectId > 0
+      ? await getProjectById(resolvedDbPath, projectId)
+      : await getProjectByName(resolvedDbPath, projectName);
+
+    if (!result?.project?.id) {
+      throw new Error(
+        projectName
+          ? `Nie znaleziono projektu "${projectName}".`
+          : "Nie znaleziono projektu WCT CEN."
+      );
+    }
+
+    return {
+      canceled: false,
+      dbPath: resolvedDbPath,
+      project: result.project,
+      state: normalizeState({
+        ...result.state,
+        dbPath: resolvedDbPath,
+      }),
+    };
+  }
+
+  async function saveProject(dbPath, currentState, options = {}) {
+    const resolvedDbPath = resolveDbPath(dbPath);
+    const result = await saveProjectState(
+      resolvedDbPath,
+      normalizeState({
+        ...currentState,
+        dbPath: resolvedDbPath,
+      }),
+      {
+        projectId: options?.projectId,
+        projectName: options?.projectName,
+        createOnly: Boolean(options?.createOnly),
+      }
+    );
+
+    return {
+      canceled: false,
+      dbPath: resolvedDbPath,
+      project: result.project,
+      state: normalizeState({
+        ...result.state,
+        dbPath: resolvedDbPath,
+      }),
     };
   }
 
@@ -183,7 +249,10 @@ function createWctCenService({ windowController }) {
     getDefaultDbPath: () => getDefaultWctCenDbPath(app.getPath("appData")),
     importFromDialog,
     listDbRecords,
+    listProjects,
+    openProject,
     saveDbRecord,
+    saveProject,
     updateProjectState,
   };
 }

@@ -1,9 +1,0 @@
-{
-  "id": "placeholder",
-  "name": "Place Holder",
-  "description": "Testowy modul z prostym widokiem, instalowany z rejestru GitHub.",
-  "version": "0.1.0",
-  "page": "index.html",
-  "icon": "icon.svg",
-  "order": 20
-}

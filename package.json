@@ -7,7 +7,7 @@
   "scripts": {
     "start": "electron .",
     "seed": "node prisma/seed.js",
-    "test": "node test/core.test.js",
+    "test": "node test/core.test.js && node test/wct-cen-db.test.js",
     "make:portable": "node scripts/make-portable.cjs",
     "make:installer": "node scripts/make-portable.cjs",
     "push:remote": "node scripts/push-remote.cjs",
