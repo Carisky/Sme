@@ -8,7 +8,11 @@ function getBundledMiniAppsRootPath() {
 }
 
 function getInstalledMiniAppsRootPath() {
-  return path.join(app.getPath("appData"), "SME", "mini_apps");
+  return path.join(
+    app.getPath("appData"),
+    "SME",
+    app.isPackaged ? "installed_mini_apps" : "dev_mini_apps"
+  );
 }
 
 function createMiniAppDiscoveryService() {
