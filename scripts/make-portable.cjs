@@ -238,6 +238,7 @@ async function main() {
       prune: true,
       ignore: [
         /^\/dist$/,
+        /^\/module_registry$/,
         /^\/test$/,
         /^\/tmp$/,
         /^\/scripts$/,
