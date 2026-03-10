@@ -65,6 +65,23 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("modules:storage:get", moduleId),
   saveModuleStorage: (moduleId, value) =>
     ipcRenderer.invoke("modules:storage:set", moduleId, value),
+  openWctCenProject: () => ipcRenderer.invoke("wct-cen:project:open"),
+  saveWctCenProject: (state, currentPath) =>
+    ipcRenderer.invoke("wct-cen:project:save", state, currentPath),
+  saveWctCenProjectAs: (state) =>
+    ipcRenderer.invoke("wct-cen:project:saveAs", state),
+  importWctCenWorkbook: (state) =>
+    ipcRenderer.invoke("wct-cen:import", state),
+  updateWctCenProject: (state, dbPath) =>
+    ipcRenderer.invoke("wct-cen:update", state, dbPath),
+  getDefaultWctCenDatabasePath: () =>
+    ipcRenderer.invoke("wct-cen:db:default"),
+  chooseWctCenDatabasePath: (currentPath) =>
+    ipcRenderer.invoke("wct-cen:db:choose", currentPath),
+  listWctCenLookupRecords: (dbPath, options) =>
+    ipcRenderer.invoke("wct-cen:db:list", dbPath, options),
+  saveWctCenLookupRecord: (dbPath, record) =>
+    ipcRenderer.invoke("wct-cen:db:save", dbPath, record),
   onPrintStatus: (callback) => {
     ipcRenderer.removeAllListeners("print:status");
     ipcRenderer.on("print:status", (_event, payload) => callback(payload));

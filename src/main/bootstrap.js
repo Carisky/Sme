@@ -11,6 +11,8 @@ const { createModuleDiscoveryService } = require("./services/module-discovery-se
 const { createPrintService } = require("./services/print-service");
 const { createProjectService } = require("./services/project-service");
 const { createUpdateService } = require("./services/update-service");
+const { createWctCenProjectService } = require("./services/wct-cen-project-service");
+const { createWctCenService } = require("./services/wct-cen-service");
 const { registerIpcHandlers } = require("./ipc/register-ipc-handlers");
 
 function bootstrapMainApp() {
@@ -29,6 +31,8 @@ function bootstrapMainApp() {
   });
   const printService = createPrintService({ windowController });
   const moduleDiscoveryService = createModuleDiscoveryService();
+  const wctCenProjectService = createWctCenProjectService({ windowController });
+  const wctCenService = createWctCenService({ windowController });
   const updateService = createUpdateService({
     windowController,
     catalogService,
@@ -44,6 +48,8 @@ function bootstrapMainApp() {
     printService,
     updateService,
     moduleDiscoveryService,
+    wctCenProjectService,
+    wctCenService,
   });
 
   app.whenReady().then(() => {

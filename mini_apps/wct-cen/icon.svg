@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title>WCT CEN</title>
+  <rect width="128" height="128" rx="28" fill="#17352f"/>
+  <rect x="18" y="24" width="92" height="80" rx="14" fill="#f3eee2"/>
+  <path d="M32 45h64M32 64h64M32 83h40" stroke="#17352f" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="92" cy="83" r="14" fill="#cc7a00"/>
+</svg>

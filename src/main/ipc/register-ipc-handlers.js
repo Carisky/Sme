@@ -9,6 +9,8 @@ function registerIpcHandlers({
   printService,
   updateService,
   moduleDiscoveryService,
+  wctCenProjectService,
+  wctCenService,
 }) {
   ipcMain.handle("shell:bootstrap", async () => {
     return miniAppCatalogService.listCatalog();
@@ -112,6 +114,44 @@ function registerIpcHandlers({
 
   ipcMain.handle("modules:storage:set", async (_event, moduleId, value) => {
     return catalogService.saveModuleStorage(moduleId, value);
+  });
+
+  ipcMain.handle("wct-cen:project:open", async () => {
+    return wctCenProjectService.openProject();
+  });
+
+  ipcMain.handle("wct-cen:project:save", async (_event, state, currentPath) => {
+    return wctCenProjectService.saveProject(state, currentPath);
+  });
+
+  ipcMain.handle("wct-cen:project:saveAs", async (_event, state) => {
+    return wctCenProjectService.saveProjectAs(state);
+  });
+
+  ipcMain.handle("wct-cen:import", async (_event, currentState) => {
+    return wctCenService.importFromDialog(currentState);
+  });
+
+  ipcMain.handle("wct-cen:update", async (_event, currentState, dbPath) => {
+    return wctCenService.updateProjectState(currentState, dbPath);
+  });
+
+  ipcMain.handle("wct-cen:db:default", async () => {
+    return {
+      filePath: wctCenService.getDefaultDbPath(),
+    };
+  });
+
+  ipcMain.handle("wct-cen:db:choose", async (_event, currentPath) => {
+    return wctCenService.chooseDatabasePath(currentPath);
+  });
+
+  ipcMain.handle("wct-cen:db:list", async (_event, dbPath, options) => {
+    return wctCenService.listDbRecords(dbPath, options);
+  });
+
+  ipcMain.handle("wct-cen:db:save", async (_event, dbPath, record) => {
+    return wctCenService.saveDbRecord(dbPath, record);
   });
 
   ipcMain.on("window:set-title", (_event, title) => {

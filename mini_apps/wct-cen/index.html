@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>WCT CEN</title>
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand__mark">WC</div>
+          <div>
+            <p class="eyebrow">Kontenery i lookup CEN</p>
+            <h1>WCT CEN</h1>
+            <p id="project-indicator" class="project-indicator">Projekt w pamieci</p>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button type="button" data-action="home" class="button--minimal">Moduly</button>
+          <button type="button" data-action="new">Nowy</button>
+          <button type="button" data-action="open">Otworz</button>
+          <button type="button" data-action="import" class="button--accent">Importuj Excel</button>
+          <button type="button" data-action="update" class="button--strong">Zaktualizuj</button>
+          <button type="button" data-action="save">Zapisz</button>
+          <button type="button" data-action="saveAs">Zapisz jako</button>
+        </div>
+      </header>
+
+      <div class="tabs-row">
+        <nav class="tabs">
+          <button class="tab is-active" type="button" data-tab="dane">Dane</button>
+          <button class="tab" type="button" data-tab="ustawienia">Ustawienia</button>
+        </nav>
+      </div>
+
+      <main class="content">
+        <section class="panel is-active" data-panel="dane">
+          <section class="summary-grid">
+            <article class="card">
+              <p class="card__eyebrow">Projekt</p>
+              <h2>Dane z pliku</h2>
+              <dl class="stats-list">
+                <div>
+                  <dt>Plik Excel</dt>
+                  <dd id="summary-source-file">-</dd>
+                </div>
+                <div>
+                  <dt>Liczba wierszy</dt>
+                  <dd id="summary-row-count">0</dd>
+                </div>
+                <div>
+                  <dt>Uzupelnione CEN</dt>
+                  <dd id="summary-cen-count">0</dd>
+                </div>
+                <div>
+                  <dt>Oczekujace</dt>
+                  <dd id="summary-pending-count">0</dd>
+                </div>
+              </dl>
+            </article>
+
+            <article class="card">
+              <p class="card__eyebrow">Baza</p>
+              <h2>wct_cen_db</h2>
+              <dl class="stats-list">
+                <div>
+                  <dt>Aktywna baza</dt>
+                  <dd id="summary-db-path">-</dd>
+                </div>
+                <div>
+                  <dt>Manualne wiersze</dt>
+                  <dd id="summary-manual-count">0</dd>
+                </div>
+                <div>
+                  <dt>Gotowosc</dt>
+                  <dd id="summary-db-status">Brak</dd>
+                </div>
+              </dl>
+            </article>
+          </section>
+
+          <section class="card card--table">
+            <div class="card__header card__header--spread">
+              <div>
+                <p class="card__eyebrow">Projekt</p>
+                <h2>Wiersze robocze</h2>
+              </div>
+              <div class="toolbar">
+                <button type="button" data-action="add-row">Dodaj wiersz</button>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Lp.</th>
+                    <th>Container</th>
+                    <th>CEN</th>
+                    <th>T-State</th>
+                    <th>Stop</th>
+                    <th>T1</th>
+                    <th>Transport Doc</th>
+                    <th>Carrier</th>
+                    <th>Status</th>
+                    <th>Invoice</th>
+                    <th>Src</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="project-rows"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="panel" data-panel="ustawienia">
+          <section class="settings-grid">
+            <article class="card">
+              <div class="card__header card__header--spread">
+                <div>
+                  <p class="card__eyebrow">Konfiguracja</p>
+                  <h2>Baza danych</h2>
+                </div>
+                <button type="button" data-action="choose-db" class="button--strong">
+                  Wybierz baze
+                </button>
+              </div>
+
+              <label class="field field--wide">
+                <span>Sciezka do wct_cen_db</span>
+                <input type="text" id="db-path" placeholder="C:\Users\...\wct_cen_db.sqlite" />
+              </label>
+
+              <p class="muted-copy">
+                Ta baza przechowuje lookup kontenerow i reczne wpisy `container -> cen / t-state / stop`.
+              </p>
+            </article>
+
+            <article class="card">
+              <div class="card__header card__header--spread">
+                <div>
+                  <p class="card__eyebrow">Lookup</p>
+                  <h2>Reczne encje</h2>
+                </div>
+                <div class="toolbar">
+                  <button type="button" data-action="record-new">Nowy rekord</button>
+                  <button type="button" data-action="record-save" class="button--strong">
+                    Zapisz rekord
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-grid">
+                <label class="field">
+                  <span>Container Number</span>
+                  <input type="text" id="record-container" />
+                </label>
+                <label class="field">
+                  <span>CEN</span>
+                  <input type="text" id="record-cen" />
+                </label>
+                <label class="field">
+                  <span>T-State</span>
+                  <input type="text" id="record-t-state" />
+                </label>
+                <label class="field">
+                  <span>Stop</span>
+                  <input type="text" id="record-stop" />
+                </label>
+              </div>
+            </article>
+          </section>
+
+          <section class="card card--table">
+            <div class="card__header card__header--spread">
+              <div>
+                <p class="card__eyebrow">Baza danych</p>
+                <h2>Slownik kontenerow</h2>
+              </div>
+              <div class="toolbar">
+                <input
+                  type="search"
+                  id="lookup-search"
+                  class="search-input"
+                  placeholder="Szukaj po kontenerze"
+                />
+                <button type="button" data-action="lookup-refresh">Odswiez</button>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="data-table data-table--lookup">
+                <thead>
+                  <tr>
+                    <th>Container</th>
+                    <th>CEN</th>
+                    <th>T-State</th>
+                    <th>Stop</th>
+                    <th>Zrodlo</th>
+                    <th>Aktualizacja</th>
+                  </tr>
+                </thead>
+                <tbody id="lookup-rows"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <footer class="statusbar">
+        <span id="status-text">Gotowe.</span>
+      </footer>
+    </div>
+
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>

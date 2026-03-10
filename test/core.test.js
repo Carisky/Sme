@@ -11,6 +11,12 @@ const {
 } = require("../src/core");
 const { importSourceWorkbook } = require("../src/excel");
 const {
+  createProjectPayload: createWctCenProjectPayload,
+  parseProjectPayload: parseWctCenProjectPayload,
+  PROJECT_SCHEMA_VERSION: WCT_CEN_PROJECT_SCHEMA_VERSION,
+} = require("../mini_apps/wct-cen/core/project-payload.cjs");
+const { importWctCenWorkbook } = require("../mini_apps/wct-cen/core/excel.cjs");
+const {
   MINI_APP_REGISTRY_ASSET_NAME,
   buildMiniAppBundleFileName,
   createMiniAppRegistryManifest,
@@ -98,6 +104,20 @@ const importedSnapshot = computeSnapshot(importedState);
 assert.equal(importedSnapshot.meta.cnCode, "26011100");
 assert.equal(importedSnapshot.meta.caseNumber, "TSL/3/H/2022");
 assert.equal(importedSnapshot.meta.subjectReference, "18PL");
+
+const importedWctCenState = importWctCenWorkbook(
+  path.join(__dirname, "..", "samples", "files", "FPL_63 PLAN.xlsx")
+);
+assert.equal(importedWctCenState.fileName, "FPL_63 PLAN");
+assert.equal(importedWctCenState.sourceFileName, "FPL_63 PLAN.xlsx");
+assert.equal(importedWctCenState.rows.length, 35);
+assert.equal(importedWctCenState.rows[0].containerNumber, "MRKU4798309");
+assert.equal(importedWctCenState.rows[0].preparedBy, "SM");
+assert.equal(importedWctCenState.rows[0].sentBy, "SM");
+assert.equal(importedWctCenState.rows[0].trainNumberEu, "FPL_63");
+assert.equal(importedWctCenState.rows[0].invoiceInfo, "JD25W022 10/12/2025");
+assert.equal(importedWctCenState.rows[17].dryPort, "Dnipro-Liski");
+assert.equal(importedWctCenState.rows[17].containerNumber, "TGHU9692566");
 
 const blankSnapshot = computeSnapshot(normalizeState({}));
 assert.equal(blankSnapshot.meta.caseNumber, "TSL/");
@@ -238,5 +258,15 @@ const parsedLegacyPayload = parseProjectPayload({
 assert.equal(parsedLegacyPayload.appId, DEFAULT_PROJECT_APP_ID);
 assert.equal(parsedLegacyPayload.state.ownNumber, "legacy");
 assert.deepEqual(parsedLegacyPayload.modules, {});
+
+const wctCenProjectPayload = createWctCenProjectPayload(importedWctCenState);
+assert.equal(wctCenProjectPayload.version, WCT_CEN_PROJECT_SCHEMA_VERSION);
+assert.equal(wctCenProjectPayload.appId, "wct-cen");
+assert.equal(wctCenProjectPayload.state.rows[0].containerNumber, "MRKU4798309");
+
+const parsedWctCenProjectPayload = parseWctCenProjectPayload(wctCenProjectPayload);
+assert.equal(parsedWctCenProjectPayload.appId, "wct-cen");
+assert.equal(parsedWctCenProjectPayload.state.sourceFileName, "FPL_63 PLAN.xlsx");
+assert.equal(parsedWctCenProjectPayload.state.rows[0].preparedBy, "SM");
 
 console.log("core smoke tests passed");
