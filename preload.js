@@ -19,6 +19,9 @@ contextBridge.exposeInMainWorld("bridge", {
     documentTypes: Object.keys(DOCUMENT_PRESETS),
     persistedSettingsPaths: APP_SETTINGS_PATHS,
   },
+  bootstrapShell: () => ipcRenderer.invoke("shell:bootstrap"),
+  openHome: () => ipcRenderer.invoke("shell:open-home"),
+  openMiniApp: (miniAppId) => ipcRenderer.invoke("shell:open-mini-app", miniAppId),
   computeSnapshot,
   createEmptyState,
   extractAppSettings,
@@ -32,10 +35,16 @@ contextBridge.exposeInMainWorld("bridge", {
       "project:save",
       state?.state || state,
       state?.modules || {},
+      state?.appId || "sme",
       currentPath
     ),
   saveProjectAs: (state) =>
-    ipcRenderer.invoke("project:saveAs", state?.state || state, state?.modules || {}),
+    ipcRenderer.invoke(
+      "project:saveAs",
+      state?.state || state,
+      state?.modules || {},
+      state?.appId || "sme"
+    ),
   importSourceWorkbook: (state) =>
     ipcRenderer.invoke("source:import", state),
   saveCustomsOffice: (office) =>

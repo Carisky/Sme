@@ -5,10 +5,30 @@ function registerIpcHandlers({
   projectService,
   catalogService,
   importService,
+  miniAppDiscoveryService,
   printService,
   updateService,
   moduleDiscoveryService,
 }) {
+  ipcMain.handle("shell:bootstrap", async () => {
+    return {
+      miniApps: await miniAppDiscoveryService.listMiniApps(),
+    };
+  });
+
+  ipcMain.handle("shell:open-home", async () => {
+    return windowController.loadHomePage();
+  });
+
+  ipcMain.handle("shell:open-mini-app", async (_event, miniAppId) => {
+    const miniApp = await miniAppDiscoveryService.getMiniAppById(miniAppId);
+    if (!miniApp) {
+      throw new Error(`Nie znaleziono modulu ${miniAppId}.`);
+    }
+
+    return windowController.loadFile(miniApp.pagePath);
+  });
+
   ipcMain.handle("app:bootstrap", async () => {
     const [bootstrapData, updateGate, userModules] = await Promise.all([
       catalogService.loadBootstrapData(),
@@ -27,12 +47,12 @@ function registerIpcHandlers({
     return projectService.openProject();
   });
 
-  ipcMain.handle("project:save", async (_event, state, modules, currentPath) => {
-    return projectService.saveProject(state, modules, currentPath);
+  ipcMain.handle("project:save", async (_event, state, modules, appId, currentPath) => {
+    return projectService.saveProject(state, modules, appId, currentPath);
   });
 
-  ipcMain.handle("project:saveAs", async (_event, state, modules) => {
-    return projectService.saveProjectAs(state, modules);
+  ipcMain.handle("project:saveAs", async (_event, state, modules, appId) => {
+    return projectService.saveProjectAs(state, modules, appId);
   });
 
   ipcMain.handle("source:import", async (_event, currentState) => {

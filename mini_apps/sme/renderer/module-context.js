@@ -111,6 +111,9 @@ export function createModuleContextFactory({
         confirm(message) {
           return window.confirm(message);
         },
+        openHome() {
+          return bridge.openHome();
+        },
         chooseDirectory(defaultPath) {
           return bridge.chooseDirectory(defaultPath);
         },

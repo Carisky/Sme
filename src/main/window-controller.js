@@ -11,8 +11,20 @@ function getWindowIconPath() {
   );
 }
 
+function getHomePagePath() {
+  return path.join(__dirname, "..", "..", "app", "index.html");
+}
+
 function createWindowController() {
   let mainWindow = null;
+
+  function loadFile(filePath) {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return null;
+    }
+
+    return mainWindow.loadFile(filePath);
+  }
 
   function createMainWindow() {
     mainWindow = new BrowserWindow({
@@ -31,8 +43,12 @@ function createWindowController() {
       },
     });
 
-    mainWindow.loadFile(path.join(__dirname, "..", "..", "app", "index.html"));
+    loadHomePage();
     return mainWindow;
+  }
+
+  function loadHomePage() {
+    return loadFile(getHomePagePath());
   }
 
   function getMainWindow() {
@@ -63,6 +79,8 @@ function createWindowController() {
     createMainWindow,
     getMainWindow,
     hasMainWindow,
+    loadFile,
+    loadHomePage,
     send,
     setTitle,
   };

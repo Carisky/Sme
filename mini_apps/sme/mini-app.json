@@ -1,0 +1,9 @@
+{
+  "id": "sme",
+  "name": "SME",
+  "description": "Korekty celne i dokumenty SAD",
+  "version": "1.0.0",
+  "page": "index.html",
+  "icon": "icon.svg",
+  "order": 1
+}

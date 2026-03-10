@@ -5,8 +5,8 @@ function resolveAssetUrl(relativePath) {
 }
 
 const PRINT_ASSETS = {
-  header: resolveAssetUrl("../samples/files/doc_header.png"),
-  footer: resolveAssetUrl("../samples/files/doc_footer.png"),
+  header: resolveAssetUrl("../../samples/files/doc_header.png"),
+  footer: resolveAssetUrl("../../samples/files/doc_footer.png"),
 };
 
 const MAX_PARAGRAPH_GROUPS_PER_PAGE = 4;

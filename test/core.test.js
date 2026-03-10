@@ -18,6 +18,7 @@ const {
   parseGitHubRepository,
 } = require("../src/update-common");
 const {
+  DEFAULT_PROJECT_APP_ID,
   PROJECT_SCHEMA_VERSION,
   createProjectPayload,
   parseProjectPayload,
@@ -186,16 +187,19 @@ const projectPayload = createProjectPayload(
   }
 );
 assert.equal(projectPayload.version, PROJECT_SCHEMA_VERSION);
+assert.equal(projectPayload.appId, "sme");
 assert.equal(projectPayload.state.ownNumber, "42");
 assert.deepEqual(projectPayload.modules.bookmarks.items, ["A", "B"]);
 
 const parsedProjectPayload = parseProjectPayload(projectPayload);
+assert.equal(parsedProjectPayload.appId, "sme");
 assert.equal(parsedProjectPayload.state.ownNumber, "42");
 assert.deepEqual(parsedProjectPayload.modules.bookmarks.items, ["A", "B"]);
 
 const parsedLegacyPayload = parseProjectPayload({
   ownNumber: "legacy",
 });
+assert.equal(parsedLegacyPayload.appId, DEFAULT_PROJECT_APP_ID);
 assert.equal(parsedLegacyPayload.state.ownNumber, "legacy");
 assert.deepEqual(parsedLegacyPayload.modules, {});
 

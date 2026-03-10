@@ -123,6 +123,13 @@ export function createActions({ store, renderers, extensions }) {
       return null;
     }
 
+    if (result.appId && result.appId !== "sme") {
+      const message = `Ten projekt nalezy do modulu ${result.appId}. Otworz go z ekranu modulow.`;
+      window.alert(message);
+      renderers.showStatus(message);
+      return null;
+    }
+
     setState(result.state, {
       currentProjectPath: result.filePath,
       dirty: false,
