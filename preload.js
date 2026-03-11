@@ -65,6 +65,30 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("modules:storage:get", moduleId),
   saveModuleStorage: (moduleId, value) =>
     ipcRenderer.invoke("modules:storage:set", moduleId, value),
+  listCenImtreksProjects: (dbPath, options) =>
+    ipcRenderer.invoke("cen-imtreks:project:list", dbPath, options),
+  openCenImtreksProject: (dbPath, selector) =>
+    ipcRenderer.invoke("cen-imtreks:project:open", dbPath, selector),
+  saveCenImtreksProject: (dbPath, state, options) =>
+    ipcRenderer.invoke("cen-imtreks:project:save", dbPath, state, options),
+  saveCenImtreksProjectAs: (dbPath, state, options) =>
+    ipcRenderer.invoke("cen-imtreks:project:saveAs", dbPath, state, options),
+  importCenImtreksWorkbook: (state) =>
+    ipcRenderer.invoke("cen-imtreks:import", state),
+  updateCenImtreksProject: (state, dbPath) =>
+    ipcRenderer.invoke("cen-imtreks:update", state, dbPath),
+  getDefaultCenImtreksDatabasePath: () =>
+    ipcRenderer.invoke("cen-imtreks:db:default"),
+  chooseCenImtreksDatabasePath: (currentPath) =>
+    ipcRenderer.invoke("cen-imtreks:db:choose", currentPath),
+  listCenImtreksLookupRecords: (dbPath, options) =>
+    ipcRenderer.invoke("cen-imtreks:db:list", dbPath, options),
+  saveCenImtreksLookupRecord: (dbPath, record) =>
+    ipcRenderer.invoke("cen-imtreks:db:save", dbPath, record),
+  onCenImtreksStatus: (callback) => {
+    ipcRenderer.removeAllListeners("cen-imtreks:status");
+    ipcRenderer.on("cen-imtreks:status", (_event, payload) => callback(payload));
+  },
   listWctCenProjects: (dbPath, options) =>
     ipcRenderer.invoke("wct-cen:project:list", dbPath, options),
   openWctCenProject: (dbPath, selector) =>

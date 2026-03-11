@@ -3,6 +3,7 @@ const packageJson = require("../../package.json");
 const { disconnectOreCatalog } = require("../ore-catalog");
 const { createWindowController } = require("./window-controller");
 const { createCatalogService } = require("./services/catalog-service");
+const { createCenImtreksService } = require("./services/cen-imtreks-service");
 const { createImportService } = require("./services/import-service");
 const { createMiniAppCatalogService } = require("./services/mini-app-catalog-service");
 const { createMiniAppDiscoveryService } = require("./services/mini-app-discovery-service");
@@ -30,6 +31,7 @@ function bootstrapMainApp() {
   });
   const printService = createPrintService({ windowController });
   const moduleDiscoveryService = createModuleDiscoveryService();
+  const cenImtreksService = createCenImtreksService({ windowController });
   const wctCenService = createWctCenService({ windowController });
   const updateService = createUpdateService({
     windowController,
@@ -46,6 +48,7 @@ function bootstrapMainApp() {
     printService,
     updateService,
     moduleDiscoveryService,
+    cenImtreksService,
     wctCenService,
   });
 

@@ -59,7 +59,7 @@ function isRecord(value) {
 function normalizeItem(item) {
   return {
     cen: asText(item?.cen),
-    tState: asText(item?.t_state),
+    tState: asText(item?.status || item?.t_state),
     stop: asText(item?.stop),
   };
 }
@@ -143,8 +143,21 @@ async function lookupContainers(containers = [], options = {}) {
 
   const lookupMap = new Map();
   const errors = [];
+  const containerChunks = chunk(normalized, options.chunkSize || LOOKUP_CHUNK_SIZE);
+  const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
+  let processedContainers = 0;
 
-  for (const containerChunk of chunk(normalized, options.chunkSize || LOOKUP_CHUNK_SIZE)) {
+  for (let chunkIndex = 0; chunkIndex < containerChunks.length; chunkIndex += 1) {
+    const containerChunk = containerChunks[chunkIndex];
+    onProgress?.({
+      phase: "start-chunk",
+      chunkIndex,
+      totalChunks: containerChunks.length,
+      chunkSize: containerChunk.length,
+      processedContainers,
+      totalContainers: normalized.length,
+    });
+
     let response;
     try {
       response = await fetchImpl(options.url || LOOKUP_URL, {
@@ -160,6 +173,15 @@ async function lookupContainers(containers = [], options = {}) {
       });
     } catch (error) {
       errors.push(`Blad sieci dla chunku ${containerChunk[0]}: ${error.message}`);
+      processedContainers += containerChunk.length;
+      onProgress?.({
+        phase: "end-chunk",
+        chunkIndex,
+        totalChunks: containerChunks.length,
+        chunkSize: containerChunk.length,
+        processedContainers,
+        totalContainers: normalized.length,
+      });
       continue;
     }
 
@@ -172,6 +194,15 @@ async function lookupContainers(containers = [], options = {}) {
       }
 
       errors.push(`Serwis lookup zwrocil ${response.status} ${reason}`.trim());
+      processedContainers += containerChunk.length;
+      onProgress?.({
+        phase: "end-chunk",
+        chunkIndex,
+        totalChunks: containerChunks.length,
+        chunkSize: containerChunk.length,
+        processedContainers,
+        totalContainers: normalized.length,
+      });
       continue;
     }
 
@@ -186,6 +217,16 @@ async function lookupContainers(containers = [], options = {}) {
         tState: asText(value.tState),
         stop: asText(value.stop),
       });
+    });
+
+    processedContainers += containerChunk.length;
+    onProgress?.({
+      phase: "end-chunk",
+      chunkIndex,
+      totalChunks: containerChunks.length,
+      chunkSize: containerChunk.length,
+      processedContainers,
+      totalContainers: normalized.length,
     });
   }
 

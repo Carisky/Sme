@@ -9,6 +9,7 @@ function registerIpcHandlers({
   printService,
   updateService,
   moduleDiscoveryService,
+  cenImtreksService,
   wctCenService,
 }) {
   let cachedShellBootstrap = null;
@@ -168,6 +169,51 @@ function registerIpcHandlers({
 
   ipcMain.handle("modules:storage:set", async (_event, moduleId, value) => {
     return catalogService.saveModuleStorage(moduleId, value);
+  });
+
+  ipcMain.handle("cen-imtreks:project:list", async (_event, dbPath, options) => {
+    return cenImtreksService.listProjects(dbPath, options);
+  });
+
+  ipcMain.handle("cen-imtreks:project:open", async (_event, dbPath, selector) => {
+    return cenImtreksService.openProject(dbPath, selector);
+  });
+
+  ipcMain.handle("cen-imtreks:project:save", async (_event, dbPath, state, options) => {
+    return cenImtreksService.saveProject(dbPath, state, options);
+  });
+
+  ipcMain.handle("cen-imtreks:project:saveAs", async (_event, dbPath, state, options) => {
+    return cenImtreksService.saveProject(dbPath, state, {
+      ...options,
+      createOnly: true,
+    });
+  });
+
+  ipcMain.handle("cen-imtreks:import", async (_event, currentState) => {
+    return cenImtreksService.importFromDialog(currentState);
+  });
+
+  ipcMain.handle("cen-imtreks:update", async (_event, currentState, dbPath) => {
+    return cenImtreksService.updateProjectState(currentState, dbPath);
+  });
+
+  ipcMain.handle("cen-imtreks:db:default", async () => {
+    return {
+      filePath: cenImtreksService.getDefaultDbPath(),
+    };
+  });
+
+  ipcMain.handle("cen-imtreks:db:choose", async (_event, currentPath) => {
+    return cenImtreksService.chooseDatabasePath(currentPath);
+  });
+
+  ipcMain.handle("cen-imtreks:db:list", async (_event, dbPath, options) => {
+    return cenImtreksService.listDbRecords(dbPath, options);
+  });
+
+  ipcMain.handle("cen-imtreks:db:save", async (_event, dbPath, record) => {
+    return cenImtreksService.saveDbRecord(dbPath, record);
   });
 
   ipcMain.handle("wct-cen:project:list", async (_event, dbPath, options) => {
