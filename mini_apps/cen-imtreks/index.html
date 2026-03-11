@@ -27,7 +27,14 @@
           <button type="button" data-action="new">Nowy</button>
           <button type="button" data-action="open">Otworz</button>
           <button type="button" data-action="import" class="button--accent">Importuj Excel</button>
-          <button type="button" data-action="update" class="button--strong">Zaktualizuj</button>
+          <button
+            type="button"
+            data-action="update"
+            data-busy-allow="true"
+            class="button--strong"
+          >
+            Zaktualizuj
+          </button>
           <button type="button" data-action="save">Zapisz</button>
           <button type="button" data-action="saveAs">Zapisz jako</button>
         </div>
@@ -148,6 +155,16 @@
                 <h2>Wiersze robocze</h2>
               </div>
               <div class="toolbar">
+                <input
+                  type="search"
+                  id="project-search"
+                  class="search-input"
+                  placeholder="Szukaj po kontenerze"
+                />
+                <label class="toggle toggle--compact">
+                  <input type="checkbox" id="force-update" />
+                  <span>Force</span>
+                </label>
                 <button type="button" data-action="add-row">Dodaj wiersz</button>
               </div>
             </div>

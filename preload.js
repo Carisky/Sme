@@ -75,8 +75,10 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("cen-imtreks:project:saveAs", dbPath, state, options),
   importCenImtreksWorkbook: (state) =>
     ipcRenderer.invoke("cen-imtreks:import", state),
-  updateCenImtreksProject: (state, dbPath) =>
-    ipcRenderer.invoke("cen-imtreks:update", state, dbPath),
+  updateCenImtreksProject: (state, dbPath, options) =>
+    ipcRenderer.invoke("cen-imtreks:update", state, dbPath, options),
+  cancelCenImtreksProjectUpdate: (updateId) =>
+    ipcRenderer.invoke("cen-imtreks:update:cancel", updateId),
   getDefaultCenImtreksDatabasePath: () =>
     ipcRenderer.invoke("cen-imtreks:db:default"),
   chooseCenImtreksDatabasePath: (currentPath) =>

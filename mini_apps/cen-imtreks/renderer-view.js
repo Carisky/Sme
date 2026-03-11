@@ -3,6 +3,7 @@ import {
   flattenRows,
   formatTimestamp,
   getActiveSheet,
+  normalizeContainerNumber,
 } from "./renderer-model.js";
 
 export function renderProjectIndicator(elements, stateRef, bridge, getActiveProjectTitle) {
@@ -81,6 +82,7 @@ export function renderMonthTabs(elements, stateRef) {
 
 export function renderRows(elements, stateRef) {
   const activeSheet = getActiveSheet(stateRef.state);
+  const search = normalizeContainerNumber(stateRef.projectSearchTerm);
   if (!activeSheet) {
     elements.projectRows.innerHTML = `
       <tr>
@@ -99,7 +101,22 @@ export function renderRows(elements, stateRef) {
     return;
   }
 
-  elements.projectRows.innerHTML = activeSheet.rows
+  const rows = search
+    ? activeSheet.rows.filter((row) =>
+        normalizeContainerNumber(row.containerNumber).includes(search)
+      )
+    : activeSheet.rows;
+
+  if (rows.length === 0) {
+    elements.projectRows.innerHTML = `
+      <tr>
+        <td colspan="13">Brak wynikow dla kontenera ${escapeHtml(stateRef.projectSearchTerm)}.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  elements.projectRows.innerHTML = rows
     .map(
       (row) => `
         <tr data-row-id="${escapeHtml(row.id)}">

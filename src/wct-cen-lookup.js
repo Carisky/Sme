@@ -145,6 +145,8 @@ async function lookupContainers(containers = [], options = {}) {
   const errors = [];
   const containerChunks = chunk(normalized, options.chunkSize || LOOKUP_CHUNK_SIZE);
   const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
+  const onChunkResult =
+    typeof options.onChunkResult === "function" ? options.onChunkResult : null;
   let processedContainers = 0;
 
   for (let chunkIndex = 0; chunkIndex < containerChunks.length; chunkIndex += 1) {
@@ -166,12 +168,17 @@ async function lookupContainers(containers = [], options = {}) {
           "Content-Type": "application/json",
           "x-api-key": options.apiKey || "dev-local-key",
         },
+        signal: options.signal,
         body: JSON.stringify({
           containers: containerChunk,
           t_status: true,
         }),
       });
     } catch (error) {
+      if (error?.name === "AbortError" || options.signal?.aborted) {
+        throw error;
+      }
+
       errors.push(`Blad sieci dla chunku ${containerChunk[0]}: ${error.message}`);
       processedContainers += containerChunk.length;
       onProgress?.({
@@ -210,6 +217,14 @@ async function lookupContainers(containers = [], options = {}) {
     const parsed = contentType.includes("application/json")
       ? parseLookupJson(await response.json())
       : parseLookupCsv(await response.text());
+
+    onChunkResult?.({
+      chunkIndex,
+      totalChunks: containerChunks.length,
+      chunkSize: containerChunk.length,
+      containers: containerChunk,
+      map: parsed,
+    });
 
     parsed.forEach((value, key) => {
       lookupMap.set(key, {

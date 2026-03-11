@@ -194,8 +194,12 @@ function registerIpcHandlers({
     return cenImtreksService.importFromDialog(currentState);
   });
 
-  ipcMain.handle("cen-imtreks:update", async (_event, currentState, dbPath) => {
-    return cenImtreksService.updateProjectState(currentState, dbPath);
+  ipcMain.handle("cen-imtreks:update", async (_event, currentState, dbPath, options) => {
+    return cenImtreksService.updateProjectState(currentState, dbPath, options);
+  });
+
+  ipcMain.handle("cen-imtreks:update:cancel", async (_event, updateId) => {
+    return cenImtreksService.cancelProjectUpdate(updateId);
   });
 
   ipcMain.handle("cen-imtreks:db:default", async () => {

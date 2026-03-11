@@ -42,6 +42,8 @@ const elements = {
   monthTabs: document.getElementById("month-tabs"),
   activeMonthLabel: document.getElementById("active-month-label"),
   projectRows: document.getElementById("project-rows"),
+  projectSearch: document.getElementById("project-search"),
+  forceUpdate: document.getElementById("force-update"),
   lookupRows: document.getElementById("lookup-rows"),
   dbPath: document.getElementById("db-path"),
   lookupSearch: document.getElementById("lookup-search"),
@@ -78,9 +80,14 @@ const stateRef = {
   busyAction: "",
   busyMessage: "",
   busyProgress: 0,
+  projectSearchTerm: "",
+  forceUpdateEnabled: false,
+  updateSession: null,
+  pendingProjectRender: 0,
 };
 
 const UPDATE_BUTTON_LABEL = "Zaktualizuj";
+const CANCEL_UPDATE_BUTTON_LABEL = "Anuluj aktualizacje";
 
 function getActiveProjectTitle() {
   const currentName = asText(stateRef.state.projectName);
@@ -99,19 +106,90 @@ function setStatus(message) {
   elements.statusText.textContent = message;
 }
 
+function getUpdateButton() {
+  return document.querySelector('[data-action="update"]');
+}
+
+function createUpdateRequestId() {
+  return `cen-imtreks-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function formatUpdateSummary(result = {}) {
+  const stats = result.stats || {};
+  const lookupErrors =
+    Array.isArray(stats.lookupErrors) && stats.lookupErrors.length > 0
+      ? ` Bledy lookup: ${stats.lookupErrors.join(" | ")}`
+      : "";
+  const skippedInfo = stats.skippedTerminalRows
+    ? `, pominiete terminale: ${stats.skippedTerminalRows}`
+    : "";
+  const canceledPrefix = result.canceled ? "Aktualizacja przerwana. " : "";
+  return (
+    `${canceledPrefix}Uzupelniono T1: ${stats.updatedT1 || 0}, Status: ${stats.updatedStatus || 0}, Stop: ${
+      stats.updatedStop || 0
+    }, bez wyniku: ${stats.notFound || 0}${skippedInfo}.${lookupErrors}`
+  );
+}
+
+function renderProjectData() {
+  renderProjectIndicator(elements, stateRef, bridge, getActiveProjectTitle);
+  renderSummary(elements, stateRef, getActiveProjectTitle);
+  renderRows(elements, stateRef);
+  elements.projectSearch.value = stateRef.projectSearchTerm;
+  elements.forceUpdate.checked = stateRef.forceUpdateEnabled;
+  applyBusyState();
+}
+
+function queueProjectDataRender() {
+  if (stateRef.pendingProjectRender) {
+    return;
+  }
+
+  stateRef.pendingProjectRender = window.requestAnimationFrame(() => {
+    stateRef.pendingProjectRender = 0;
+    renderProjectData();
+  });
+}
+
+function applyProjectRowPatches(changes = []) {
+  if (!Array.isArray(changes) || changes.length === 0) {
+    return;
+  }
+
+  const rowMap = new Map(
+    changes
+      .filter((entry) => entry?.row?.id)
+      .map((entry) => [entry.row.id, normalizeRow(entry.row)])
+  );
+  if (rowMap.size === 0) {
+    return;
+  }
+
+  stateRef.state.sheets = stateRef.state.sheets.map((sheet) =>
+    normalizeSheet({
+      ...sheet,
+      rows: sheet.rows.map((row) => rowMap.get(row.id) || row),
+    })
+  );
+  stateRef.dirty = true;
+  queueProjectDataRender();
+}
+
 function applyBusyState() {
   const isBusy = Boolean(stateRef.busyAction);
   const normalizedProgress = Math.max(0, Math.min(Number(stateRef.busyProgress) || 0, 100));
 
   document.body.classList.toggle("is-busy", isBusy);
   document.querySelectorAll("button, input").forEach((node) => {
-    node.disabled = isBusy;
+    node.disabled = isBusy ? node.dataset.busyAllow !== "true" : false;
   });
 
-  const updateButton = document.querySelector('[data-action="update"]');
+  const updateButton = getUpdateButton();
   if (updateButton) {
     updateButton.textContent =
-      isBusy && stateRef.busyAction === "update" ? "Aktualizacja..." : UPDATE_BUTTON_LABEL;
+      isBusy && stateRef.busyAction === "update"
+        ? CANCEL_UPDATE_BUTTON_LABEL
+        : UPDATE_BUTTON_LABEL;
   }
 
   elements.inlineUpdateStatus.hidden = !isBusy;
@@ -158,8 +236,64 @@ function flushUi() {
   });
 }
 
+function resetUpdateSession() {
+  stateRef.updateSession = null;
+}
+
+async function finalizeCanceledUpdate(result) {
+  const session = stateRef.updateSession;
+  resetUpdateSession();
+  clearBusyState();
+
+  const keepPartial = window.confirm(
+    "Aktualizacja zostala anulowana. Zachowac czesciowo uzupelnione dane w widoku?"
+  );
+
+  if (!keepPartial && session?.baseState) {
+    setState(session.baseState, {
+      currentProject: stateRef.currentProjectSummary,
+      projectNameDraft: session.projectNameDraft,
+      dirty: session.baseDirty,
+    });
+    setStatus("Aktualizacja anulowana. Czesciowe zmiany odrzucono.");
+    return result;
+  }
+
+  stateRef.dirty = true;
+  renderAllApp();
+  setStatus(
+    "Aktualizacja anulowana. Czesciowe zmiany pozostaly w widoku i czekaja na zapis."
+  );
+  return result;
+}
+
+async function finalizeFailedUpdate(error) {
+  const session = stateRef.updateSession;
+  resetUpdateSession();
+  clearBusyState();
+
+  const keepPartial = window.confirm(
+    `Aktualizacja nieudana: ${error.message}\n\nZachowac czesciowo uzupelnione dane w widoku?`
+  );
+
+  if (!keepPartial && session?.baseState) {
+    setState(session.baseState, {
+      currentProject: stateRef.currentProjectSummary,
+      projectNameDraft: session.projectNameDraft,
+      dirty: session.baseDirty,
+    });
+    return false;
+  }
+
+  stateRef.dirty = true;
+  renderAllApp();
+  return true;
+}
+
 function renderAllApp() {
   renderAll(elements, stateRef, bridge, getActiveProjectTitle);
+  elements.projectSearch.value = stateRef.projectSearchTerm;
+  elements.forceUpdate.checked = stateRef.forceUpdateEnabled;
   applyBusyState();
 }
 
@@ -572,17 +706,37 @@ async function importWorkbook() {
   return result;
 }
 
-async function updateProject() {
+async function startProjectUpdate() {
+  await flushAutosave({ silent: true });
   const dbPath = await ensureDbPath();
+  const updateId = createUpdateRequestId();
+  stateRef.updateSession = {
+    id: updateId,
+    baseState: normalizeState(stateRef.state),
+    baseDirty: stateRef.dirty,
+    projectNameDraft: stateRef.projectNameDraft,
+    force: Boolean(stateRef.forceUpdateEnabled),
+  };
+
   setBusyState({
     action: "update",
-    message: "Przygotowanie aktualizacji projektu.",
+    message: stateRef.forceUpdateEnabled
+      ? "Force update: przygotowanie aktualizacji projektu."
+      : "Przygotowanie aktualizacji projektu.",
     progress: 4,
   });
   await flushUi();
 
   try {
-    const result = await bridge.updateCenImtreksProject(stateRef.state, dbPath);
+    const result = await bridge.updateCenImtreksProject(stateRef.state, dbPath, {
+      requestId: updateId,
+      force: stateRef.forceUpdateEnabled,
+    });
+
+    if (result.canceled) {
+      return finalizeCanceledUpdate(result);
+    }
+
     setBusyState({
       action: "update",
       message: "Odswiezanie widoku i zapisywanie projektu.",
@@ -595,30 +749,40 @@ async function updateProject() {
     });
     await persistSettings();
     await Promise.all([refreshLookupRecords(), persistCurrentProject({ silent: true })]);
-    setBusyState({
-      action: "update",
-      message: "Aktualizacja zakonczona.",
-      progress: 100,
-    });
-
-    const stats = result.stats || {};
-    const lookupErrors =
-      Array.isArray(stats.lookupErrors) && stats.lookupErrors.length > 0
-        ? ` Bledy lookup: ${stats.lookupErrors.join(" | ")}`
-        : "";
-    const skippedInfo = stats.skippedTerminalRows
-      ? `, pominiete terminale: ${stats.skippedTerminalRows}`
-      : "";
-    const statusMessage =
-      `Uzupelniono T1: ${stats.updatedT1 || 0}, Status: ${stats.updatedStatus || 0}, Stop: ${stats.updatedStop || 0}, bez wyniku: ${stats.notFound || 0}${skippedInfo}.${lookupErrors}`;
-
+    resetUpdateSession();
     clearBusyState();
-    setStatus(statusMessage);
+    setStatus(formatUpdateSummary(result));
     return result;
   } catch (error) {
-    clearBusyState();
+    const keptPartial = await finalizeFailedUpdate(error);
+    setStatus(
+      keptPartial
+        ? `Aktualizacja nieudana. Czesciowe zmiany pozostaly w widoku. ${error.message}`
+        : error.message
+    );
     throw error;
   }
+}
+
+async function cancelProjectUpdate() {
+  if (!stateRef.updateSession?.id) {
+    return null;
+  }
+
+  setBusyState({
+    action: "update",
+    message: "Anulowanie aktualizacji...",
+    progress: stateRef.busyProgress,
+  });
+  return bridge.cancelCenImtreksProjectUpdate(stateRef.updateSession.id);
+}
+
+async function updateProject() {
+  if (stateRef.updateSession?.id) {
+    return cancelProjectUpdate();
+  }
+
+  return startProjectUpdate();
 }
 
 async function saveProject() {
@@ -759,7 +923,7 @@ function handleAction(action, payload = {}) {
 document.addEventListener("click", async (event) => {
   const actionNode = event.target.closest("[data-action]");
   if (actionNode) {
-    if (stateRef.busyAction) {
+    if (stateRef.busyAction && actionNode.dataset.action !== "update") {
       return;
     }
 
@@ -827,6 +991,20 @@ elements.projectRows.addEventListener("input", (event) => {
   }
 
   updateRow(rowNode.dataset.rowId, event.target.dataset.field, event.target.value);
+});
+
+elements.projectSearch.addEventListener("input", (event) => {
+  stateRef.projectSearchTerm = asText(event.target.value);
+  renderRows(elements, stateRef);
+  applyBusyState();
+});
+
+elements.forceUpdate.addEventListener("change", (event) => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  stateRef.forceUpdateEnabled = Boolean(event.target.checked);
 });
 
 elements.projectName.addEventListener("input", async (event) => {
@@ -908,6 +1086,20 @@ async function bootstrap() {
   if (typeof bridge.onCenImtreksStatus === "function") {
     bridge.onCenImtreksStatus((payload) => {
       if (!payload || payload.action !== "update") {
+        return;
+      }
+
+      if (!stateRef.updateSession?.id || payload.updateId !== stateRef.updateSession.id) {
+        return;
+      }
+
+      if (payload.type === "patch") {
+        applyProjectRowPatches(payload.changes);
+        return;
+      }
+
+      if (payload.type === "failed") {
+        setStatus(payload.message || "Aktualizacja nieudana.");
         return;
       }
 

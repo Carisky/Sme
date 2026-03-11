@@ -21,6 +21,7 @@ function resolveSampleWorkbookPath() {
 
 async function main() {
   const progressEvents = [];
+  const chunkResults = [];
   const lookupResult = await lookupContainers(
     ["ABCU1234567", "MSKU1234567", "TGHU1234567"],
     {
@@ -47,6 +48,13 @@ async function main() {
       onProgress: (payload) => {
         progressEvents.push(payload);
       },
+      onChunkResult: (payload) => {
+        chunkResults.push({
+          chunkIndex: payload.chunkIndex,
+          containers: payload.containers,
+          size: payload.map.size,
+        });
+      },
     }
   );
 
@@ -55,6 +63,9 @@ async function main() {
   assert.equal(progressEvents.filter((entry) => entry.phase === "end-chunk").length, 2);
   assert.equal(progressEvents[0].processedContainers, 0);
   assert.equal(progressEvents.at(-1).processedContainers, 3);
+  assert.equal(chunkResults.length, 2);
+  assert.deepEqual(chunkResults[0].containers, ["ABCU1234567", "MSKU1234567"]);
+  assert.equal(chunkResults[1].size, 1);
 
   const workbookPath = resolveSampleWorkbookPath();
   const importedState = importCenImtreksWorkbook(workbookPath);
