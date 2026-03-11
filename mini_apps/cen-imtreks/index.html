@@ -49,15 +49,22 @@
 
       <main class="content">
         <section class="panel is-active" data-panel="dane">
-          <section class="summary-grid">
-            <article class="card">
-              <div class="card__header">
-                <div>
+          <section class="summary-grid summary-grid--compact">
+            <details class="card accordion-card">
+              <summary class="accordion-card__summary">
+                <div class="accordion-card__title">
                   <p class="card__eyebrow">Projekt</p>
                   <h2 id="summary-project-title">Nowy projekt</h2>
                 </div>
+                <div class="accordion-card__meta">
+                  <span id="summary-active-month-inline" class="meta-pill">Arkusz: -</span>
+                  <span id="summary-row-count-inline" class="meta-pill">0 wierszy</span>
+                  <span id="summary-project-sync-inline" class="meta-pill meta-pill--accent">Nowy projekt</span>
+                </div>
+              </summary>
 
-                <label class="field">
+              <div class="accordion-card__body">
+                <label class="field field--wide">
                   <span>Nazwa projektu</span>
                   <input
                     type="text"
@@ -68,63 +75,74 @@
                   />
                   <datalist id="project-name-options"></datalist>
                 </label>
+
+                <dl class="stats-list stats-list--compact">
+                  <div>
+                    <dt>Plik Excel</dt>
+                    <dd id="summary-source-file">-</dd>
+                  </div>
+                  <div>
+                    <dt>Synchronizacja</dt>
+                    <dd id="summary-project-sync">-</dd>
+                  </div>
+                  <div>
+                    <dt>Otwarty arkusz</dt>
+                    <dd id="summary-active-month">-</dd>
+                  </div>
+                  <div>
+                    <dt>Arkusze w projekcie</dt>
+                    <dd id="summary-month-count">0</dd>
+                  </div>
+                  <div>
+                    <dt>Wszystkie wiersze</dt>
+                    <dd id="summary-row-count">0</dd>
+                  </div>
+                  <div>
+                    <dt>Wiersze z T1</dt>
+                    <dd id="summary-filled-count">0</dd>
+                  </div>
+                  <div>
+                    <dt>Z kontenerem bez T1</dt>
+                    <dd id="summary-pending-count">0</dd>
+                  </div>
+                </dl>
+
+                <p class="muted-copy card__note card__note--compact">
+                  <strong>Wiersze z T1</strong> to rekordy, gdzie pole T1 jest juz uzupelnione.
+                  <strong>Z kontenerem bez T1</strong> to rekordy, ktore nadal czekaja na uzupelnienie po numerze kontenera.
+                </p>
               </div>
+            </details>
 
-              <dl class="stats-list">
-                <div>
-                  <dt>Plik Excel</dt>
-                  <dd id="summary-source-file">-</dd>
+            <details class="card accordion-card">
+              <summary class="accordion-card__summary">
+                <div class="accordion-card__title">
+                  <p class="card__eyebrow">Baza</p>
+                  <h2>cen_imtreks_db</h2>
                 </div>
-                <div>
-                  <dt>Synchronizacja</dt>
-                  <dd id="summary-project-sync">-</dd>
+                <div class="accordion-card__meta">
+                  <span id="summary-db-status-inline" class="meta-pill meta-pill--accent">Brak</span>
+                  <span id="summary-manual-count-inline" class="meta-pill">0 recznych</span>
                 </div>
-                <div>
-                  <dt>Otwarty arkusz</dt>
-                  <dd id="summary-active-month">-</dd>
-                </div>
-                <div>
-                  <dt>Arkusze w projekcie</dt>
-                  <dd id="summary-month-count">0</dd>
-                </div>
-                <div>
-                  <dt>Wszystkie wiersze</dt>
-                  <dd id="summary-row-count">0</dd>
-                </div>
-                <div>
-                  <dt>Wiersze z T1</dt>
-                  <dd id="summary-filled-count">0</dd>
-                </div>
-                <div>
-                  <dt>Z kontenerem bez T1</dt>
-                  <dd id="summary-pending-count">0</dd>
-                </div>
-              </dl>
+              </summary>
 
-              <p class="muted-copy card__note">
-                <strong>Wiersze z T1</strong> to rekordy, gdzie pole T1 jest juz uzupelnione.
-                <strong>Z kontenerem bez T1</strong> to rekordy, ktore nadal czekaja na uzupelnienie po numerze kontenera.
-              </p>
-            </article>
-
-            <article class="card">
-              <p class="card__eyebrow">Baza</p>
-              <h2>cen_imtreks_db</h2>
-              <dl class="stats-list">
-                <div>
-                  <dt>Aktywna baza</dt>
-                  <dd id="summary-db-path">-</dd>
-                </div>
-                <div>
-                  <dt>Manualne wiersze</dt>
-                  <dd id="summary-manual-count">0</dd>
-                </div>
-                <div>
-                  <dt>Gotowosc</dt>
-                  <dd id="summary-db-status">Brak</dd>
-                </div>
-              </dl>
-            </article>
+              <div class="accordion-card__body">
+                <dl class="stats-list stats-list--compact">
+                  <div>
+                    <dt>Aktywna baza</dt>
+                    <dd id="summary-db-path">-</dd>
+                  </div>
+                  <div>
+                    <dt>Manualne wiersze</dt>
+                    <dd id="summary-manual-count">0</dd>
+                  </div>
+                  <div>
+                    <dt>Gotowosc</dt>
+                    <dd id="summary-db-status">Brak</dd>
+                  </div>
+                </dl>
+              </div>
+            </details>
           </section>
 
           <section class="card">
@@ -161,6 +179,55 @@
                   class="search-input"
                   placeholder="Szukaj po kontenerze"
                 />
+                <details id="filter-vessel-date-list" class="filter-multiselect filter-multiselect--popover">
+                  <summary id="filter-vessel-date-summary">Daty statku: wszystkie</summary>
+                  <div class="filter-multiselect__panel">
+                    <label class="filter-field filter-field--panel filter-field--mode">
+                      <span>Tryb daty statku</span>
+                      <select
+                        id="filter-vessel-date-mode"
+                        class="filter-select"
+                        aria-label="Tryb filtra daty statku"
+                      >
+                        <option value="range">Zakres od-do</option>
+                        <option value="list">Wybrane daty</option>
+                      </select>
+                    </label>
+                    <div id="filter-vessel-date-range" class="filter-group filter-group--panel">
+                      <label class="filter-field filter-field--panel">
+                        <span>Data statku od</span>
+                        <input
+                          type="date"
+                          id="filter-vessel-date-from"
+                          class="filter-select"
+                          aria-label="Filtr daty statku od"
+                          title="Data statku od"
+                        />
+                      </label>
+                      <label class="filter-field filter-field--panel">
+                        <span>Data statku do</span>
+                        <input
+                          type="date"
+                          id="filter-vessel-date-to"
+                          class="filter-select"
+                          aria-label="Filtr daty statku do"
+                          title="Data statku do"
+                        />
+                      </label>
+                    </div>
+                    <div id="filter-vessel-date-list-panel" class="filter-multiselect__list-panel">
+                      <div id="filter-vessel-date-options"></div>
+                    </div>
+                  </div>
+                </details>
+                <select id="filter-has-t1" class="filter-select" aria-label="Filtr T1">
+                  <option value="all">T1: wszystko</option>
+                  <option value="with">Tylko z T1</option>
+                  <option value="without">Tylko bez T1</option>
+                </select>
+                <select id="filter-status" class="filter-select" aria-label="Filtr statusu">
+                  <option value="">Status: wszystkie</option>
+                </select>
                 <label class="toggle toggle--compact">
                   <input type="checkbox" id="force-update" />
                   <span>Force</span>
@@ -174,7 +241,8 @@
                 <thead>
                   <tr>
                     <th>Lp.</th>
-                    <th>Data</th>
+                    <th>Data zlecenia</th>
+                    <th>Data statku</th>
                     <th>Folder</th>
                     <th>Container</th>
                     <th>BL</th>

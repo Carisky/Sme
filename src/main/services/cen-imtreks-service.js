@@ -131,6 +131,22 @@ function buildRowsToProcess(rows = [], force = false) {
   return rows.filter((row) => (force ? hasContainer(row) : rowNeedsLookup(row)));
 }
 
+function normalizeTargetRowIds(targetRowIds = []) {
+  return new Set(
+    (Array.isArray(targetRowIds) ? targetRowIds : [])
+      .map((rowId) => asText(rowId))
+      .filter(Boolean)
+  );
+}
+
+function filterRowsByTargetIds(rows = [], targetRowIds = new Set()) {
+  if (!(targetRowIds instanceof Set) || targetRowIds.size === 0) {
+    return rows;
+  }
+
+  return rows.filter((row) => targetRowIds.has(asText(row.id)));
+}
+
 function mergeStats(target, delta = {}) {
   target.updatedT1 += Number(delta.updatedT1) || 0;
   target.updatedStatus += Number(delta.updatedStatus) || 0;
@@ -139,6 +155,7 @@ function mergeStats(target, delta = {}) {
 
 function applyResolvedRecordsToState(currentState, resolvedMap, options = {}) {
   const force = Boolean(options.force);
+  const targetRowIds = normalizeTargetRowIds(options.targetRowIds);
   const targetContainers = options.targetContainers
     ? new Set(options.targetContainers.map(normalizeContainerNumber).filter(Boolean))
     : null;
@@ -153,7 +170,11 @@ function applyResolvedRecordsToState(currentState, resolvedMap, options = {}) {
       ...sheet,
       rows: sheet.rows.map((row) => {
         const containerNumber = normalizeContainerNumber(row.containerNumber);
-        if (!containerNumber || (targetContainers && !targetContainers.has(containerNumber))) {
+        if (
+          !containerNumber ||
+          (targetRowIds.size > 0 && !targetRowIds.has(asText(row.id))) ||
+          (targetContainers && !targetContainers.has(containerNumber))
+        ) {
           return row;
         }
 
@@ -421,6 +442,7 @@ function createCenImtreksService({ windowController }) {
     const session = createUpdateSession(options.requestId);
     const resolvedDbPath = resolveDbPath(dbPath);
     const force = Boolean(options.force);
+    const targetRowIds = normalizeTargetRowIds(options.targetRowIds);
     let workingState = normalizeState(currentState);
     const stats = createUpdateStats();
     const matchedLookupContainers = new Set();
@@ -431,7 +453,8 @@ function createCenImtreksService({ windowController }) {
 
     try {
       const allRows = flattenProjectRows(workingState);
-      const rowsToProcess = buildRowsToProcess(allRows, force);
+      const selectedRows = filterRowsByTargetIds(allRows, targetRowIds);
+      const rowsToProcess = buildRowsToProcess(selectedRows, force);
       stats.rowsToProcess = rowsToProcess.length;
 
       publishStatus({
@@ -478,6 +501,7 @@ function createCenImtreksService({ windowController }) {
         });
 
         const dbApplication = applyResolvedRecordsToState(workingState, resolvedMap, {
+          targetRowIds: rowsToProcess.map((row) => row.id),
           targetContainers: uniqueContainers,
           force: false,
         });
@@ -490,7 +514,10 @@ function createCenImtreksService({ windowController }) {
       }
 
       assertActive(session);
-      const rowsRemainingForLookup = buildRowsToProcess(flattenProjectRows(workingState), force);
+      const rowsRemainingForLookup = buildRowsToProcess(
+        filterRowsByTargetIds(flattenProjectRows(workingState), targetRowIds),
+        force
+      );
       const lookupNeedsByContainer = force
         ? new Map(
             rowsRemainingForLookup.map((row) => [
@@ -596,6 +623,9 @@ function createCenImtreksService({ windowController }) {
             });
 
             const chunkApplication = applyResolvedRecordsToState(workingState, resolvedMap, {
+              targetRowIds: rowsRemainingForLookup
+                .filter((row) => chunkContainers.includes(normalizeContainerNumber(row.containerNumber)))
+                .map((row) => row.id),
               targetContainers: chunkContainers,
               force,
             });
@@ -650,7 +680,10 @@ function createCenImtreksService({ windowController }) {
         stats.resolvedFromDb = resolvedFromDbContainers.size;
         stats.resolvedFromLookup = resolvedFromLookupContainers.size;
         stats.notFound = countNotFoundRows(
-          buildRowsToProcess(flattenProjectRows(normalizeState(currentState)), force),
+          buildRowsToProcess(
+            filterRowsByTargetIds(flattenProjectRows(normalizeState(currentState)), targetRowIds),
+            force
+          ),
           workingState,
           {
             force,

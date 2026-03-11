@@ -21,7 +21,8 @@ const HEADER_FIELD_MAP = {
   bl: "blNumber",
   ucotwarcia: "customsOffice",
   status: "status",
-  statek: "vessel",
+  datastatku: "vesselDate",
+  statek: "vesselDate",
   ilosct1: "t1Count",
   stop: "stop",
   t1: "t1",
@@ -65,7 +66,7 @@ function formatExcelDate(value) {
 }
 
 function formatFieldValue(field, value) {
-  if (field === "orderDate" || field === "vessel") {
+  if (field === "orderDate" || field === "vesselDate") {
     return formatExcelDate(value);
   }
 
@@ -162,6 +163,7 @@ function mergeImportedRows(previousSheet, importedRows) {
     return normalizeProjectRow({
       ...row,
       id: existing.id || row.id,
+      vesselDate: row.vesselDate || existing.vesselDate,
       status: row.status || existing.status,
       stop: row.stop || existing.stop,
       t1: existing.t1 || row.t1,

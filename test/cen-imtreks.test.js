@@ -77,6 +77,7 @@ async function main() {
   assert.equal(importedState.activeSheetId, importedState.sheets[0].id);
   assert.ok(importedState.sheets[0].rows.length > 100);
   assert.equal(importedState.sheets[0].rows[0].orderDate, "02.01.2026");
+  assert.equal(importedState.sheets[0].rows[0].vesselDate, "02.01.2026");
   assert.equal(importedState.sheets[0].rows[0].containerNumber, "MRSU7575929");
   assert.equal(importedState.sheets[0].rows[0].customsOffice, "GDANSK DCT");
   assert.equal(importedState.sheets[0].rows[0].t1, "26PL322080NS2MCHM7");
@@ -89,6 +90,16 @@ async function main() {
       projectName: "IM Alpha",
       sourceFileName: path.basename(workbookPath),
       activeSheetId: "sheet-luty",
+      view: {
+        searchTerm: "TRHU",
+        vesselDateMode: "list",
+        vesselDateFrom: "2026-02-01",
+        vesselDateTo: "2026-02-05",
+        vesselDateSelected: ["2026-02-02", "2026-02-04"],
+        hasT1: "without",
+        status: "YARD",
+        forceUpdate: true,
+      },
       sheets: [
         {
           id: "sheet-styczen",
@@ -118,6 +129,8 @@ async function main() {
     assert.equal(created.project.rowCount, 2);
     assert.equal(created.state.activeSheetId, "sheet-luty");
     assert.equal(created.state.sheets[0].rows[0].containerNumber, "MSKU1234567");
+    assert.equal(created.state.view.vesselDateMode, "list");
+    assert.deepEqual(created.state.view.vesselDateSelected, ["2026-02-02", "2026-02-04"]);
 
     const reopened = await getProjectByName(dbPath, "im alpha");
     assert.ok(reopened);
@@ -125,6 +138,12 @@ async function main() {
     assert.equal(reopened.state.sheets.length, 2);
     assert.equal(reopened.state.sheets[1].name, "Luty");
     assert.equal(reopened.state.sheets[1].rows[0].containerNumber, "TRHU9692566");
+    assert.equal(reopened.state.view.searchTerm, "TRHU");
+    assert.equal(reopened.state.view.vesselDateMode, "list");
+    assert.deepEqual(reopened.state.view.vesselDateSelected, ["2026-02-02", "2026-02-04"]);
+    assert.equal(reopened.state.view.hasT1, "without");
+    assert.equal(reopened.state.view.status, "YARD");
+    assert.equal(reopened.state.view.forceUpdate, true);
 
     await assert.rejects(
       () =>

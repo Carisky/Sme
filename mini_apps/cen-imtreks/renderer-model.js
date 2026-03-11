@@ -23,6 +23,69 @@ export function buildProjectNameKey(value) {
     .trim();
 }
 
+const DEFAULT_VESSEL_DATE_FILTER_MODE = "range";
+
+function normalizeVesselDateFilterMode(value) {
+  return asText(value).toLowerCase() === "list" ? "list" : DEFAULT_VESSEL_DATE_FILTER_MODE;
+}
+
+function normalizeHasT1FilterValue(value) {
+  const normalized = asText(value).toLowerCase();
+  return ["all", "with", "without"].includes(normalized) ? normalized : "all";
+}
+
+function normalizeVesselDateSelection(values = []) {
+  return Array.from(
+    new Set(
+      (Array.isArray(values) ? values : [values])
+        .map((value) => {
+          const raw = asText(value);
+          if (!raw) {
+            return "";
+          }
+
+          return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : dateStringToIsoDate(raw);
+        })
+        .filter(Boolean)
+    )
+  ).sort((left, right) => left.localeCompare(right, "pl"));
+}
+
+function normalizeIncludedRowIds(values = []) {
+  return new Set(
+    (Array.isArray(values) ? values : values instanceof Set ? Array.from(values) : [values])
+      .map((value) => asText(value))
+      .filter(Boolean)
+  );
+}
+
+export function createProjectView(overrides = {}) {
+  return {
+    searchTerm: "",
+    vesselDateMode: DEFAULT_VESSEL_DATE_FILTER_MODE,
+    vesselDateFrom: "",
+    vesselDateTo: "",
+    vesselDateSelected: [],
+    hasT1: "all",
+    status: "",
+    forceUpdate: false,
+    ...overrides,
+  };
+}
+
+export function normalizeProjectView(view = {}) {
+  return createProjectView({
+    searchTerm: asText(view.searchTerm),
+    vesselDateMode: normalizeVesselDateFilterMode(view.vesselDateMode),
+    vesselDateFrom: asText(view.vesselDateFrom),
+    vesselDateTo: asText(view.vesselDateTo),
+    vesselDateSelected: normalizeVesselDateSelection(view.vesselDateSelected),
+    hasT1: normalizeHasT1FilterValue(view.hasT1),
+    status: asText(view.status),
+    forceUpdate: Boolean(view.forceUpdate),
+  });
+}
+
 export function createRow(overrides = {}) {
   return {
     id: createId("row"),
@@ -30,6 +93,7 @@ export function createRow(overrides = {}) {
     sourceRowNumber: "",
     sequenceNumber: "",
     orderDate: "",
+    vesselDate: "",
     folderName: "",
     containerCount: "",
     invoiceInfo: "",
@@ -48,6 +112,7 @@ export function createRow(overrides = {}) {
 }
 
 export function normalizeRow(row = {}) {
+  const vesselDate = asText(row.vesselDate || row.vessel);
   return {
     ...createRow(row),
     id: asText(row.id) || createId("row"),
@@ -55,6 +120,7 @@ export function normalizeRow(row = {}) {
     sourceRowNumber: asText(row.sourceRowNumber),
     sequenceNumber: asText(row.sequenceNumber),
     orderDate: asText(row.orderDate),
+    vesselDate,
     folderName: asText(row.folderName),
     containerCount: asText(row.containerCount),
     invoiceInfo: asText(row.invoiceInfo),
@@ -115,6 +181,7 @@ export function normalizeState(input = {}) {
     sourceFileName: asText(input.sourceFileName),
     dbPath: asText(input.dbPath),
     activeSheetId: resolvedActiveSheetId,
+    view: normalizeProjectView(input.view),
     sheets,
   };
 }
@@ -128,6 +195,7 @@ export function createEmptyState(overrides = {}) {
     sourceFileName: "",
     dbPath: "",
     activeSheetId: "",
+    view: createProjectView(),
     sheets: [],
     ...overrides,
   });
@@ -228,4 +296,152 @@ export function formatTimestamp(value) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(parsed);
+}
+
+function parseDayMonthYear(value) {
+  const raw = asText(value);
+  const match = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    day: Number(match[1]),
+    month: Number(match[2]),
+    year: Number(match[3]),
+  };
+}
+
+function compareDateStrings(left, right) {
+  const parsedLeft = parseDayMonthYear(left);
+  const parsedRight = parseDayMonthYear(right);
+  if (parsedLeft && parsedRight) {
+    const leftKey = parsedLeft.year * 10000 + parsedLeft.month * 100 + parsedLeft.day;
+    const rightKey = parsedRight.year * 10000 + parsedRight.month * 100 + parsedRight.day;
+    return leftKey - rightKey;
+  }
+
+  return asText(left).localeCompare(asText(right), "pl", { sensitivity: "base" });
+}
+
+function toDateKey(value) {
+  const parsed = parseDayMonthYear(value);
+  if (!parsed) {
+    return null;
+  }
+
+  return parsed.year * 10000 + parsed.month * 100 + parsed.day;
+}
+
+export function dateStringToIsoDate(value) {
+  const parsed = parseDayMonthYear(value);
+  if (!parsed) {
+    return "";
+  }
+
+  const day = String(parsed.day).padStart(2, "0");
+  const month = String(parsed.month).padStart(2, "0");
+  return `${parsed.year}-${month}-${day}`;
+}
+
+export function isoDateToDateString(value) {
+  const raw = asText(value);
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return "";
+  }
+
+  return `${match[3]}.${match[2]}.${match[1]}`;
+}
+
+function normalizeStatusFilterValue(value) {
+  return asText(value).toLocaleUpperCase("pl");
+}
+
+export function getActiveSheetFilterOptions(state = {}) {
+  const activeSheet = getActiveSheet(state);
+  const rows = Array.isArray(activeSheet?.rows) ? activeSheet.rows : [];
+  const vesselDates = Array.from(
+    new Set(rows.map((row) => asText(row.vesselDate)).filter(Boolean))
+  ).sort(compareDateStrings);
+  const vesselDateOptions = vesselDates
+    .map((label) => ({
+      label,
+      value: dateStringToIsoDate(label),
+    }))
+    .filter((option) => option.value);
+  const statuses = Array.from(
+    new Set(rows.map((row) => normalizeStatusFilterValue(row.status)).filter(Boolean))
+  ).sort((left, right) => left.localeCompare(right, "pl", { sensitivity: "base" }));
+  const vesselDateFrom = vesselDateOptions[0]?.value || "";
+  const vesselDateTo = vesselDateOptions[vesselDateOptions.length - 1]?.value || "";
+
+  return {
+    vesselDates,
+    vesselDateOptions,
+    vesselDateFrom,
+    vesselDateTo,
+    statuses,
+  };
+}
+
+export function matchesRowFilters(row = {}, filters = {}) {
+  const searchTerm = normalizeContainerNumber(filters.searchTerm);
+  const vesselDateMode = normalizeVesselDateFilterMode(filters.vesselDateMode);
+  const vesselDateSelection = normalizeVesselDateSelection(filters.vesselDateSelected);
+  const vesselDateSelectionSet = new Set(vesselDateSelection);
+  const vesselDateFromKey = toDateKey(isoDateToDateString(filters.vesselDateFrom));
+  const vesselDateToKey = toDateKey(isoDateToDateString(filters.vesselDateTo));
+  const hasT1 = normalizeHasT1FilterValue(filters.hasT1);
+  const status = normalizeStatusFilterValue(filters.status);
+  const rowVesselDateKey = toDateKey(row.vesselDate);
+  const rowVesselDateIso = dateStringToIsoDate(row.vesselDate);
+
+  if (searchTerm && !normalizeContainerNumber(row.containerNumber).includes(searchTerm)) {
+    return false;
+  }
+
+  if (vesselDateMode === "list") {
+    if (vesselDateSelectionSet.size > 0 && !vesselDateSelectionSet.has(rowVesselDateIso)) {
+      return false;
+    }
+  } else {
+    if (vesselDateFromKey !== null) {
+      if (rowVesselDateKey === null || rowVesselDateKey < vesselDateFromKey) {
+        return false;
+      }
+    }
+
+    if (vesselDateToKey !== null) {
+      if (rowVesselDateKey === null || rowVesselDateKey > vesselDateToKey) {
+        return false;
+      }
+    }
+  }
+
+  if (hasT1 === "with" && !asText(row.t1)) {
+    return false;
+  }
+
+  if (hasT1 === "without" && asText(row.t1)) {
+    return false;
+  }
+
+  if (status && normalizeStatusFilterValue(row.status) !== status) {
+    return false;
+  }
+
+  return true;
+}
+
+export function getFilteredRows(state = {}, filters = {}) {
+  const activeSheet = getActiveSheet(state);
+  if (!activeSheet) {
+    return [];
+  }
+
+  const includedRowIds = normalizeIncludedRowIds(filters.includeRowIds);
+  return activeSheet.rows.filter(
+    (row) => includedRowIds.has(asText(row.id)) || matchesRowFilters(row, filters)
+  );
 }

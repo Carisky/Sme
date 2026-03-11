@@ -5,9 +5,12 @@ import {
   buildProjectNameKey,
   createEmptyState,
   createLookupRecord,
+  createProjectView,
   createRow,
   deriveProjectName,
   flattenRows,
+  getActiveSheetFilterOptions,
+  getFilteredRows,
   getActiveSheet,
   normalizeContainerNumber,
   normalizeLookupRecord,
@@ -18,6 +21,7 @@ import {
 } from "./renderer-model.js";
 import {
   renderAll,
+  renderFilters,
   renderProjectIndicator,
   renderLookupRows,
   renderMonthTabs,
@@ -43,6 +47,16 @@ const elements = {
   activeMonthLabel: document.getElementById("active-month-label"),
   projectRows: document.getElementById("project-rows"),
   projectSearch: document.getElementById("project-search"),
+  filterVesselDateMode: document.getElementById("filter-vessel-date-mode"),
+  filterVesselDateRange: document.getElementById("filter-vessel-date-range"),
+  filterVesselDateList: document.getElementById("filter-vessel-date-list"),
+  filterVesselDateListPanel: document.getElementById("filter-vessel-date-list-panel"),
+  filterVesselDateSummary: document.getElementById("filter-vessel-date-summary"),
+  filterVesselDateOptions: document.getElementById("filter-vessel-date-options"),
+  filterVesselDateFrom: document.getElementById("filter-vessel-date-from"),
+  filterVesselDateTo: document.getElementById("filter-vessel-date-to"),
+  filterHasT1: document.getElementById("filter-has-t1"),
+  filterStatus: document.getElementById("filter-status"),
   forceUpdate: document.getElementById("force-update"),
   lookupRows: document.getElementById("lookup-rows"),
   dbPath: document.getElementById("db-path"),
@@ -52,6 +66,9 @@ const elements = {
   recordTState: document.getElementById("record-t-state"),
   recordStop: document.getElementById("record-stop"),
   summaryProjectTitle: document.getElementById("summary-project-title"),
+  summaryProjectSyncInline: document.getElementById("summary-project-sync-inline"),
+  summaryActiveMonthInline: document.getElementById("summary-active-month-inline"),
+  summaryRowCountInline: document.getElementById("summary-row-count-inline"),
   summaryProjectSync: document.getElementById("summary-project-sync"),
   summarySourceFile: document.getElementById("summary-source-file"),
   summaryActiveMonth: document.getElementById("summary-active-month"),
@@ -62,6 +79,8 @@ const elements = {
   summaryManualCount: document.getElementById("summary-manual-count"),
   summaryDbPath: document.getElementById("summary-db-path"),
   summaryDbStatus: document.getElementById("summary-db-status"),
+  summaryDbStatusInline: document.getElementById("summary-db-status-inline"),
+  summaryManualCountInline: document.getElementById("summary-manual-count-inline"),
 };
 
 const stateRef = {
@@ -81,7 +100,15 @@ const stateRef = {
   busyMessage: "",
   busyProgress: 0,
   projectSearchTerm: "",
+  vesselDateModeFilter: "range",
+  vesselDateFromFilter: "",
+  vesselDateToFilter: "",
+  vesselDateSelectedFilter: [],
+  hasT1Filter: "all",
+  statusFilter: "",
   forceUpdateEnabled: false,
+  rowHighlights: new Map(),
+  stickyVisibleRowIds: new Set(),
   updateSession: null,
   pendingProjectRender: 0,
 };
@@ -131,11 +158,207 @@ function formatUpdateSummary(result = {}) {
   );
 }
 
+function getProjectFilters({ includeSticky = false } = {}) {
+  return {
+    searchTerm: stateRef.projectSearchTerm,
+    vesselDateMode: stateRef.vesselDateModeFilter,
+    vesselDateFrom: stateRef.vesselDateFromFilter,
+    vesselDateTo: stateRef.vesselDateToFilter,
+    vesselDateSelected: stateRef.vesselDateSelectedFilter,
+    hasT1: stateRef.hasT1Filter,
+    status: stateRef.statusFilter,
+    includeRowIds: includeSticky ? Array.from(stateRef.stickyVisibleRowIds) : [],
+  };
+}
+
+function createProjectViewSnapshot() {
+  return createProjectView({
+    searchTerm: stateRef.projectSearchTerm,
+    vesselDateMode: stateRef.vesselDateModeFilter,
+    vesselDateFrom: stateRef.vesselDateFromFilter,
+    vesselDateTo: stateRef.vesselDateToFilter,
+    vesselDateSelected: stateRef.vesselDateSelectedFilter,
+    hasT1: stateRef.hasT1Filter,
+    status: stateRef.statusFilter,
+    forceUpdate: stateRef.forceUpdateEnabled,
+  });
+}
+
+function restoreProjectViewFromState() {
+  const view = createProjectView(stateRef.state.view || {});
+  stateRef.projectSearchTerm = view.searchTerm;
+  stateRef.vesselDateModeFilter = view.vesselDateMode;
+  stateRef.vesselDateFromFilter = view.vesselDateFrom;
+  stateRef.vesselDateToFilter = view.vesselDateTo;
+  stateRef.vesselDateSelectedFilter = Array.isArray(view.vesselDateSelected)
+    ? [...view.vesselDateSelected]
+    : [];
+  stateRef.hasT1Filter = view.hasT1;
+  stateRef.statusFilter = view.status;
+  stateRef.forceUpdateEnabled = Boolean(view.forceUpdate);
+}
+
+function syncProjectViewToState() {
+  stateRef.state = normalizeState({
+    ...stateRef.state,
+    view: createProjectViewSnapshot(),
+  });
+}
+
+function resetRowFeedback() {
+  stateRef.rowHighlights = new Map();
+  stateRef.stickyVisibleRowIds = new Set();
+}
+
+function mergeRowHighlights(entries = []) {
+  entries.forEach((entry) => {
+    const rowId = asText(entry?.rowId);
+    const fields = Array.isArray(entry?.fields)
+      ? entry.fields.map((field) => asText(field)).filter(Boolean)
+      : [];
+
+    if (!rowId || !fields.length) {
+      return;
+    }
+
+    const current = stateRef.rowHighlights.get(rowId) || new Set();
+    fields.forEach((field) => current.add(field));
+    stateRef.rowHighlights.set(rowId, current);
+    stateRef.stickyVisibleRowIds.add(rowId);
+  });
+}
+
+function clearRowHighlightForField(rowId, field) {
+  const normalizedRowId = asText(rowId);
+  const normalizedField = asText(field);
+  if (!normalizedRowId || !normalizedField) {
+    return;
+  }
+
+  const current = stateRef.rowHighlights.get(normalizedRowId);
+  if (!current) {
+    return;
+  }
+
+  current.delete(normalizedField);
+  if (current.size > 0) {
+    stateRef.rowHighlights.set(normalizedRowId, current);
+    return;
+  }
+
+  stateRef.rowHighlights.delete(normalizedRowId);
+  stateRef.stickyVisibleRowIds.delete(normalizedRowId);
+}
+
+function getUpdatedFields(previousRow, nextRow) {
+  const trackedFields = ["t1", "status", "stop"];
+  return trackedFields.filter(
+    (field) => asText(previousRow?.[field]) !== asText(nextRow?.[field]) && asText(nextRow?.[field])
+  );
+}
+
+function captureRowHighlightsFromState(nextState) {
+  const currentRowsById = new Map(flattenRows(stateRef.state).map((row) => [row.id, row]));
+  const highlightEntries = flattenRows(nextState)
+    .map((row) => ({
+      rowId: row.id,
+      fields: getUpdatedFields(currentRowsById.get(row.id), row),
+    }))
+    .filter((entry) => entry.fields.length > 0);
+
+  mergeRowHighlights(highlightEntries);
+  return highlightEntries.length;
+}
+
+function commitViewMutation({ rerender = "project", clearFeedback = false } = {}) {
+  syncActiveSheetFilters();
+  syncProjectViewToState();
+
+  if (clearFeedback) {
+    resetRowFeedback();
+  }
+
+  if (stateRef.currentProjectId || hasProjectContent()) {
+    stateRef.changeToken += 1;
+    stateRef.dirty = true;
+    scheduleProjectSave();
+  }
+
+  if (rerender === "all") {
+    renderAllApp();
+    return;
+  }
+
+  renderProjectData();
+}
+
+function syncActiveSheetFilters() {
+  const options = getActiveSheetFilterOptions(stateRef.state);
+  const vesselDateValues = new Set(
+    options.vesselDateOptions.map((option) => option.value).filter(Boolean)
+  );
+
+  stateRef.vesselDateModeFilter =
+    asText(stateRef.vesselDateModeFilter).toLowerCase() === "list" ? "list" : "range";
+
+  if (!options.vesselDateFrom || !options.vesselDateTo) {
+    stateRef.vesselDateFromFilter = "";
+    stateRef.vesselDateToFilter = "";
+    stateRef.vesselDateSelectedFilter = [];
+  } else {
+    if (stateRef.vesselDateFromFilter) {
+      if (stateRef.vesselDateFromFilter < options.vesselDateFrom) {
+        stateRef.vesselDateFromFilter = options.vesselDateFrom;
+      } else if (stateRef.vesselDateFromFilter > options.vesselDateTo) {
+        stateRef.vesselDateFromFilter = options.vesselDateTo;
+      }
+    }
+
+    if (stateRef.vesselDateToFilter) {
+      if (stateRef.vesselDateToFilter < options.vesselDateFrom) {
+        stateRef.vesselDateToFilter = options.vesselDateFrom;
+      } else if (stateRef.vesselDateToFilter > options.vesselDateTo) {
+        stateRef.vesselDateToFilter = options.vesselDateTo;
+      }
+    }
+
+    stateRef.vesselDateSelectedFilter = stateRef.vesselDateSelectedFilter.filter((value) =>
+      vesselDateValues.has(asText(value))
+    );
+  }
+
+  if (
+    stateRef.vesselDateFromFilter &&
+    stateRef.vesselDateToFilter &&
+    stateRef.vesselDateFromFilter > stateRef.vesselDateToFilter
+  ) {
+    stateRef.vesselDateToFilter = stateRef.vesselDateFromFilter;
+  }
+
+  if (stateRef.statusFilter && !options.statuses.includes(stateRef.statusFilter)) {
+    stateRef.statusFilter = "";
+  }
+
+  const normalizedHasT1 = asText(stateRef.hasT1Filter).toLowerCase();
+  stateRef.hasT1Filter = ["all", "with", "without"].includes(normalizedHasT1)
+    ? normalizedHasT1
+    : "all";
+}
+
 function renderProjectData() {
+  syncActiveSheetFilters();
+  syncProjectViewToState();
   renderProjectIndicator(elements, stateRef, bridge, getActiveProjectTitle);
   renderSummary(elements, stateRef, getActiveProjectTitle);
+  renderMonthTabs(elements, stateRef);
+  renderFilters(elements, stateRef);
   renderRows(elements, stateRef);
   elements.projectSearch.value = stateRef.projectSearchTerm;
+  elements.filterVesselDateMode.value = stateRef.vesselDateModeFilter;
+  elements.filterVesselDateFrom.value = stateRef.vesselDateFromFilter;
+  elements.filterVesselDateTo.value = stateRef.vesselDateToFilter;
+  elements.filterHasT1.value = stateRef.hasT1Filter;
+  elements.filterStatus.value = stateRef.statusFilter;
   elements.forceUpdate.checked = stateRef.forceUpdateEnabled;
   applyBusyState();
 }
@@ -156,6 +379,7 @@ function applyProjectRowPatches(changes = []) {
     return;
   }
 
+  const previousRowsById = new Map(flattenRows(stateRef.state).map((row) => [row.id, row]));
   const rowMap = new Map(
     changes
       .filter((entry) => entry?.row?.id)
@@ -171,6 +395,14 @@ function applyProjectRowPatches(changes = []) {
       rows: sheet.rows.map((row) => rowMap.get(row.id) || row),
     })
   );
+  mergeRowHighlights(
+    Array.from(rowMap.values())
+      .map((row) => ({
+        rowId: row.id,
+        fields: getUpdatedFields(previousRowsById.get(row.id), row),
+      }))
+      .filter((entry) => entry.fields.length > 0)
+  );
   stateRef.dirty = true;
   queueProjectDataRender();
 }
@@ -180,7 +412,7 @@ function applyBusyState() {
   const normalizedProgress = Math.max(0, Math.min(Number(stateRef.busyProgress) || 0, 100));
 
   document.body.classList.toggle("is-busy", isBusy);
-  document.querySelectorAll("button, input").forEach((node) => {
+  document.querySelectorAll("button, input, select").forEach((node) => {
     node.disabled = isBusy ? node.dataset.busyAllow !== "true" : false;
   });
 
@@ -250,6 +482,7 @@ async function finalizeCanceledUpdate(result) {
   );
 
   if (!keepPartial && session?.baseState) {
+    resetRowFeedback();
     setState(session.baseState, {
       currentProject: stateRef.currentProjectSummary,
       projectNameDraft: session.projectNameDraft,
@@ -277,6 +510,7 @@ async function finalizeFailedUpdate(error) {
   );
 
   if (!keepPartial && session?.baseState) {
+    resetRowFeedback();
     setState(session.baseState, {
       currentProject: stateRef.currentProjectSummary,
       projectNameDraft: session.projectNameDraft,
@@ -291,8 +525,15 @@ async function finalizeFailedUpdate(error) {
 }
 
 function renderAllApp() {
+  syncActiveSheetFilters();
+  syncProjectViewToState();
   renderAll(elements, stateRef, bridge, getActiveProjectTitle);
   elements.projectSearch.value = stateRef.projectSearchTerm;
+  elements.filterVesselDateMode.value = stateRef.vesselDateModeFilter;
+  elements.filterVesselDateFrom.value = stateRef.vesselDateFromFilter;
+  elements.filterVesselDateTo.value = stateRef.vesselDateToFilter;
+  elements.filterHasT1.value = stateRef.hasT1Filter;
+  elements.filterStatus.value = stateRef.statusFilter;
   elements.forceUpdate.checked = stateRef.forceUpdateEnabled;
   applyBusyState();
 }
@@ -320,6 +561,8 @@ function clearCurrentProject() {
 
 function setState(nextState, options = {}) {
   stateRef.state = normalizeState(nextState);
+  restoreProjectViewFromState();
+  syncActiveSheetFilters();
   if (options.currentProject !== undefined) {
     setCurrentProject(options.currentProject);
   }
@@ -488,10 +731,12 @@ async function persistCurrentProject(options = {}) {
         allowDraftForExisting: Boolean(options.allowDraftForExisting),
       })
   );
+  syncActiveSheetFilters();
   const snapshot = normalizeState({
     ...stateRef.state,
     projectName: requestedProjectName,
     dbPath,
+    view: createProjectViewSnapshot(),
   });
 
   if (!hasProjectContent(snapshot)) {
@@ -636,6 +881,7 @@ async function createNewProject() {
   const settings = (await bridge.loadModuleStorage(MODULE_STORAGE_KEY)) || {};
   const fallback = await bridge.getDefaultCenImtreksDatabasePath();
   clearCurrentProject();
+  resetRowFeedback();
   setState(
     createEmptyState({
       dbPath: asText(settings.dbPath) || asText(fallback.filePath),
@@ -667,6 +913,7 @@ async function openProject() {
     projectName: selectedProjectName,
   });
 
+  resetRowFeedback();
   setState(result.state, {
     currentProject: result.project,
     projectNameDraft: result.project?.projectName || selectedProjectName,
@@ -688,12 +935,14 @@ async function importWorkbook() {
     ...result.state,
     projectName: stateRef.state.projectName,
     dbPath: stateRef.state.dbPath || result.state.dbPath,
+    view: stateRef.state.view,
   });
   const nextDraft =
     stateRef.currentProjectId && stateRef.state.projectName
       ? stateRef.projectNameDraft
       : asText(stateRef.projectNameDraft) || deriveProjectName(nextState);
 
+  resetRowFeedback();
   setState(nextState, {
     currentProject: stateRef.currentProjectSummary,
     projectNameDraft: nextDraft,
@@ -709,6 +958,17 @@ async function importWorkbook() {
 async function startProjectUpdate() {
   await flushAutosave({ silent: true });
   const dbPath = await ensureDbPath();
+  const activeSheet = getActiveSheet(stateRef.state);
+  const filteredRows = getFilteredRows(stateRef.state, getProjectFilters());
+
+  if (!filteredRows.length) {
+    window.alert(
+      "Na aktywnej zakladce nie ma wierszy spelniajacych biezace filtry do aktualizacji."
+    );
+    return null;
+  }
+
+  resetRowFeedback();
   const updateId = createUpdateRequestId();
   stateRef.updateSession = {
     id: updateId,
@@ -716,13 +976,14 @@ async function startProjectUpdate() {
     baseDirty: stateRef.dirty,
     projectNameDraft: stateRef.projectNameDraft,
     force: Boolean(stateRef.forceUpdateEnabled),
+    targetRowIds: filteredRows.map((row) => row.id),
   };
 
   setBusyState({
     action: "update",
     message: stateRef.forceUpdateEnabled
-      ? "Force update: przygotowanie aktualizacji projektu."
-      : "Przygotowanie aktualizacji projektu.",
+      ? `Force update: przygotowanie ${filteredRows.length} wierszy z arkusza ${activeSheet?.name || "-"}.`
+      : `Przygotowanie ${filteredRows.length} wierszy z arkusza ${activeSheet?.name || "-"}.`,
     progress: 4,
   });
   await flushUi();
@@ -731,6 +992,8 @@ async function startProjectUpdate() {
     const result = await bridge.updateCenImtreksProject(stateRef.state, dbPath, {
       requestId: updateId,
       force: stateRef.forceUpdateEnabled,
+      activeSheetId: stateRef.state.activeSheetId,
+      targetRowIds: filteredRows.map((row) => row.id),
     });
 
     if (result.canceled) {
@@ -742,6 +1005,7 @@ async function startProjectUpdate() {
       message: "Odswiezanie widoku i zapisywanie projektu.",
       progress: 96,
     });
+    captureRowHighlightsFromState(result.state);
     setState(result.state, {
       currentProject: stateRef.currentProjectSummary,
       projectNameDraft: stateRef.projectNameDraft || deriveProjectName(result.state),
@@ -751,7 +1015,11 @@ async function startProjectUpdate() {
     await Promise.all([refreshLookupRecords(), persistCurrentProject({ silent: true })]);
     resetUpdateSession();
     clearBusyState();
-    setStatus(formatUpdateSummary(result));
+    setStatus(
+      stateRef.rowHighlights.size > 0
+        ? `${formatUpdateSummary(result)} Podswietlono ${stateRef.rowHighlights.size} zmienionych wierszy.`
+        : formatUpdateSummary(result)
+    );
     return result;
   } catch (error) {
     const keptPartial = await finalizeFailedUpdate(error);
@@ -822,10 +1090,10 @@ async function saveProjectAs() {
 }
 
 function switchMonth(sheetId) {
+  resetRowFeedback();
   stateRef.state.activeSheetId = asText(sheetId);
-  renderMonthTabs(elements, stateRef);
-  renderRows(elements, stateRef);
-  renderSummary(elements, stateRef, getActiveProjectTitle);
+  syncActiveSheetFilters();
+  renderProjectData();
 }
 
 function updateRow(rowId, field, value) {
@@ -842,7 +1110,8 @@ function updateRow(rowId, field, value) {
       ),
     })
   );
-  registerProjectMutation({ rerender: "summary" });
+  clearRowHighlightForField(rowId, field);
+  registerProjectMutation({ rerender: "all" });
 }
 
 function ensureDefaultSheet() {
@@ -879,6 +1148,8 @@ function deleteRow(rowId) {
       rows: sheet.rows.filter((row) => row.id !== rowId),
     })
   );
+  stateRef.rowHighlights.delete(asText(rowId));
+  stateRef.stickyVisibleRowIds.delete(asText(rowId));
   registerProjectMutation({ rerender: "all" });
 }
 
@@ -961,6 +1232,21 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
+  const vesselDateSelectionNode = event.target.closest("[data-date-selection]");
+  if (vesselDateSelectionNode) {
+    if (stateRef.busyAction) {
+      return;
+    }
+
+    const options = getActiveSheetFilterOptions(stateRef.state);
+    stateRef.vesselDateSelectedFilter =
+      vesselDateSelectionNode.dataset.dateSelection === "all"
+        ? options.vesselDateOptions.map((option) => option.value)
+        : [];
+    commitViewMutation({ clearFeedback: true });
+    return;
+  }
+
   const recordRow = event.target.closest("[data-record-container]");
   if (!recordRow) {
     return;
@@ -995,8 +1281,94 @@ elements.projectRows.addEventListener("input", (event) => {
 
 elements.projectSearch.addEventListener("input", (event) => {
   stateRef.projectSearchTerm = asText(event.target.value);
-  renderRows(elements, stateRef);
-  applyBusyState();
+  commitViewMutation({ clearFeedback: true });
+});
+
+elements.filterVesselDateMode.addEventListener("change", (event) => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  stateRef.vesselDateModeFilter = asText(event.target.value).toLowerCase() === "list" ? "list" : "range";
+  commitViewMutation({ clearFeedback: true });
+});
+
+elements.filterVesselDateOptions.addEventListener("change", (event) => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  const checkbox = event.target.closest("[data-vessel-date-value]");
+  if (!checkbox) {
+    return;
+  }
+
+  const selectedValues = new Set(stateRef.vesselDateSelectedFilter.map((value) => asText(value)));
+  const vesselDateValue = asText(checkbox.dataset.vesselDateValue);
+  if (!vesselDateValue) {
+    return;
+  }
+
+  if (checkbox.checked) {
+    selectedValues.add(vesselDateValue);
+  } else {
+    selectedValues.delete(vesselDateValue);
+  }
+
+  stateRef.vesselDateSelectedFilter = Array.from(selectedValues).sort((left, right) =>
+    left.localeCompare(right, "pl")
+  );
+  commitViewMutation({ clearFeedback: true });
+});
+
+elements.filterVesselDateFrom.addEventListener("change", (event) => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  stateRef.vesselDateFromFilter = asText(event.target.value);
+  if (
+    stateRef.vesselDateToFilter &&
+    stateRef.vesselDateFromFilter &&
+    stateRef.vesselDateFromFilter > stateRef.vesselDateToFilter
+  ) {
+    stateRef.vesselDateToFilter = stateRef.vesselDateFromFilter;
+  }
+  commitViewMutation({ clearFeedback: true });
+});
+
+elements.filterVesselDateTo.addEventListener("change", (event) => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  stateRef.vesselDateToFilter = asText(event.target.value);
+  if (
+    stateRef.vesselDateFromFilter &&
+    stateRef.vesselDateToFilter &&
+    stateRef.vesselDateToFilter < stateRef.vesselDateFromFilter
+  ) {
+    stateRef.vesselDateFromFilter = stateRef.vesselDateToFilter;
+  }
+  commitViewMutation({ clearFeedback: true });
+});
+
+elements.filterHasT1.addEventListener("change", (event) => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  stateRef.hasT1Filter = asText(event.target.value).toLowerCase() || "all";
+  commitViewMutation({ clearFeedback: true });
+});
+
+elements.filterStatus.addEventListener("change", (event) => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  stateRef.statusFilter = asText(event.target.value);
+  commitViewMutation({ clearFeedback: true });
 });
 
 elements.forceUpdate.addEventListener("change", (event) => {
@@ -1005,6 +1377,7 @@ elements.forceUpdate.addEventListener("change", (event) => {
   }
 
   stateRef.forceUpdateEnabled = Boolean(event.target.checked);
+  commitViewMutation();
 });
 
 elements.projectName.addEventListener("input", async (event) => {

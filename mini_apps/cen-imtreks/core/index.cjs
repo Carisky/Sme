@@ -2,6 +2,7 @@ const path = require("path");
 
 const DEFAULT_PROJECT_APP_ID = "cen-imtreks";
 const DEFAULT_SHEET_NAME = "Arkusz 1";
+const DEFAULT_VESSEL_DATE_FILTER_MODE = "range";
 
 function asText(value) {
   if (value === null || value === undefined) {
@@ -15,6 +16,52 @@ function normalizeContainerNumber(value) {
   return asText(value).replace(/[\s\u00a0]+/g, "").toUpperCase();
 }
 
+function normalizeVesselDateFilterMode(value) {
+  return asText(value).toLowerCase() === "list" ? "list" : DEFAULT_VESSEL_DATE_FILTER_MODE;
+}
+
+function normalizeHasT1FilterValue(value) {
+  const normalized = asText(value).toLowerCase();
+  return ["all", "with", "without"].includes(normalized) ? normalized : "all";
+}
+
+function normalizeVesselDateSelection(values = []) {
+  return Array.from(
+    new Set(
+      (Array.isArray(values) ? values : [values])
+        .map((value) => asText(value))
+        .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value))
+    )
+  ).sort((left, right) => left.localeCompare(right, "pl"));
+}
+
+function createProjectView(overrides = {}) {
+  return {
+    searchTerm: "",
+    vesselDateMode: DEFAULT_VESSEL_DATE_FILTER_MODE,
+    vesselDateFrom: "",
+    vesselDateTo: "",
+    vesselDateSelected: [],
+    hasT1: "all",
+    status: "",
+    forceUpdate: false,
+    ...overrides,
+  };
+}
+
+function normalizeProjectView(view = {}) {
+  return createProjectView({
+    searchTerm: asText(view.searchTerm),
+    vesselDateMode: normalizeVesselDateFilterMode(view.vesselDateMode),
+    vesselDateFrom: asText(view.vesselDateFrom),
+    vesselDateTo: asText(view.vesselDateTo),
+    vesselDateSelected: normalizeVesselDateSelection(view.vesselDateSelected),
+    hasT1: normalizeHasT1FilterValue(view.hasT1),
+    status: asText(view.status),
+    forceUpdate: Boolean(view.forceUpdate),
+  });
+}
+
 function createId(prefix = "row") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -26,6 +73,7 @@ function createProjectRow(overrides = {}) {
     sourceRowNumber: "",
     sequenceNumber: "",
     orderDate: "",
+    vesselDate: "",
     folderName: "",
     containerCount: "",
     invoiceInfo: "",
@@ -44,12 +92,14 @@ function createProjectRow(overrides = {}) {
 }
 
 function normalizeProjectRow(row = {}) {
+  const vesselDate = asText(row.vesselDate || row.vessel);
   return createProjectRow({
     id: asText(row.id) || createId("row"),
     origin: asText(row.origin) || "manual",
     sourceRowNumber: asText(row.sourceRowNumber),
     sequenceNumber: asText(row.sequenceNumber),
     orderDate: asText(row.orderDate),
+    vesselDate,
     folderName: asText(row.folderName),
     containerCount: asText(row.containerCount),
     invoiceInfo: asText(row.invoiceInfo),
@@ -154,6 +204,7 @@ function normalizeState(input = {}) {
     sourceFileName: asText(input.sourceFileName),
     dbPath: asText(input.dbPath),
     activeSheetId: resolvedActiveSheetId,
+    view: normalizeProjectView(input.view),
     sheets,
   };
 }
@@ -167,6 +218,7 @@ function createEmptyState(overrides = {}) {
     sourceFileName: "",
     dbPath: "",
     activeSheetId: "",
+    view: createProjectView(),
     sheets: [],
     ...overrides,
   });
@@ -204,6 +256,7 @@ module.exports = {
   flattenProjectRows,
   normalizeContainerNumber,
   normalizeLookupRecord,
+  normalizeProjectView,
   normalizeProjectRow,
   normalizeProjectSheet,
   normalizeState,
