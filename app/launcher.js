@@ -56,18 +56,18 @@ function getVisibilityHintText(result = currentCatalogResult, visibility = launc
   const visibleCount = countVisibleMiniApps(miniApps, visibility);
 
   if (!totalCount) {
-    return "Brak modulow do ustawienia.";
+    return "Brak modułów do ustawienia.";
   }
 
   if (visibleCount === totalCount) {
-    return "Pokazujesz wszystkie moduly.";
+    return "Pokazujesz wszystkie moduły.";
   }
 
   if (!visibleCount) {
-    return "Wszystkie moduly sa ukryte.";
+    return "Wszystkie moduły są ukryte.";
   }
 
-  return `Pokazujesz ${visibleCount} z ${totalCount} modulow.`;
+  return `Pokazujesz ${visibleCount} z ${totalCount} modułów.`;
 }
 
 function updateVisibilityHint() {
@@ -92,7 +92,7 @@ function getPrimaryAction(miniApp) {
   if (miniApp.canLaunch) {
     return {
       action: "open",
-      label: "Otworz",
+      label: "Otwórz",
     };
   }
 
@@ -103,7 +103,7 @@ function getSecondaryAction(miniApp) {
   if (miniApp.canUpdate && miniApp.canLaunch) {
     return {
       action: "open",
-      label: "Otworz obecna",
+      label: "Otwórz obecną",
     };
   }
 
@@ -153,8 +153,8 @@ function buildLauncherStatus(result = {}, visibility = launcherVisibility) {
   if (totalCount) {
     parts.push(
       visibleCount === totalCount
-        ? `Na ekranie: ${visibleCount} modulow.`
-        : `Na ekranie: ${visibleCount} z ${totalCount} modulow.`
+        ? `Na ekranie: ${visibleCount} modułów.`
+        : `Na ekranie: ${visibleCount} z ${totalCount} modułów.`
     );
   }
 
@@ -165,14 +165,14 @@ function buildLauncherStatus(result = {}, visibility = launcherVisibility) {
   }
 
   if (result.registryError) {
-    parts.push(`Dostepne moduly: ${totalCount}. Rejestr GitHub chwilowo niedostepny.`);
+    parts.push(`Dostępne moduły: ${totalCount}. Rejestr GitHub jest chwilowo niedostępny.`);
     return parts.join(" | ");
   }
 
   if (totalCount) {
-    parts.push(`Dostepne moduly: ${totalCount}.`);
+    parts.push(`Dostępne moduły: ${totalCount}.`);
   } else {
-    parts.push("Brak dostepnych modulow.");
+    parts.push("Brak dostępnych modułów.");
   }
 
   return parts.join(" | ");
@@ -185,8 +185,8 @@ function renderMiniApps(result = {}) {
   if (!miniApps.length) {
     tiles.innerHTML = `
       <article class="launcher-empty">
-        <h2>Brak dostepnych modulow</h2>
-        <p>Dodaj modul do <code>mini_apps/</code> lub do rejestru GitHub.</p>
+        <h2>Brak dostępnych modułów</h2>
+        <p>Dodaj moduł do <code>mini_apps/</code> lub do rejestru GitHub.</p>
       </article>
     `;
     return;
@@ -195,15 +195,15 @@ function renderMiniApps(result = {}) {
   if (!visibleMiniApps.length) {
     tiles.innerHTML = `
       <article class="launcher-empty">
-        <h2>Wszystkie moduly sa ukryte</h2>
-        <p>Otworz ustawienia widocznosci, aby ponownie wlaczyc wybrane kafelki.</p>
+        <h2>Wszystkie moduły są ukryte</h2>
+        <p>Otwórz ustawienia widoczności, aby ponownie włączyć wybrane kafelki.</p>
         <div class="launcher-empty__actions">
           <button
             class="launcher-button launcher-button--secondary"
             type="button"
             data-launcher-action="open-visibility-settings"
           >
-            Ustaw widocznosc modulow
+            Ustaw widoczność modułów
           </button>
         </div>
       </article>
@@ -225,13 +225,13 @@ function renderMiniApps(result = {}) {
                 : `<span class="launcher-tile__fallback">${escapeHtml(miniApp.name.slice(0, 1).toUpperCase())}</span>`}
             </span>
             <div class="launcher-tile__meta">
-              <span class="launcher-tile__badge">${escapeHtml(miniApp.statusLabel || "Modul")}</span>
+              <span class="launcher-tile__badge">${escapeHtml(miniApp.statusLabel || "Moduł")}</span>
               ${renderVersionSummary(miniApp)}
             </div>
           </div>
           <div class="launcher-tile__copy">
             <strong>${escapeHtml(miniApp.name)}</strong>
-            <span>${escapeHtml(miniApp.description || "Modul aplikacji SME")}</span>
+            <span>${escapeHtml(miniApp.description || "Moduł aplikacji SME")}</span>
           </div>
           <div class="launcher-tile__actions">
             ${
@@ -301,7 +301,7 @@ function updateVisibilityDialogSummary() {
   );
 
   if (!inputs.length) {
-    visibilitySummary.textContent = "Brak modulow do skonfigurowania.";
+    visibilitySummary.textContent = "Brak modułów do skonfigurowania.";
     visibilitySave.disabled = true;
     return;
   }
@@ -310,11 +310,11 @@ function updateVisibilityDialogSummary() {
   const totalCount = inputs.length;
 
   if (visibleCount === totalCount) {
-    visibilitySummary.textContent = "Wszystkie moduly beda widoczne po zapisaniu.";
+    visibilitySummary.textContent = "Wszystkie moduły będą widoczne po zapisaniu.";
   } else if (!visibleCount) {
-    visibilitySummary.textContent = "Po zapisaniu wszystkie moduly beda ukryte.";
+    visibilitySummary.textContent = "Po zapisaniu wszystkie moduły będą ukryte.";
   } else {
-    visibilitySummary.textContent = `Po zapisaniu bedzie widoczne ${visibleCount} z ${totalCount} modulow.`;
+    visibilitySummary.textContent = `Po zapisaniu będzie widoczne ${visibleCount} z ${totalCount} modułów.`;
   }
 
   visibilitySave.disabled = isVisibilityBusy;
@@ -327,7 +327,7 @@ function renderVisibilityDialog() {
   if (!miniApps.length) {
     visibilityList.innerHTML = `
       <p class="launcher-visibility-empty">
-        Lista modulow jest pusta. Dodaj modul lokalnie albo pobierz go z rejestru.
+        Lista modułów jest pusta. Dodaj moduł lokalnie albo pobierz go z rejestru.
       </p>
     `;
     updateVisibilityDialogSummary();
@@ -349,10 +349,10 @@ function renderVisibilityDialog() {
           />
           <span class="launcher-visibility-item__copy">
             <strong>${escapeHtml(miniApp.name || miniApp.id)}</strong>
-            <span>${escapeHtml(miniApp.description || "Modul aplikacji SME")}</span>
+            <span>${escapeHtml(miniApp.description || "Moduł aplikacji SME")}</span>
           </span>
           <span class="launcher-visibility-item__meta">
-            <span class="launcher-tile__badge">${escapeHtml(miniApp.statusLabel || "Modul")}</span>
+            <span class="launcher-tile__badge">${escapeHtml(miniApp.statusLabel || "Moduł")}</span>
             ${versionLabel ? `<span class="launcher-tile__version">${escapeHtml(versionLabel)}</span>` : ""}
           </span>
         </label>
@@ -391,22 +391,22 @@ function getUpdateSummary(updateGate = {}) {
       return "Brak nowych aktualizacji";
     case "update-required":
       return remoteVersion
-        ? `Dostepna aktualizacja do v${remoteVersion}`
-        : "Dostepna aktualizacja aplikacji";
+        ? `Dostępna jest aktualizacja do v${remoteVersion}`
+        : "Dostępna jest aktualizacja aplikacji";
     case "integrity-mismatch":
-      return "Wymagana ponowna instalacja aplikacji";
+      return "Wymagana jest ponowna instalacja aplikacji";
     case "verification-persist-failed":
-      return "Nie udalo sie potwierdzic lokalnej wersji";
+      return "Nie udało się potwierdzić lokalnej wersji";
     case "server-unavailable":
-      return "Nie udalo sie sprawdzic aktualizacji";
+      return "Nie udało się sprawdzić aktualizacji";
     case "offline-verified":
-      return "Brak polaczenia, uzywam ostatniej potwierdzonej wersji";
+      return "Brak połączenia, używam ostatniej potwierdzonej wersji";
     case "local-newer-than-remote":
       return remoteVersion
-        ? `Lokalna wersja v${localVersion} jest nowsza niz serwer v${remoteVersion}`
+        ? `Lokalna wersja v${localVersion} jest nowsza niż wersja na serwerze v${remoteVersion}`
         : `Lokalna wersja v${localVersion} jest nowsza od wydania`;
     case "development":
-      return "Tryb developerski, aktualizacje sa wylaczone";
+      return "Tryb deweloperski, aktualizacje są wyłączone";
     default:
       return String(updateGate.message || "Sprawdzanie wersji aplikacji.").trim();
   }
@@ -424,7 +424,7 @@ function getUpdateVersions(updateGate = {}) {
   if (remoteVersion) {
     versions.push(
       localVersion && remoteVersion !== localVersion
-        ? `dostepna v${remoteVersion}`
+        ? `dostępna v${remoteVersion}`
         : `serwer v${remoteVersion}`
     );
   }
@@ -527,7 +527,7 @@ function handleUpdateStatusEvent(payload = {}) {
       setAppUpdateButtonsDisabled(true);
       setAppUpdateDisplay({
         summary: "Weryfikacja instalatora",
-        detail: payload.message || "Sprawdzanie integralnosci instalatora.",
+        detail: payload.message || "Sprawdzanie integralności instalatora.",
         versions: getUpdateVersions(currentUpdateGate || {}),
         state: "verifying",
         showInstall: false,
@@ -538,7 +538,7 @@ function handleUpdateStatusEvent(payload = {}) {
       setAppUpdateButtonsDisabled(true);
       setAppUpdateDisplay({
         summary: "Uruchamianie instalatora",
-        detail: payload.message || "Instalator zostanie uruchomiony za chwile.",
+        detail: payload.message || "Instalator zostanie uruchomiony za chwilę.",
         versions: getUpdateVersions(currentUpdateGate || {}),
         state: "launching",
         showInstall: false,
@@ -618,9 +618,9 @@ async function startAppUpdateInstall() {
 }
 
 async function bootstrapLauncher() {
-  window.bridge.setWindowTitle("SME - Moduly");
+  window.bridge.setWindowTitle("SME - Moduły");
   window.bridge.onUpdateStatus(handleUpdateStatusEvent);
-  setStatus("Sprawdzanie aplikacji i synchronizacja modulow.");
+  setStatus("Sprawdzanie aplikacji i synchronizacja modułów.");
 
   try {
     const [result, storedVisibility] = await Promise.all([
@@ -642,7 +642,7 @@ async function bootstrapLauncher() {
     console.error(error);
     tiles.innerHTML = `
       <article class="launcher-empty launcher-empty--error">
-        <h2>Nie udalo sie wczytac launchera</h2>
+        <h2>Nie udało się wczytać launchera</h2>
         <p>${escapeHtml(error.message)}</p>
       </article>
     `;
@@ -702,13 +702,13 @@ document.addEventListener("click", async (event) => {
 
   try {
     if (action === "open") {
-      setStatus(`Otwieranie modulu ${miniAppId}.`);
+      setStatus(`Otwieranie modułu ${miniAppId}.`);
       await window.bridge.openMiniApp(miniAppId);
       return;
     }
 
     if (action === "install") {
-      setStatus(`Instalowanie modulu ${miniAppId}.`);
+      setStatus(`Instalowanie modułu ${miniAppId}.`);
       const result = await window.bridge.installMiniApp(miniAppId);
       currentCatalogResult = {
         ...currentCatalogResult,
@@ -716,7 +716,7 @@ document.addEventListener("click", async (event) => {
         miniApps: getCatalogMiniApps(result),
       };
       renderLauncherState();
-      setStatus(`Modul ${miniAppId} jest gotowy.`);
+      setStatus(`Moduł ${miniAppId} jest gotowy.`);
       return;
     }
   } catch (error) {

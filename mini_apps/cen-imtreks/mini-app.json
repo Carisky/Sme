@@ -1,7 +1,7 @@
 {
   "id": "cen-imtreks",
   "name": "CEN IMTREKS",
-  "description": "Import rejestrow IMTREKS po miesiacach oraz lookup T1/Status/Stop.",
+  "description": "Import rejestrów IMTREKS po miesiącach oraz lookup T1/Status/Stop.",
   "version": "0.1.0",
   "order": 21,
   "page": "index.html",

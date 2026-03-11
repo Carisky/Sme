@@ -63,7 +63,7 @@ function createMiniAppCatalogService({
     const canUpdate = Boolean(updateAvailable);
 
     let status = "unavailable";
-    let statusLabel = "Niedostepny";
+    let statusLabel = "Niedostępny";
 
     if (canUpdate) {
       status = "update-available";
@@ -76,7 +76,7 @@ function createMiniAppCatalogService({
       statusLabel = `Wbudowany v${bundledMiniApp.version}`;
     } else if (registryMiniApp) {
       status = "available";
-      statusLabel = `Dostepny w rejestrze v${registryMiniApp.version}`;
+      statusLabel = `Dostępny w rejestrze v${registryMiniApp.version}`;
     }
 
     return {
@@ -172,7 +172,7 @@ function createMiniAppCatalogService({
         failed: 0,
         results: [],
         message:
-          "Nie udalo sie polaczyc z rejestrem modulow. Automatyczna synchronizacja zostala pominieta.",
+          "Nie udało się połączyć z rejestrem modułów. Automatyczna synchronizacja została pominięta.",
       };
     }
 
@@ -185,8 +185,8 @@ function createMiniAppCatalogService({
         results: [],
         message:
           sources.registryMiniApps.length > 0
-            ? "Wszystkie zainstalowane moduly sa aktualne."
-            : "Rejestr modulow nie zawiera jeszcze zadnych publikacji.",
+            ? "Wszystkie zainstalowane moduły są aktualne."
+            : "Rejestr modułów nie zawiera jeszcze żadnych publikacji.",
       };
     }
 
@@ -197,7 +197,7 @@ function createMiniAppCatalogService({
         updated,
         failed,
         results,
-        message: `Zaktualizowano ${updated} modul(y). ${failed} modul(y) wymagaja ponownej proby.`,
+        message: `Zaktualizowano moduły: ${updated}. Nieudane aktualizacje: ${failed}.`,
       };
     }
 
@@ -207,7 +207,7 @@ function createMiniAppCatalogService({
       updated,
       failed: 0,
       results,
-      message: `Zaktualizowano ${updated} modul(y) na ekranie startowym.`,
+      message: `Zaktualizowano moduły na ekranie startowym: ${updated}.`,
     };
   }
 
@@ -301,7 +301,7 @@ function createMiniAppCatalogService({
       registryMiniApps.find((entry) => entry.id === String(miniAppId || "").trim()) || null;
 
     if (!registryMiniApp) {
-      throw new Error(`Nie znaleziono modulu ${miniAppId} w rejestrze.`);
+      throw new Error(`Nie znaleziono modułu ${miniAppId} w rejestrze.`);
     }
 
     await miniAppRegistryService.installMiniApp(registryMiniApp);
