@@ -2,9 +2,7 @@ const root = document.getElementById("launcher-root");
 const tiles = document.getElementById("launcher-tiles");
 const status = document.getElementById("launcher-status");
 const appUpdatePanel = document.getElementById("launcher-update");
-const appUpdateMessage = document.getElementById("launcher-update-message");
-const appUpdateDetail = document.getElementById("launcher-update-detail");
-const appUpdateVersions = document.getElementById("launcher-update-versions");
+const appUpdateSummary = document.getElementById("launcher-update-summary");
 const appUpdateInstall = document.getElementById("launcher-update-install");
 const appUpdateRetry = document.getElementById("launcher-update-retry");
 
@@ -232,6 +230,17 @@ function shouldAllowManualRetry(updateGate = {}) {
   return updateGate.status !== "development";
 }
 
+function buildUpdateLine({
+  summary,
+  versions = "",
+  detail = "",
+}) {
+  return [summary, versions, detail]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join(" | ");
+}
+
 function setAppUpdateDisplay({
   summary,
   detail = "",
@@ -243,18 +252,15 @@ function setAppUpdateDisplay({
   const normalizedSummary = String(summary || "Sprawdzanie wersji aplikacji.").trim();
   const normalizedDetail = String(detail || "").trim();
   const normalizedVersions = String(versions || "").trim();
+  const summaryLine = buildUpdateLine({
+    summary: normalizedSummary,
+    detail: normalizedDetail,
+    versions: normalizedVersions,
+  });
 
   appUpdatePanel.dataset.updateState = state || "default";
-  appUpdateMessage.textContent = normalizedSummary;
-  appUpdateMessage.title = normalizedSummary;
-
-  appUpdateVersions.hidden = !normalizedVersions;
-  appUpdateVersions.textContent = normalizedVersions;
-  appUpdateVersions.title = normalizedVersions;
-
-  appUpdateDetail.hidden = !normalizedDetail;
-  appUpdateDetail.textContent = normalizedDetail;
-  appUpdateDetail.title = normalizedDetail;
+  appUpdateSummary.textContent = summaryLine;
+  appUpdateSummary.title = summaryLine;
 
   appUpdateInstall.hidden = !showInstall;
   appUpdateRetry.hidden = !showRetry;
