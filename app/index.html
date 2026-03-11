@@ -29,31 +29,31 @@
         </p>
       </section>
 
-      <section class="launcher-update" id="launcher-update" hidden>
-        <div class="launcher-update__copy">
-          <p class="launcher-update__eyebrow">Aplikacja</p>
-          <h2 id="launcher-update-title">Stan aktualizacji</h2>
-          <p id="launcher-update-message">Sprawdzanie wersji aplikacji.</p>
-          <p class="launcher-update__detail" id="launcher-update-detail"></p>
+      <section class="launcher-update" id="launcher-update" aria-live="polite">
+        <div class="launcher-update__line">
+          <span class="launcher-update__label">Aplikacja</span>
+          <strong class="launcher-update__message" id="launcher-update-message">
+            Sprawdzanie wersji aplikacji.
+          </strong>
+          <span class="launcher-update__versions" id="launcher-update-versions" hidden></span>
+          <span class="launcher-update__detail" id="launcher-update-detail" hidden></span>
         </div>
-        <div class="launcher-update__meta">
-          <span id="launcher-update-versions">v-</span>
-          <div class="launcher-update__actions">
-            <button
-              class="launcher-button launcher-button--primary"
-              type="button"
-              id="launcher-update-install"
-            >
-              Zaktualizuj aplikacje
-            </button>
-            <button
-              class="launcher-button launcher-button--secondary"
-              type="button"
-              id="launcher-update-retry"
-            >
-              Sprawdz ponownie
-            </button>
-          </div>
+        <div class="launcher-update__actions">
+          <button
+            class="launcher-button launcher-button--primary"
+            type="button"
+            id="launcher-update-install"
+            hidden
+          >
+            Zaktualizuj aplikacje
+          </button>
+          <button
+            class="launcher-button launcher-button--secondary"
+            type="button"
+            id="launcher-update-retry"
+          >
+            Sprawdz ponownie
+          </button>
         </div>
       </section>
 

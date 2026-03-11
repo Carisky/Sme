@@ -11,18 +11,44 @@ function registerIpcHandlers({
   moduleDiscoveryService,
   wctCenService,
 }) {
-  ipcMain.handle("shell:bootstrap", async () => {
-    const [catalog, updateGate] = await Promise.all([
-      miniAppCatalogService.bootstrapCatalog({
-        forceRefresh: true,
-      }),
-      updateService.evaluateUpdateGate(),
-    ]);
+  let cachedShellBootstrap = null;
+  let pendingShellBootstrap = null;
 
-    return {
-      ...catalog,
-      updateGate,
-    };
+  async function loadShellBootstrap() {
+    if (cachedShellBootstrap) {
+      return cachedShellBootstrap;
+    }
+
+    if (pendingShellBootstrap) {
+      return pendingShellBootstrap;
+    }
+
+    pendingShellBootstrap = (async () => {
+      const [catalog, updateGate] = await Promise.all([
+        miniAppCatalogService.bootstrapCatalog({
+          forceRefresh: true,
+        }),
+        updateService.evaluateUpdateGate({
+          forceRefresh: true,
+        }),
+      ]);
+
+      cachedShellBootstrap = {
+        ...catalog,
+        updateGate,
+      };
+      return cachedShellBootstrap;
+    })();
+
+    try {
+      return await pendingShellBootstrap;
+    } finally {
+      pendingShellBootstrap = null;
+    }
+  }
+
+  ipcMain.handle("shell:bootstrap", async () => {
+    return loadShellBootstrap();
   });
 
   ipcMain.handle("shell:open-home", async () => {
@@ -39,7 +65,15 @@ function registerIpcHandlers({
   });
 
   ipcMain.handle("shell:install-mini-app", async (_event, miniAppId) => {
-    return miniAppCatalogService.installMiniApp(miniAppId);
+    const catalog = await miniAppCatalogService.installMiniApp(miniAppId);
+    if (cachedShellBootstrap) {
+      cachedShellBootstrap = {
+        ...cachedShellBootstrap,
+        ...catalog,
+      };
+    }
+
+    return catalog;
   });
 
   ipcMain.handle("app:bootstrap", async () => {
@@ -109,7 +143,15 @@ function registerIpcHandlers({
   });
 
   ipcMain.handle("update:check", async () => {
-    return updateService.evaluateUpdateGate({ forceRefresh: true });
+    const updateGate = await updateService.evaluateUpdateGate({ forceRefresh: true });
+    if (cachedShellBootstrap) {
+      cachedShellBootstrap = {
+        ...cachedShellBootstrap,
+        updateGate,
+      };
+    }
+
+    return updateGate;
   });
 
   ipcMain.handle("update:download-and-install", async () => {

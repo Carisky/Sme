@@ -2,7 +2,6 @@ const root = document.getElementById("launcher-root");
 const tiles = document.getElementById("launcher-tiles");
 const status = document.getElementById("launcher-status");
 const appUpdatePanel = document.getElementById("launcher-update");
-const appUpdateTitle = document.getElementById("launcher-update-title");
 const appUpdateMessage = document.getElementById("launcher-update-message");
 const appUpdateDetail = document.getElementById("launcher-update-detail");
 const appUpdateVersions = document.getElementById("launcher-update-versions");
@@ -76,17 +75,27 @@ function renderVersionSummary(miniApp) {
 }
 
 function buildLauncherStatus(result = {}) {
+  const parts = [];
+  const hasUpdateGate = Boolean(result.updateGate && Object.keys(result.updateGate).length);
+  const updateSummary = hasUpdateGate ? getUpdateSummary(result.updateGate) : "";
+  if (updateSummary) {
+    parts.push(updateSummary);
+  }
+
   const syncMessage = String(result.syncSummary?.message || "").trim();
   if (syncMessage) {
-    return syncMessage;
+    parts.push(syncMessage);
+    return parts.join(" | ");
   }
 
   const miniApps = Array.isArray(result.miniApps) ? result.miniApps : [];
   if (result.registryError) {
-    return `Dostepne moduly: ${miniApps.length}. Rejestr GitHub chwilowo niedostepny.`;
+    parts.push(`Dostepne moduly: ${miniApps.length}. Rejestr GitHub chwilowo niedostepny.`);
+    return parts.join(" | ");
   }
 
-  return `Dostepne moduly: ${miniApps.length}.`;
+  parts.push(`Dostepne moduly: ${miniApps.length}.`);
+  return parts.join(" | ");
 }
 
 function renderMiniApps(result = {}) {
@@ -154,68 +163,160 @@ function setAppUpdateButtonsDisabled(value) {
   appUpdateRetry.disabled = value;
 }
 
-function shouldShowAppUpdate(updateGate = {}) {
-  return Boolean(
-    updateGate.locked ||
-      updateGate.allowInstall ||
-      updateGate.allowRetry ||
-      updateGate.status === "offline-verified" ||
-      updateGate.status === "server-unavailable"
-  );
+function getUpdateSummary(updateGate = {}) {
+  const localVersion = String(updateGate.localVersion || "").trim();
+  const remoteVersion = String(updateGate.remoteVersion || "").trim();
+
+  switch (updateGate.status) {
+    case "up-to-date":
+      return "Brak nowych aktualizacji";
+    case "update-required":
+      return remoteVersion
+        ? `Dostepna aktualizacja do v${remoteVersion}`
+        : "Dostepna aktualizacja aplikacji";
+    case "integrity-mismatch":
+      return "Wymagana ponowna instalacja aplikacji";
+    case "verification-persist-failed":
+      return "Nie udalo sie potwierdzic lokalnej wersji";
+    case "server-unavailable":
+      return "Nie udalo sie sprawdzic aktualizacji";
+    case "offline-verified":
+      return "Brak polaczenia, uzywam ostatniej potwierdzonej wersji";
+    case "local-newer-than-remote":
+      return remoteVersion
+        ? `Lokalna wersja v${localVersion} jest nowsza niz serwer v${remoteVersion}`
+        : `Lokalna wersja v${localVersion} jest nowsza od wydania`;
+    case "development":
+      return "Tryb developerski, aktualizacje sa wylaczone";
+    default:
+      return String(updateGate.message || "Sprawdzanie wersji aplikacji.").trim();
+  }
+}
+
+function getUpdateVersions(updateGate = {}) {
+  const localVersion = String(updateGate.localVersion || "").trim();
+  const remoteVersion = String(updateGate.remoteVersion || "").trim();
+  const versions = [];
+
+  if (localVersion) {
+    versions.push(`lokalnie v${localVersion}`);
+  }
+
+  if (remoteVersion) {
+    versions.push(
+      localVersion && remoteVersion !== localVersion
+        ? `dostepna v${remoteVersion}`
+        : `serwer v${remoteVersion}`
+    );
+  }
+
+  return versions.join(" | ");
+}
+
+function getUpdateDetail(updateGate = {}) {
+  const statusCode = String(updateGate.status || "").trim();
+
+  if (
+    statusCode === "server-unavailable" ||
+    statusCode === "offline-verified" ||
+    statusCode === "integrity-mismatch" ||
+    statusCode === "verification-persist-failed"
+  ) {
+    return String(updateGate.detail || "").trim();
+  }
+
+  return "";
+}
+
+function shouldAllowManualRetry(updateGate = {}) {
+  return updateGate.status !== "development";
+}
+
+function setAppUpdateDisplay({
+  summary,
+  detail = "",
+  versions = "",
+  state = "default",
+  showInstall = false,
+  showRetry = true,
+}) {
+  const normalizedSummary = String(summary || "Sprawdzanie wersji aplikacji.").trim();
+  const normalizedDetail = String(detail || "").trim();
+  const normalizedVersions = String(versions || "").trim();
+
+  appUpdatePanel.dataset.updateState = state || "default";
+  appUpdateMessage.textContent = normalizedSummary;
+  appUpdateMessage.title = normalizedSummary;
+
+  appUpdateVersions.hidden = !normalizedVersions;
+  appUpdateVersions.textContent = normalizedVersions;
+  appUpdateVersions.title = normalizedVersions;
+
+  appUpdateDetail.hidden = !normalizedDetail;
+  appUpdateDetail.textContent = normalizedDetail;
+  appUpdateDetail.title = normalizedDetail;
+
+  appUpdateInstall.hidden = !showInstall;
+  appUpdateRetry.hidden = !showRetry;
+  setAppUpdateButtonsDisabled(isAppUpdateBusy);
 }
 
 function renderAppUpdate(updateGate = {}) {
   currentUpdateGate = updateGate;
-
-  if (!shouldShowAppUpdate(updateGate)) {
-    appUpdatePanel.hidden = true;
-    appUpdateDetail.textContent = "";
-    return;
-  }
-
-  const localVersion = String(updateGate.localVersion || "").trim();
-  const remoteVersion = String(updateGate.remoteVersion || "").trim();
-  const versions = [localVersion ? `lokalnie v${localVersion}` : "", remoteVersion ? `serwer v${remoteVersion}` : ""]
-    .filter(Boolean)
-    .join(" | ");
-
-  appUpdatePanel.hidden = false;
-  appUpdateTitle.textContent =
-    updateGate.locked || updateGate.allowInstall ? "Wymagana uwaga dla aplikacji" : "Stan aplikacji";
-  appUpdateMessage.textContent =
-    updateGate.message || "Sprawdzanie stanu aktualizacji aplikacji.";
-  appUpdateDetail.textContent = updateGate.detail || "";
-  appUpdateVersions.textContent = versions || "Brak danych o wersji.";
-  appUpdateInstall.hidden = !updateGate.allowInstall;
-  appUpdateRetry.hidden = !updateGate.allowRetry;
-  setAppUpdateButtonsDisabled(isAppUpdateBusy);
+  setAppUpdateDisplay({
+    summary: getUpdateSummary(updateGate),
+    detail: getUpdateDetail(updateGate),
+    versions: getUpdateVersions(updateGate),
+    state: updateGate.status || "default",
+    showInstall: Boolean(updateGate.allowInstall),
+    showRetry: shouldAllowManualRetry(updateGate),
+  });
 }
 
 function handleUpdateStatusEvent(payload = {}) {
-  if (appUpdatePanel.hidden) {
-    appUpdatePanel.hidden = false;
-  }
-
   switch (payload.phase) {
     case "checking":
       setAppUpdateButtonsDisabled(true);
-      appUpdateTitle.textContent = "Sprawdzanie aktualizacji";
-      appUpdateMessage.textContent = payload.message || "Sprawdzanie wersji aplikacji.";
+      setAppUpdateDisplay({
+        summary: payload.message || "Sprawdzanie aktualizacji.",
+        versions: getUpdateVersions(currentUpdateGate || {}),
+        state: "checking",
+        showInstall: false,
+        showRetry: false,
+      });
       return;
     case "downloading":
       setAppUpdateButtonsDisabled(true);
-      appUpdateTitle.textContent = "Pobieranie aktualizacji";
-      appUpdateMessage.textContent = payload.message || "Trwa pobieranie instalatora.";
+      setAppUpdateDisplay({
+        summary: "Pobieranie aktualizacji",
+        detail: payload.message || "Trwa pobieranie instalatora.",
+        versions: getUpdateVersions(currentUpdateGate || {}),
+        state: "downloading",
+        showInstall: false,
+        showRetry: false,
+      });
       return;
     case "verifying":
       setAppUpdateButtonsDisabled(true);
-      appUpdateTitle.textContent = "Weryfikacja instalatora";
-      appUpdateMessage.textContent = payload.message || "Sprawdzanie integralnosci instalatora.";
+      setAppUpdateDisplay({
+        summary: "Weryfikacja instalatora",
+        detail: payload.message || "Sprawdzanie integralnosci instalatora.",
+        versions: getUpdateVersions(currentUpdateGate || {}),
+        state: "verifying",
+        showInstall: false,
+        showRetry: false,
+      });
       return;
     case "launching":
       setAppUpdateButtonsDisabled(true);
-      appUpdateTitle.textContent = "Uruchamianie instalatora";
-      appUpdateMessage.textContent = payload.message || "Instalator zostanie uruchomiony za chwile.";
+      setAppUpdateDisplay({
+        summary: "Uruchamianie instalatora",
+        detail: payload.message || "Instalator zostanie uruchomiony za chwile.",
+        versions: getUpdateVersions(currentUpdateGate || {}),
+        state: "launching",
+        showInstall: false,
+        showRetry: false,
+      });
       return;
     default:
       break;
@@ -228,7 +329,7 @@ async function refreshAppUpdateState() {
   try {
     const updateGate = await window.bridge.checkForUpdates();
     renderAppUpdate(updateGate);
-    setStatus(updateGate.message || "Sprawdzono stan aplikacji.");
+    setStatus(getUpdateSummary(updateGate) || "Sprawdzono stan aplikacji.");
   } catch (error) {
     console.error(error);
     window.alert(error.message);

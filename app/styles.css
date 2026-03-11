@@ -88,50 +88,77 @@ code {
 
 .launcher-update {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 22px 24px;
-  border-radius: 24px;
+  gap: 16px;
+  padding: 14px 18px;
+  border-radius: 20px;
   border: 1px solid rgba(74, 44, 17, 0.16);
   background: rgba(255, 248, 236, 0.88);
-  box-shadow: 0 18px 40px rgba(63, 37, 11, 0.12);
+  box-shadow: 0 16px 34px rgba(63, 37, 11, 0.1);
 }
 
-.launcher-update__copy,
-.launcher-update__meta {
-  display: grid;
-  gap: 8px;
+.launcher-update__line {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
-.launcher-update__eyebrow {
-  margin: 0;
-  font-size: 0.76rem;
-  letter-spacing: 0.16em;
+.launcher-update__label {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(61, 40, 18, 0.92);
+  color: #f7ead4;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #8a5c2e;
 }
 
-.launcher-update h2,
-.launcher-update p {
-  margin: 0;
+.launcher-update__message,
+.launcher-update__versions,
+.launcher-update__detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+.launcher-update__message {
+  font-size: 1rem;
+  color: #22180d;
+}
+
+.launcher-update__versions,
 .launcher-update__detail {
   color: #6a4f33;
-  line-height: 1.45;
-}
-
-.launcher-update__meta {
-  justify-items: end;
-  text-align: right;
+  font-size: 0.92rem;
 }
 
 .launcher-update__actions {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  flex: 0 0 auto;
+  align-items: center;
   gap: 10px;
+}
+
+.launcher-update[data-update-state="update-required"],
+.launcher-update[data-update-state="integrity-mismatch"],
+.launcher-update[data-update-state="verification-persist-failed"] {
+  border-color: rgba(145, 93, 34, 0.32);
+  box-shadow: 0 18px 38px rgba(109, 62, 16, 0.14);
+}
+
+.launcher-update[data-update-state="server-unavailable"] .launcher-update__label,
+.launcher-update[data-update-state="offline-verified"] .launcher-update__label {
+  background: rgba(128, 78, 27, 0.92);
 }
 
 .launcher-tile,
@@ -316,11 +343,12 @@ code {
 
   .launcher-update {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  .launcher-update__meta {
-    justify-items: start;
-    text-align: left;
+  .launcher-update__line {
+    flex-wrap: wrap;
+    white-space: normal;
   }
 
   .launcher-update__actions {
