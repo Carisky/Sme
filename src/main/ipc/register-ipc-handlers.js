@@ -12,7 +12,17 @@ function registerIpcHandlers({
   wctCenService,
 }) {
   ipcMain.handle("shell:bootstrap", async () => {
-    return miniAppCatalogService.listCatalog();
+    const [catalog, updateGate] = await Promise.all([
+      miniAppCatalogService.bootstrapCatalog({
+        forceRefresh: true,
+      }),
+      updateService.evaluateUpdateGate(),
+    ]);
+
+    return {
+      ...catalog,
+      updateGate,
+    };
   });
 
   ipcMain.handle("shell:open-home", async () => {
@@ -33,9 +43,12 @@ function registerIpcHandlers({
   });
 
   ipcMain.handle("app:bootstrap", async () => {
+    const cachedUpdateGate = updateService.getCachedUpdateGate();
     const [bootstrapData, updateGate, userModules] = await Promise.all([
       catalogService.loadBootstrapData(),
-      updateService.evaluateUpdateGate(),
+      cachedUpdateGate
+        ? Promise.resolve(cachedUpdateGate)
+        : updateService.evaluateUpdateGate(),
       moduleDiscoveryService.listUserModules(),
     ]);
 

@@ -94,6 +94,14 @@ function buildLatestReleaseApiUrl(repository) {
   return `https://api.github.com/repos/${repository.owner}/${repository.repo}/releases/latest`;
 }
 
+function buildReleaseByTagApiUrl(repository, releaseTag) {
+  if (!repository?.owner || !repository?.repo) {
+    throw new Error("GitHub repository owner/repo is required.");
+  }
+
+  return `https://api.github.com/repos/${repository.owner}/${repository.repo}/releases/tags/${encodeURIComponent(String(releaseTag || "").trim())}`;
+}
+
 function buildReleaseAssetUrl(repository, releaseTag, assetName) {
   if (!repository?.owner || !repository?.repo) {
     throw new Error("GitHub repository owner/repo is required.");
@@ -194,6 +202,7 @@ module.exports = {
   VERIFIED_RELEASE_KEY,
   buildInstallerFileName,
   buildLatestReleaseApiUrl,
+  buildReleaseByTagApiUrl,
   buildReleaseAssetUrl,
   buildReleaseTag,
   compareVersions,

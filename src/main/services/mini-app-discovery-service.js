@@ -1,7 +1,11 @@
 const path = require("path");
 const fs = require("fs/promises");
 const { app } = require("electron");
-const { listMiniAppsFromRoot } = require("../../mini-app-common");
+const {
+  listMiniAppsFromRoot,
+  pickPreferredMiniApp,
+  sortMiniApps,
+} = require("../../mini-app-common");
 
 function getBundledMiniAppsRootPath() {
   return path.join(app.getAppPath(), "mini_apps");
@@ -26,20 +30,14 @@ function createMiniAppDiscoveryService() {
     const merged = new Map();
 
     for (const miniApp of installedMiniApps) {
-      merged.set(miniApp.id, miniApp);
+      merged.set(miniApp.id, pickPreferredMiniApp(merged.get(miniApp.id), miniApp));
     }
 
     for (const miniApp of bundledMiniApps) {
-      merged.set(miniApp.id, miniApp);
+      merged.set(miniApp.id, pickPreferredMiniApp(merged.get(miniApp.id), miniApp));
     }
 
-    return Array.from(merged.values()).sort((left, right) => {
-      if (left.order !== right.order) {
-        return left.order - right.order;
-      }
-
-      return left.name.localeCompare(right.name, "pl");
-    });
+    return Array.from(merged.values()).sort(sortMiniApps);
   }
 
   async function listBundledMiniApps() {

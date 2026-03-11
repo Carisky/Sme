@@ -17,6 +17,7 @@ const {
 function createUpdateService({ windowController, catalogService, packageJson }) {
   let releaseManifestCache = null;
   let releaseManifestCacheTime = 0;
+  let lastEvaluatedGate = null;
   const RELEASE_MANIFEST_CACHE_TTL_MS = 30000;
 
   function getRepositoryInfo() {
@@ -267,7 +268,7 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
     const localVersion = getAppVersion();
 
     if (!app.isPackaged) {
-      return {
+      lastEvaluatedGate = {
         locked: false,
         status: "development",
         localVersion,
@@ -278,6 +279,7 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
         allowRetry: false,
         manifest: null,
       };
+      return lastEvaluatedGate;
     }
 
     let verifiedRelease = null;
@@ -295,7 +297,7 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
       const versionComparison = compareVersions(remoteVersion, localVersion);
 
       if (versionComparison > 0) {
-        return {
+        lastEvaluatedGate = {
           locked: true,
           status: "update-required",
           localVersion,
@@ -306,10 +308,11 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
           allowRetry: true,
           manifest,
         };
+        return lastEvaluatedGate;
       }
 
       if (versionComparison < 0) {
-        return {
+        lastEvaluatedGate = {
           locked: false,
           status: "local-newer-than-remote",
           localVersion,
@@ -320,11 +323,12 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
           allowRetry: false,
           manifest,
         };
+        return lastEvaluatedGate;
       }
 
       localAppSha256 = await computeLocalAppSha256();
       if (normalizeSha256(localAppSha256) !== normalizeSha256(manifest.appSha256)) {
-        return {
+        lastEvaluatedGate = {
           locked: true,
           status: "integrity-mismatch",
           localVersion,
@@ -337,6 +341,7 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
           allowRetry: true,
           manifest,
         };
+        return lastEvaluatedGate;
       }
 
       const persistedRelease = await persistVerifiedReleaseState(manifest, localAppSha256);
@@ -344,7 +349,7 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
         String(persistedRelease?.version || "").trim() !== remoteVersion ||
         normalizeSha256(persistedRelease?.appSha256) !== normalizeSha256(manifest.appSha256)
       ) {
-        return {
+        lastEvaluatedGate = {
           locked: true,
           status: "verification-persist-failed",
           localVersion,
@@ -357,9 +362,10 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
           allowRetry: true,
           manifest,
         };
+        return lastEvaluatedGate;
       }
 
-      return {
+      lastEvaluatedGate = {
         locked: false,
         status: "up-to-date",
         localVersion,
@@ -371,6 +377,7 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
         allowRetry: false,
         manifest,
       };
+      return lastEvaluatedGate;
     } catch (error) {
       if (!localAppSha256) {
         try {
@@ -385,7 +392,7 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
         String(verifiedRelease.version || "").trim() === localVersion &&
         normalizeSha256(verifiedRelease.appSha256) === normalizeSha256(localAppSha256)
       ) {
-        return {
+        lastEvaluatedGate = {
           locked: false,
           status: "offline-verified",
           localVersion,
@@ -398,9 +405,10 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
           allowRetry: false,
           manifest: null,
         };
+        return lastEvaluatedGate;
       }
 
-      return {
+      lastEvaluatedGate = {
         locked: true,
         status: "server-unavailable",
         localVersion,
@@ -412,7 +420,12 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
         allowRetry: true,
         manifest: null,
       };
+      return lastEvaluatedGate;
     }
+  }
+
+  function getCachedUpdateGate() {
+    return lastEvaluatedGate;
   }
 
   async function launchInstaller(installerPath) {
@@ -500,6 +513,7 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
   return {
     downloadAndInstallLatestRelease,
     evaluateUpdateGate,
+    getCachedUpdateGate,
   };
 }
 

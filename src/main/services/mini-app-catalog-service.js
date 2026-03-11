@@ -1,5 +1,5 @@
 const { compareVersions } = require("../../update-common");
-const { sortMiniApps } = require("../../mini-app-common");
+const { pickPreferredMiniApp, sortMiniApps } = require("../../mini-app-common");
 
 function createMiniAppCatalogService({
   miniAppDiscoveryService,
@@ -29,21 +29,34 @@ function createMiniAppCatalogService({
     };
   }
 
+  function mergeLocalMiniApps(bundledMiniApps = [], installedMiniApps = []) {
+    const merged = new Map();
+
+    for (const miniApp of bundledMiniApps) {
+      merged.set(miniApp.id, pickPreferredMiniApp(merged.get(miniApp.id), miniApp));
+    }
+
+    for (const miniApp of installedMiniApps) {
+      merged.set(miniApp.id, pickPreferredMiniApp(merged.get(miniApp.id), miniApp));
+    }
+
+    return merged;
+  }
+
   function buildTileRecord({
     bundledMiniApp,
     installedMiniApp,
     registryMiniApp,
   }) {
-    const launchableMiniApp = bundledMiniApp || installedMiniApp || null;
+    const launchableMiniApp = pickPreferredMiniApp(bundledMiniApp, installedMiniApp);
     const localVersion = String(launchableMiniApp?.version || "").trim();
     const availableVersion = String(
       registryMiniApp?.version || launchableMiniApp?.version || "0.0.0"
     ).trim();
     const updateAvailable = Boolean(
-      installedMiniApp &&
-        !bundledMiniApp &&
+      launchableMiniApp &&
         registryMiniApp &&
-        compareVersions(registryMiniApp.version, installedMiniApp.version) > 0
+        compareVersions(registryMiniApp.version, launchableMiniApp.version) > 0
     );
     const canLaunch = Boolean(launchableMiniApp);
     const canInstall = Boolean(!launchableMiniApp && registryMiniApp);
@@ -52,15 +65,15 @@ function createMiniAppCatalogService({
     let status = "unavailable";
     let statusLabel = "Niedostepny";
 
-    if (bundledMiniApp) {
+    if (canUpdate) {
+      status = "update-available";
+      statusLabel = `Aktualizacja ${launchableMiniApp.version} -> ${registryMiniApp.version}`;
+    } else if (launchableMiniApp?.source === "installed") {
+      status = "installed";
+      statusLabel = `Zainstalowany v${launchableMiniApp.version}`;
+    } else if (bundledMiniApp) {
       status = "bundled";
       statusLabel = `Wbudowany v${bundledMiniApp.version}`;
-    } else if (canUpdate) {
-      status = "update-available";
-      statusLabel = `Aktualizacja ${installedMiniApp.version} -> ${registryMiniApp.version}`;
-    } else if (installedMiniApp) {
-      status = "installed";
-      statusLabel = `Zainstalowany v${installedMiniApp.version}`;
     } else if (registryMiniApp) {
       status = "available";
       statusLabel = `Dostepny w rejestrze v${registryMiniApp.version}`;
@@ -68,29 +81,34 @@ function createMiniAppCatalogService({
 
     return {
       id:
+        launchableMiniApp?.id ||
+        registryMiniApp?.id ||
         bundledMiniApp?.id ||
         installedMiniApp?.id ||
-        registryMiniApp?.id ||
         "",
       name:
+        launchableMiniApp?.name ||
+        registryMiniApp?.name ||
         bundledMiniApp?.name ||
         installedMiniApp?.name ||
-        registryMiniApp?.name ||
         "",
       description:
+        launchableMiniApp?.description ||
+        registryMiniApp?.description ||
         bundledMiniApp?.description ||
         installedMiniApp?.description ||
-        registryMiniApp?.description ||
         "",
       order:
+        launchableMiniApp?.order ??
+        registryMiniApp?.order ??
         bundledMiniApp?.order ??
         installedMiniApp?.order ??
-        registryMiniApp?.order ??
         999,
       iconUrl:
+        launchableMiniApp?.iconUrl ||
+        registryMiniApp?.iconUrl ||
         bundledMiniApp?.iconUrl ||
         installedMiniApp?.iconUrl ||
-        registryMiniApp?.iconUrl ||
         "",
       canLaunch,
       canInstall,
@@ -99,6 +117,7 @@ function createMiniAppCatalogService({
       statusLabel,
       localVersion,
       availableVersion,
+      localSource: launchableMiniApp?.source || "",
       hasRegistryEntry: Boolean(registryMiniApp),
     };
   }
@@ -129,13 +148,145 @@ function createMiniAppCatalogService({
       .sort(sortMiniApps);
   }
 
-  async function listCatalog(options = {}) {
-    const sources = await loadCatalogSources(options);
-
+  function buildCatalogResult(sources, syncSummary = null) {
     return {
       miniApps: mergeCatalogMiniApps(sources),
       registryError: sources.registryError?.message || "",
+      syncSummary,
     };
+  }
+
+  function buildSyncSummary({
+    sources,
+    candidates,
+    results,
+  }) {
+    const updated = results.filter((entry) => entry.status === "updated").length;
+    const failed = results.filter((entry) => entry.status === "failed").length;
+
+    if (sources.registryError) {
+      return {
+        checked: 0,
+        attempted: 0,
+        updated: 0,
+        failed: 0,
+        results: [],
+        message:
+          "Nie udalo sie polaczyc z rejestrem modulow. Automatyczna synchronizacja zostala pominieta.",
+      };
+    }
+
+    if (!candidates.length) {
+      return {
+        checked: sources.registryMiniApps.length,
+        attempted: 0,
+        updated: 0,
+        failed: 0,
+        results: [],
+        message:
+          sources.registryMiniApps.length > 0
+            ? "Wszystkie zainstalowane moduly sa aktualne."
+            : "Rejestr modulow nie zawiera jeszcze zadnych publikacji.",
+      };
+    }
+
+    if (failed > 0) {
+      return {
+        checked: sources.registryMiniApps.length,
+        attempted: candidates.length,
+        updated,
+        failed,
+        results,
+        message: `Zaktualizowano ${updated} modul(y). ${failed} modul(y) wymagaja ponownej proby.`,
+      };
+    }
+
+    return {
+      checked: sources.registryMiniApps.length,
+      attempted: candidates.length,
+      updated,
+      failed: 0,
+      results,
+      message: `Zaktualizowano ${updated} modul(y) na ekranie startowym.`,
+    };
+  }
+
+  function collectSyncCandidates(sources) {
+    if (sources.registryError) {
+      return [];
+    }
+
+    const localMiniApps = mergeLocalMiniApps(
+      sources.bundledMiniApps,
+      sources.installedMiniApps
+    );
+
+    return sources.registryMiniApps
+      .map((registryMiniApp) => {
+        const localMiniApp = localMiniApps.get(registryMiniApp.id) || null;
+        if (!localMiniApp) {
+          return null;
+        }
+
+        if (compareVersions(registryMiniApp.version, localMiniApp.version) <= 0) {
+          return null;
+        }
+
+        return {
+          id: registryMiniApp.id,
+          fromVersion: localMiniApp.version,
+          toVersion: registryMiniApp.version,
+          registryMiniApp,
+        };
+      })
+      .filter(Boolean)
+      .sort((left, right) => sortMiniApps(left.registryMiniApp, right.registryMiniApp));
+  }
+
+  async function listCatalog(options = {}) {
+    const sources = await loadCatalogSources(options);
+    return buildCatalogResult(sources);
+  }
+
+  async function bootstrapCatalog(options = {}) {
+    const sources = await loadCatalogSources({
+      ...options,
+      forceRefresh: options.forceRefresh ?? true,
+    });
+    const candidates = collectSyncCandidates(sources);
+    const results = [];
+
+    for (const candidate of candidates) {
+      try {
+        await miniAppRegistryService.installMiniApp(candidate.registryMiniApp);
+        results.push({
+          id: candidate.id,
+          fromVersion: candidate.fromVersion,
+          toVersion: candidate.toVersion,
+          status: "updated",
+        });
+      } catch (error) {
+        results.push({
+          id: candidate.id,
+          fromVersion: candidate.fromVersion,
+          toVersion: candidate.toVersion,
+          status: "failed",
+          message: error.message,
+        });
+      }
+    }
+
+    const finalSources =
+      results.some((entry) => entry.status === "updated")
+        ? await loadCatalogSources(options)
+        : sources;
+    const syncSummary = buildSyncSummary({
+      sources,
+      candidates,
+      results,
+    });
+
+    return buildCatalogResult(finalSources, syncSummary);
   }
 
   async function getLaunchableMiniAppById(miniAppId) {
@@ -158,6 +309,7 @@ function createMiniAppCatalogService({
   }
 
   return {
+    bootstrapCatalog,
     getLaunchableMiniAppById,
     installMiniApp,
     listCatalog,

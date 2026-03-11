@@ -1,16 +1,17 @@
 {
   "name": "sme",
   "productName": "SME",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Aplikacja do korekt dokumentow SME",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "seed": "node prisma/seed.js",
-    "test": "node test/core.test.js && node test/wct-cen-db.test.js",
+    "test": "node test/core.test.js && node test/mini-app-catalog.test.js && node test/wct-cen-db.test.js",
     "make:portable": "node scripts/make-portable.cjs",
     "make:installer": "node scripts/make-portable.cjs",
     "push:remote": "node scripts/push-remote.cjs",
+    "push:mini-apps": "node scripts/push-remote.cjs --mini-apps-only",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init_ore_catalog",
     "prisma:seed": "prisma db seed"

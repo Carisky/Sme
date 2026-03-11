@@ -86,6 +86,54 @@ code {
   align-content: start;
 }
 
+.launcher-update {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 24px;
+  border-radius: 24px;
+  border: 1px solid rgba(74, 44, 17, 0.16);
+  background: rgba(255, 248, 236, 0.88);
+  box-shadow: 0 18px 40px rgba(63, 37, 11, 0.12);
+}
+
+.launcher-update__copy,
+.launcher-update__meta {
+  display: grid;
+  gap: 8px;
+}
+
+.launcher-update__eyebrow {
+  margin: 0;
+  font-size: 0.76rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8a5c2e;
+}
+
+.launcher-update h2,
+.launcher-update p {
+  margin: 0;
+}
+
+.launcher-update__detail {
+  color: #6a4f33;
+  line-height: 1.45;
+}
+
+.launcher-update__meta {
+  justify-items: end;
+  text-align: right;
+}
+
+.launcher-update__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .launcher-tile,
 .launcher-empty {
   border-radius: 26px;
@@ -264,6 +312,19 @@ code {
 
   .launcher-grid {
     grid-template-columns: 1fr;
+  }
+
+  .launcher-update {
+    flex-direction: column;
+  }
+
+  .launcher-update__meta {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .launcher-update__actions {
+    justify-content: flex-start;
   }
 
   .launcher-tile__header {

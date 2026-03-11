@@ -7,11 +7,14 @@ const { spawn } = require("child_process");
 const { app } = require("electron");
 const {
   MINI_APP_REGISTRY_ASSET_NAME,
+  MINI_APP_REGISTRY_RELEASE_TAG,
   listMiniAppsFromRoot,
   readMiniAppManifest,
+  sortMiniApps,
 } = require("../../mini-app-common");
 const {
   buildLatestReleaseApiUrl,
+  buildReleaseByTagApiUrl,
   normalizeSha256,
   parseGitHubRepository,
 } = require("../../update-common");
@@ -22,6 +25,10 @@ function isObject(value) {
 
 function getMiniAppRegistrySourceRootPath() {
   return path.join(app.getAppPath(), "module_registry", "apps");
+}
+
+function getBundledMiniAppsSourceRootPath() {
+  return path.join(app.getAppPath(), "mini_apps");
 }
 
 function getMiniAppRegistryCachePath() {
@@ -62,6 +69,22 @@ function runCommand(command, args, cwd) {
       reject(new Error(`${command} ${args.join(" ")} failed with code ${code}.`));
     });
   });
+}
+
+async function listMiniAppsFromSources(sourceRoots = []) {
+  const merged = new Map();
+
+  for (const sourceRoot of sourceRoots) {
+    const miniApps = await listMiniAppsFromRoot(sourceRoot, {
+      source: "registry",
+    });
+
+    for (const miniApp of miniApps) {
+      merged.set(miniApp.id, miniApp);
+    }
+  }
+
+  return Array.from(merged.values()).sort(sortMiniApps);
 }
 
 function createMiniAppRegistryService({ packageJson, miniAppDiscoveryService }) {
@@ -189,10 +212,10 @@ function createMiniAppRegistryService({ packageJson, miniAppDiscoveryService }) 
   }
 
   async function listDevelopmentRegistryMiniApps() {
-    const sourceRoot = getMiniAppRegistrySourceRootPath();
-    const miniApps = await listMiniAppsFromRoot(sourceRoot, {
-      source: "registry",
-    });
+    const miniApps = await listMiniAppsFromSources([
+      getBundledMiniAppsSourceRootPath(),
+      getMiniAppRegistrySourceRootPath(),
+    ]);
 
     return miniApps.map((miniApp) => ({
       id: miniApp.id,
@@ -207,6 +230,57 @@ function createMiniAppRegistryService({ packageJson, miniAppDiscoveryService }) 
     }));
   }
 
+  async function requestReleaseByTag(repository, releaseTag) {
+    return requestJson(buildReleaseByTagApiUrl(repository, releaseTag), {
+      Accept: "application/vnd.github+json",
+    });
+  }
+
+  async function requestLatestRelease(repository) {
+    return requestJson(buildLatestReleaseApiUrl(repository), {
+      Accept: "application/vnd.github+json",
+    });
+  }
+
+  async function resolveRegistryRelease(repository) {
+    try {
+      return await requestReleaseByTag(repository, MINI_APP_REGISTRY_RELEASE_TAG);
+    } catch (error) {
+      if (/HTTP 404\b/i.test(String(error?.message || ""))) {
+        return requestLatestRelease(repository);
+      }
+
+      throw error;
+    }
+  }
+
+  async function loadRegistryFromRelease(release, repository) {
+    const registryAsset = Array.isArray(release?.assets)
+      ? release.assets.find((asset) => asset.name === MINI_APP_REGISTRY_ASSET_NAME)
+      : null;
+
+    if (!registryAsset?.browser_download_url) {
+      throw new Error(`GitHub release does not include ${MINI_APP_REGISTRY_ASSET_NAME}.`);
+    }
+
+    const registry = await requestJson(registryAsset.browser_download_url, {
+      Accept: "application/json",
+    });
+
+    return {
+      schemaVersion: Number(registry?.schemaVersion) || 1,
+      generatedAt:
+        String(registry?.generatedAt || "").trim() ||
+        String(release?.published_at || release?.created_at || "").trim(),
+      releaseTag:
+        String(registry?.releaseTag || "").trim() || String(release?.tag_name || "").trim(),
+      repository: registry?.repository || repository,
+      miniApps: Array.isArray(registry?.miniApps)
+        ? registry.miniApps.map(normalizeRegistryMiniAppEntry).filter(Boolean)
+        : [],
+    };
+  }
+
   async function fetchRemoteRegistry(options = {}) {
     const forceRefresh = Boolean(options.forceRefresh);
     if (!forceRefresh && registryCache && Date.now() - registryCacheTime < REGISTRY_CACHE_TTL_MS) {
@@ -219,32 +293,15 @@ function createMiniAppRegistryService({ packageJson, miniAppDiscoveryService }) 
     }
 
     try {
-      const latestRelease = await requestJson(buildLatestReleaseApiUrl(repository), {
-        Accept: "application/vnd.github+json",
-      });
-      const registryAsset = Array.isArray(latestRelease.assets)
-        ? latestRelease.assets.find((asset) => asset.name === MINI_APP_REGISTRY_ASSET_NAME)
-        : null;
+      let normalized = null;
 
-      if (!registryAsset?.browser_download_url) {
-        throw new Error(`Latest GitHub release does not include ${MINI_APP_REGISTRY_ASSET_NAME}.`);
+      try {
+        const registryRelease = await resolveRegistryRelease(repository);
+        normalized = await loadRegistryFromRelease(registryRelease, repository);
+      } catch (registryReleaseError) {
+        const latestRelease = await requestLatestRelease(repository);
+        normalized = await loadRegistryFromRelease(latestRelease, repository);
       }
-
-      const registry = await requestJson(registryAsset.browser_download_url, {
-        Accept: "application/json",
-      });
-      const normalized = {
-        schemaVersion: Number(registry?.schemaVersion) || 1,
-        generatedAt:
-          String(registry?.generatedAt || "").trim() ||
-          String(latestRelease.published_at || latestRelease.created_at || "").trim(),
-        releaseTag:
-          String(registry?.releaseTag || "").trim() || String(latestRelease.tag_name || "").trim(),
-        repository: registry?.repository || repository,
-        miniApps: Array.isArray(registry?.miniApps)
-          ? registry.miniApps.map(normalizeRegistryMiniAppEntry).filter(Boolean)
-          : [],
-      };
 
       registryCache = normalized;
       registryCacheTime = Date.now();

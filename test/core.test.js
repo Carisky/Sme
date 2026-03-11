@@ -18,8 +18,10 @@ const {
 const { importWctCenWorkbook } = require("../mini_apps/wct-cen/core/excel.cjs");
 const {
   MINI_APP_REGISTRY_ASSET_NAME,
+  MINI_APP_REGISTRY_RELEASE_TAG,
   buildMiniAppBundleFileName,
   createMiniAppRegistryManifest,
+  pickPreferredMiniApp,
 } = require("../src/mini-app-common");
 const {
   buildInstallerFileName,
@@ -201,9 +203,24 @@ assert.equal(releaseManifest.assets.installer.name, "SME-Setup-1.0.0.exe");
 assert.equal(releaseManifest.assets.installer.sha256, "abc123");
 assert.equal(releaseManifest.appSha256, "def456");
 assert.equal(MINI_APP_REGISTRY_ASSET_NAME, "sme-mini-app-registry.json");
+assert.equal(MINI_APP_REGISTRY_RELEASE_TAG, "mini-apps");
 assert.equal(
   buildMiniAppBundleFileName("place holder", "0.1.0"),
   "sme-mini-app-place-holder-0.1.0.tar.gz"
+);
+assert.equal(
+  pickPreferredMiniApp(
+    { id: "sme", version: "1.0.0", source: "bundled" },
+    { id: "sme", version: "1.0.0", source: "installed" }
+  ).source,
+  "installed"
+);
+assert.equal(
+  pickPreferredMiniApp(
+    { id: "sme", version: "1.1.0", source: "bundled" },
+    { id: "sme", version: "1.0.9", source: "installed" }
+  ).version,
+  "1.1.0"
 );
 const miniAppRegistryManifest = createMiniAppRegistryManifest({
   releaseTag: "v1.2.3",

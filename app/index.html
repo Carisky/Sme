@@ -29,6 +29,34 @@
         </p>
       </section>
 
+      <section class="launcher-update" id="launcher-update" hidden>
+        <div class="launcher-update__copy">
+          <p class="launcher-update__eyebrow">Aplikacja</p>
+          <h2 id="launcher-update-title">Stan aktualizacji</h2>
+          <p id="launcher-update-message">Sprawdzanie wersji aplikacji.</p>
+          <p class="launcher-update__detail" id="launcher-update-detail"></p>
+        </div>
+        <div class="launcher-update__meta">
+          <span id="launcher-update-versions">v-</span>
+          <div class="launcher-update__actions">
+            <button
+              class="launcher-button launcher-button--primary"
+              type="button"
+              id="launcher-update-install"
+            >
+              Zaktualizuj aplikacje
+            </button>
+            <button
+              class="launcher-button launcher-button--secondary"
+              type="button"
+              id="launcher-update-retry"
+            >
+              Sprawdz ponownie
+            </button>
+          </div>
+        </div>
+      </section>
+
       <section class="launcher-grid" id="launcher-tiles" aria-live="polite"></section>
 
       <footer class="launcher-footer">

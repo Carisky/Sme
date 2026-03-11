@@ -1,9 +1,11 @@
 const fs = require("fs/promises");
 const path = require("path");
 const { pathToFileURL } = require("url");
+const { compareVersions } = require("./update-common");
 
 const MINI_APP_MANIFEST_NAME = "mini-app.json";
 const MINI_APP_REGISTRY_ASSET_NAME = "sme-mini-app-registry.json";
+const MINI_APP_REGISTRY_RELEASE_TAG = "mini-apps";
 
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -18,6 +20,44 @@ function buildMiniAppBundleFileName(id, version) {
   const safeId = sanitizeFileSegment(id, "mini-app");
   const safeVersion = sanitizeFileSegment(version, "0.0.0");
   return `sme-mini-app-${safeId}-${safeVersion}.tar.gz`;
+}
+
+function getMiniAppSourcePriority(miniApp) {
+  const source = String(miniApp?.source || "").trim();
+  if (source === "installed") {
+    return 3;
+  }
+
+  if (source === "bundled") {
+    return 2;
+  }
+
+  if (source === "registry") {
+    return 1;
+  }
+
+  return 0;
+}
+
+function pickPreferredMiniApp(left, right) {
+  if (!left) {
+    return right || null;
+  }
+
+  if (!right) {
+    return left;
+  }
+
+  const versionComparison = compareVersions(right.version, left.version);
+  if (versionComparison > 0) {
+    return right;
+  }
+
+  if (versionComparison < 0) {
+    return left;
+  }
+
+  return getMiniAppSourcePriority(right) > getMiniAppSourcePriority(left) ? right : left;
 }
 
 function normalizeMiniAppManifest(manifest = {}, directoryPath, options = {}) {
@@ -151,8 +191,10 @@ function createMiniAppRegistryManifest({
 module.exports = {
   MINI_APP_MANIFEST_NAME,
   MINI_APP_REGISTRY_ASSET_NAME,
+  MINI_APP_REGISTRY_RELEASE_TAG,
   buildMiniAppBundleFileName,
   createMiniAppRegistryManifest,
+  pickPreferredMiniApp,
   listMiniAppsFromRoot,
   normalizeMiniAppManifest,
   readMiniAppManifest,
