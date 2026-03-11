@@ -10,18 +10,34 @@
   <body>
     <main class="launcher-shell is-loading" id="launcher-root">
       <section class="launcher-hero">
-        <div class="launcher-hero__brand">
-          <img
-            class="launcher-hero__logo"
-            src="../assets/sme-mark.svg"
-            alt="Logo SME"
-            width="92"
-            height="92"
-          />
-          <div>
-            <p class="launcher-eyebrow">Launcher SME</p>
-            <h1>Moduly</h1>
-            <p class="launcher-subtitle">SME jest gotowy od razu. Pozostale moduly pobierzesz z rejestru.</p>
+        <div class="launcher-hero__top">
+          <div class="launcher-hero__brand">
+            <img
+              class="launcher-hero__logo"
+              src="../assets/sme-mark.svg"
+              alt="Logo SME"
+              width="92"
+              height="92"
+            />
+            <div>
+              <p class="launcher-eyebrow">Launcher SME</p>
+              <h1>Moduly</h1>
+              <p class="launcher-subtitle">
+                SME jest gotowy od razu. Pozostale moduly pobierzesz z rejestru.
+              </p>
+            </div>
+          </div>
+          <div class="launcher-hero__actions">
+            <button
+              class="launcher-button launcher-button--secondary"
+              type="button"
+              id="launcher-visibility-button"
+            >
+              Widocznosc modulow
+            </button>
+            <span class="launcher-hero__hint" id="launcher-visibility-hint">
+              Wczytywanie ustawien widoku.
+            </span>
           </div>
         </div>
         <p class="launcher-note">
@@ -61,6 +77,46 @@
         <span id="launcher-status">Wczytywanie listy modulow.</span>
       </footer>
     </main>
+
+    <dialog
+      class="launcher-dialog"
+      id="launcher-visibility-dialog"
+      aria-labelledby="launcher-visibility-title"
+    >
+      <div class="launcher-dialog__header">
+        <div>
+          <p class="launcher-eyebrow">Ekran startowy</p>
+          <h2 id="launcher-visibility-title">Widocznosc modulow</h2>
+        </div>
+        <button
+          class="launcher-button launcher-button--secondary"
+          type="button"
+          id="launcher-visibility-cancel"
+        >
+          Zamknij
+        </button>
+      </div>
+      <p class="launcher-dialog__summary" id="launcher-visibility-summary">
+        Wybierz, ktore moduly maja zostac na kafelkach.
+      </p>
+      <div class="launcher-dialog__list" id="launcher-visibility-list" aria-live="polite"></div>
+      <div class="launcher-dialog__actions">
+        <button
+          class="launcher-button launcher-button--secondary"
+          type="button"
+          id="launcher-visibility-reset"
+        >
+          Pokaz wszystkie
+        </button>
+        <button
+          class="launcher-button launcher-button--primary"
+          type="button"
+          id="launcher-visibility-save"
+        >
+          Zapisz widok
+        </button>
+      </div>
+    </dialog>
 
     <script type="module" src="./launcher.js"></script>
   </body>

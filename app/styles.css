@@ -46,10 +46,24 @@ code {
   box-shadow: 0 28px 60px rgba(67, 41, 15, 0.14);
 }
 
+.launcher-hero__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
 .launcher-hero__brand {
   display: flex;
   align-items: center;
   gap: 20px;
+}
+
+.launcher-hero__actions {
+  min-width: 240px;
+  display: grid;
+  justify-items: end;
+  gap: 10px;
 }
 
 .launcher-hero__logo {
@@ -77,6 +91,13 @@ code {
   max-width: 760px;
   color: #5d4731;
   line-height: 1.55;
+}
+
+.launcher-hero__hint {
+  color: #6d5336;
+  text-align: right;
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 .launcher-grid {
@@ -300,6 +321,13 @@ code {
   padding: 28px;
 }
 
+.launcher-empty__actions {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .launcher-empty--error {
   border-color: rgba(137, 40, 21, 0.24);
 }
@@ -317,6 +345,118 @@ code {
   font-size: 0.95rem;
 }
 
+.launcher-dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(86vh, 900px);
+  padding: 24px;
+  border: 1px solid rgba(74, 44, 17, 0.18);
+  border-radius: 28px;
+  background:
+    linear-gradient(155deg, rgba(255, 248, 236, 0.98), rgba(244, 224, 194, 0.96)),
+    #fff;
+  box-shadow: 0 36px 80px rgba(63, 37, 11, 0.24);
+  color: inherit;
+}
+
+.launcher-dialog::backdrop {
+  background: rgba(49, 33, 19, 0.28);
+  backdrop-filter: blur(5px);
+}
+
+.launcher-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.launcher-dialog h2 {
+  margin: 0;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+}
+
+.launcher-dialog__summary {
+  margin: 18px 0 0;
+  color: #5d4731;
+  line-height: 1.5;
+}
+
+.launcher-dialog__list {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+  max-height: min(54vh, 520px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.launcher-visibility-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(98, 66, 34, 0.16);
+  background: rgba(255, 249, 239, 0.92);
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.launcher-visibility-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(145, 93, 34, 0.28);
+  box-shadow: 0 16px 30px rgba(63, 37, 11, 0.1);
+}
+
+.launcher-visibility-item input {
+  width: 18px;
+  height: 18px;
+  margin: 4px 0 0;
+  accent-color: #312113;
+}
+
+.launcher-visibility-item__copy {
+  display: grid;
+  gap: 4px;
+}
+
+.launcher-visibility-item__copy strong {
+  font-size: 1rem;
+}
+
+.launcher-visibility-item__copy span {
+  color: #6a4f33;
+  line-height: 1.4;
+}
+
+.launcher-visibility-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.launcher-visibility-empty {
+  margin: 0;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px dashed rgba(98, 66, 34, 0.28);
+  color: #6a4f33;
+  background: rgba(255, 249, 239, 0.76);
+}
+
+.launcher-dialog__actions {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 @media (max-width: 760px) {
   .launcher-shell {
     padding: 24px 18px 22px;
@@ -326,9 +466,23 @@ code {
     padding: 22px 18px;
   }
 
+  .launcher-hero__top {
+    flex-direction: column;
+  }
+
   .launcher-hero__brand {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .launcher-hero__actions {
+    min-width: 0;
+    width: 100%;
+    justify-items: start;
+  }
+
+  .launcher-hero__hint {
+    text-align: left;
   }
 
   .launcher-grid {
@@ -356,5 +510,27 @@ code {
   .launcher-tile__meta {
     justify-items: start;
     text-align: left;
+  }
+
+  .launcher-dialog {
+    width: min(100vw - 18px, 760px);
+    padding: 18px;
+  }
+
+  .launcher-dialog__header,
+  .launcher-dialog__actions,
+  .launcher-visibility-item {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .launcher-dialog__header,
+  .launcher-dialog__actions {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .launcher-visibility-item__meta {
+    justify-content: flex-start;
   }
 }

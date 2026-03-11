@@ -1,13 +1,13 @@
 {
   "name": "sme",
   "productName": "SME",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Aplikacja do korekt dokumentow SME",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "seed": "node prisma/seed.js",
-    "test": "node test/core.test.js && node test/mini-app-catalog.test.js && node test/wct-cen-db.test.js && node test/cen-imtreks.test.js",
+    "test": "node test/core.test.js && node test/mini-app-catalog.test.js && node test/launcher-preferences.test.js && node test/wct-cen-db.test.js && node test/cen-imtreks.test.js",
     "make:portable": "node scripts/make-portable.cjs",
     "make:installer": "node scripts/make-portable.cjs",
     "push:remote": "node scripts/push-remote.cjs",

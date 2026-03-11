@@ -1,3 +1,11 @@
+import {
+  countVisibleMiniApps,
+  filterVisibleMiniApps,
+  normalizeLauncherVisibility,
+} from "./launcher-preferences.mjs";
+
+const MODULE_VISIBILITY_STORAGE_KEY = "launcher.module-visibility";
+
 const root = document.getElementById("launcher-root");
 const tiles = document.getElementById("launcher-tiles");
 const status = document.getElementById("launcher-status");
@@ -5,9 +13,22 @@ const appUpdatePanel = document.getElementById("launcher-update");
 const appUpdateSummary = document.getElementById("launcher-update-summary");
 const appUpdateInstall = document.getElementById("launcher-update-install");
 const appUpdateRetry = document.getElementById("launcher-update-retry");
+const visibilityButton = document.getElementById("launcher-visibility-button");
+const visibilityHint = document.getElementById("launcher-visibility-hint");
+const visibilityDialog = document.getElementById("launcher-visibility-dialog");
+const visibilityList = document.getElementById("launcher-visibility-list");
+const visibilitySummary = document.getElementById("launcher-visibility-summary");
+const visibilityReset = document.getElementById("launcher-visibility-reset");
+const visibilityCancel = document.getElementById("launcher-visibility-cancel");
+const visibilitySave = document.getElementById("launcher-visibility-save");
 
+let currentCatalogResult = {
+  miniApps: [],
+};
 let currentUpdateGate = null;
 let isAppUpdateBusy = false;
+let isVisibilityBusy = false;
+let launcherVisibility = normalizeLauncherVisibility();
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -19,6 +40,38 @@ function escapeHtml(value) {
 
 function setStatus(message) {
   status.textContent = message;
+}
+
+function getCatalogMiniApps(result = currentCatalogResult) {
+  return Array.isArray(result?.miniApps) ? result.miniApps : [];
+}
+
+function getVisibleMiniApps(result = currentCatalogResult, visibility = launcherVisibility) {
+  return filterVisibleMiniApps(getCatalogMiniApps(result), visibility);
+}
+
+function getVisibilityHintText(result = currentCatalogResult, visibility = launcherVisibility) {
+  const miniApps = getCatalogMiniApps(result);
+  const totalCount = miniApps.length;
+  const visibleCount = countVisibleMiniApps(miniApps, visibility);
+
+  if (!totalCount) {
+    return "Brak modulow do ustawienia.";
+  }
+
+  if (visibleCount === totalCount) {
+    return "Pokazujesz wszystkie moduly.";
+  }
+
+  if (!visibleCount) {
+    return "Wszystkie moduly sa ukryte.";
+  }
+
+  return `Pokazujesz ${visibleCount} z ${totalCount} modulow.`;
+}
+
+function updateVisibilityHint() {
+  visibilityHint.textContent = getVisibilityHintText();
 }
 
 function getPrimaryAction(miniApp) {
@@ -57,27 +110,52 @@ function getSecondaryAction(miniApp) {
   return null;
 }
 
-function renderVersionSummary(miniApp) {
+function getVersionLabel(miniApp) {
   const localVersion = String(miniApp.localVersion || "").trim();
   const availableVersion = String(miniApp.availableVersion || "").trim();
 
   if (miniApp.canUpdate && localVersion && availableVersion) {
-    return `<span class="launcher-tile__version">v${escapeHtml(localVersion)} -> v${escapeHtml(availableVersion)}</span>`;
+    return `v${localVersion} -> v${availableVersion}`;
   }
 
   if (availableVersion) {
-    return `<span class="launcher-tile__version">v${escapeHtml(availableVersion)}</span>`;
+    return `v${availableVersion}`;
   }
 
   return "";
 }
 
-function buildLauncherStatus(result = {}) {
+function renderVersionSummary(miniApp) {
+  const versionLabel = getVersionLabel(miniApp);
+  if (versionLabel) {
+    return `<span class="launcher-tile__version">${escapeHtml(versionLabel)}</span>`;
+  }
+
+  return "";
+}
+
+function buildLauncherStatus(result = {}, visibility = launcherVisibility) {
   const parts = [];
-  const hasUpdateGate = Boolean(result.updateGate && Object.keys(result.updateGate).length);
-  const updateSummary = hasUpdateGate ? getUpdateSummary(result.updateGate) : "";
+  const updateGate =
+    currentUpdateGate && Object.keys(currentUpdateGate).length
+      ? currentUpdateGate
+      : result.updateGate || {};
+  const hasUpdateGate = Boolean(updateGate && Object.keys(updateGate).length);
+  const updateSummary = hasUpdateGate ? getUpdateSummary(updateGate) : "";
   if (updateSummary) {
     parts.push(updateSummary);
+  }
+
+  const miniApps = getCatalogMiniApps(result);
+  const totalCount = miniApps.length;
+  const visibleCount = countVisibleMiniApps(miniApps, visibility);
+
+  if (totalCount) {
+    parts.push(
+      visibleCount === totalCount
+        ? `Na ekranie: ${visibleCount} modulow.`
+        : `Na ekranie: ${visibleCount} z ${totalCount} modulow.`
+    );
   }
 
   const syncMessage = String(result.syncSummary?.message || "").trim();
@@ -86,18 +164,23 @@ function buildLauncherStatus(result = {}) {
     return parts.join(" | ");
   }
 
-  const miniApps = Array.isArray(result.miniApps) ? result.miniApps : [];
   if (result.registryError) {
-    parts.push(`Dostepne moduly: ${miniApps.length}. Rejestr GitHub chwilowo niedostepny.`);
+    parts.push(`Dostepne moduly: ${totalCount}. Rejestr GitHub chwilowo niedostepny.`);
     return parts.join(" | ");
   }
 
-  parts.push(`Dostepne moduly: ${miniApps.length}.`);
+  if (totalCount) {
+    parts.push(`Dostepne moduly: ${totalCount}.`);
+  } else {
+    parts.push("Brak dostepnych modulow.");
+  }
+
   return parts.join(" | ");
 }
 
 function renderMiniApps(result = {}) {
-  const miniApps = Array.isArray(result.miniApps) ? result.miniApps : [];
+  const miniApps = getCatalogMiniApps(result);
+  const visibleMiniApps = getVisibleMiniApps(result);
 
   if (!miniApps.length) {
     tiles.innerHTML = `
@@ -109,7 +192,26 @@ function renderMiniApps(result = {}) {
     return;
   }
 
-  tiles.innerHTML = miniApps
+  if (!visibleMiniApps.length) {
+    tiles.innerHTML = `
+      <article class="launcher-empty">
+        <h2>Wszystkie moduly sa ukryte</h2>
+        <p>Otworz ustawienia widocznosci, aby ponownie wlaczyc wybrane kafelki.</p>
+        <div class="launcher-empty__actions">
+          <button
+            class="launcher-button launcher-button--secondary"
+            type="button"
+            data-launcher-action="open-visibility-settings"
+          >
+            Ustaw widocznosc modulow
+          </button>
+        </div>
+      </article>
+    `;
+    return;
+  }
+
+  tiles.innerHTML = visibleMiniApps
     .map((miniApp) => {
       const primaryAction = getPrimaryAction(miniApp);
       const secondaryAction = getSecondaryAction(miniApp);
@@ -159,6 +261,125 @@ function setAppUpdateButtonsDisabled(value) {
   isAppUpdateBusy = value;
   appUpdateInstall.disabled = value;
   appUpdateRetry.disabled = value;
+}
+
+function setVisibilityControlsDisabled(value) {
+  isVisibilityBusy = value;
+  visibilityButton.disabled = value;
+  visibilityReset.disabled = value;
+  visibilityCancel.disabled = value;
+  visibilitySave.disabled = value;
+
+  visibilityList.querySelectorAll("input[data-mini-app-visibility]").forEach((node) => {
+    node.disabled = value;
+  });
+}
+
+function openVisibilityDialog() {
+  renderVisibilityDialog();
+
+  if (typeof visibilityDialog.showModal === "function" && !visibilityDialog.open) {
+    visibilityDialog.showModal();
+    return;
+  }
+
+  visibilityDialog.setAttribute("open", "open");
+}
+
+function closeVisibilityDialog() {
+  if (typeof visibilityDialog.close === "function" && visibilityDialog.open) {
+    visibilityDialog.close();
+    return;
+  }
+
+  visibilityDialog.removeAttribute("open");
+}
+
+function updateVisibilityDialogSummary() {
+  const inputs = Array.from(
+    visibilityList.querySelectorAll("input[data-mini-app-visibility]")
+  );
+
+  if (!inputs.length) {
+    visibilitySummary.textContent = "Brak modulow do skonfigurowania.";
+    visibilitySave.disabled = true;
+    return;
+  }
+
+  const visibleCount = inputs.filter((node) => node.checked).length;
+  const totalCount = inputs.length;
+
+  if (visibleCount === totalCount) {
+    visibilitySummary.textContent = "Wszystkie moduly beda widoczne po zapisaniu.";
+  } else if (!visibleCount) {
+    visibilitySummary.textContent = "Po zapisaniu wszystkie moduly beda ukryte.";
+  } else {
+    visibilitySummary.textContent = `Po zapisaniu bedzie widoczne ${visibleCount} z ${totalCount} modulow.`;
+  }
+
+  visibilitySave.disabled = isVisibilityBusy;
+}
+
+function renderVisibilityDialog() {
+  const miniApps = getCatalogMiniApps();
+  const hiddenIds = new Set(normalizeLauncherVisibility(launcherVisibility).hiddenMiniAppIds);
+
+  if (!miniApps.length) {
+    visibilityList.innerHTML = `
+      <p class="launcher-visibility-empty">
+        Lista modulow jest pusta. Dodaj modul lokalnie albo pobierz go z rejestru.
+      </p>
+    `;
+    updateVisibilityDialogSummary();
+    return;
+  }
+
+  visibilityList.innerHTML = miniApps
+    .map((miniApp) => {
+      const isVisible = !hiddenIds.has(String(miniApp.id || "").trim());
+      const versionLabel = getVersionLabel(miniApp);
+
+      return `
+        <label class="launcher-visibility-item">
+          <input
+            type="checkbox"
+            data-mini-app-visibility="true"
+            data-mini-app-id="${escapeHtml(miniApp.id)}"
+            ${isVisible ? "checked" : ""}
+          />
+          <span class="launcher-visibility-item__copy">
+            <strong>${escapeHtml(miniApp.name || miniApp.id)}</strong>
+            <span>${escapeHtml(miniApp.description || "Modul aplikacji SME")}</span>
+          </span>
+          <span class="launcher-visibility-item__meta">
+            <span class="launcher-tile__badge">${escapeHtml(miniApp.statusLabel || "Modul")}</span>
+            ${versionLabel ? `<span class="launcher-tile__version">${escapeHtml(versionLabel)}</span>` : ""}
+          </span>
+        </label>
+      `;
+    })
+    .join("");
+
+  updateVisibilityDialogSummary();
+}
+
+function readVisibilityFromDialog() {
+  const hiddenMiniAppIds = Array.from(
+    visibilityList.querySelectorAll("input[data-mini-app-visibility]")
+  )
+    .filter((node) => !node.checked)
+    .map((node) => String(node.dataset.miniAppId || "").trim())
+    .filter(Boolean);
+
+  return normalizeLauncherVisibility({
+    hiddenMiniAppIds,
+  });
+}
+
+function renderLauncherState() {
+  renderMiniApps(currentCatalogResult);
+  updateVisibilityHint();
+  setStatus(buildLauncherStatus(currentCatalogResult, launcherVisibility));
 }
 
 function getUpdateSummary(updateGate = {}) {
@@ -335,13 +556,48 @@ async function refreshAppUpdateState() {
   try {
     const updateGate = await window.bridge.checkForUpdates();
     renderAppUpdate(updateGate);
-    setStatus(getUpdateSummary(updateGate) || "Sprawdzono stan aplikacji.");
+    setStatus(buildLauncherStatus(currentCatalogResult, launcherVisibility));
   } catch (error) {
     console.error(error);
     window.alert(error.message);
     setStatus(error.message);
   } finally {
     setAppUpdateButtonsDisabled(false);
+  }
+}
+
+async function loadLauncherVisibility() {
+  try {
+    const storedValue = await window.bridge.loadModuleStorage(MODULE_VISIBILITY_STORAGE_KEY);
+    return normalizeLauncherVisibility(storedValue);
+  } catch (error) {
+    console.error(error);
+    return normalizeLauncherVisibility();
+  }
+}
+
+async function saveLauncherVisibility(nextVisibility) {
+  return window.bridge.saveModuleStorage(
+    MODULE_VISIBILITY_STORAGE_KEY,
+    normalizeLauncherVisibility(nextVisibility)
+  );
+}
+
+async function persistVisibilityFromDialog() {
+  const nextVisibility = readVisibilityFromDialog();
+  setVisibilityControlsDisabled(true);
+
+  try {
+    await saveLauncherVisibility(nextVisibility);
+    launcherVisibility = nextVisibility;
+    closeVisibilityDialog();
+    renderLauncherState();
+  } catch (error) {
+    console.error(error);
+    window.alert(error.message);
+    setStatus(error.message);
+  } finally {
+    setVisibilityControlsDisabled(false);
   }
 }
 
@@ -367,10 +623,20 @@ async function bootstrapLauncher() {
   setStatus("Sprawdzanie aplikacji i synchronizacja modulow.");
 
   try {
-    const result = await window.bridge.bootstrapShell();
+    const [result, storedVisibility] = await Promise.all([
+      window.bridge.bootstrapShell(),
+      loadLauncherVisibility(),
+    ]);
+
+    launcherVisibility = storedVisibility;
+    currentCatalogResult = {
+      ...currentCatalogResult,
+      ...result,
+      miniApps: getCatalogMiniApps(result),
+    };
+
     renderAppUpdate(result.updateGate || {});
-    renderMiniApps(result);
-    setStatus(buildLauncherStatus(result));
+    renderLauncherState();
     root.classList.remove("is-loading");
   } catch (error) {
     console.error(error);
@@ -385,6 +651,32 @@ async function bootstrapLauncher() {
 }
 
 document.addEventListener("click", async (event) => {
+  if (
+    event.target === visibilityButton ||
+    event.target.closest("[data-launcher-action='open-visibility-settings']")
+  ) {
+    openVisibilityDialog();
+    return;
+  }
+
+  if (event.target === visibilityCancel) {
+    closeVisibilityDialog();
+    return;
+  }
+
+  if (event.target === visibilityReset) {
+    visibilityList.querySelectorAll("input[data-mini-app-visibility]").forEach((node) => {
+      node.checked = true;
+    });
+    updateVisibilityDialogSummary();
+    return;
+  }
+
+  if (event.target === visibilitySave) {
+    await persistVisibilityFromDialog();
+    return;
+  }
+
   if (event.target === appUpdateInstall) {
     await startAppUpdateInstall();
     return;
@@ -418,7 +710,12 @@ document.addEventListener("click", async (event) => {
     if (action === "install") {
       setStatus(`Instalowanie modulu ${miniAppId}.`);
       const result = await window.bridge.installMiniApp(miniAppId);
-      renderMiniApps(result);
+      currentCatalogResult = {
+        ...currentCatalogResult,
+        ...result,
+        miniApps: getCatalogMiniApps(result),
+      };
+      renderLauncherState();
       setStatus(`Modul ${miniAppId} jest gotowy.`);
       return;
     }
@@ -429,6 +726,14 @@ document.addEventListener("click", async (event) => {
   } finally {
     setModuleButtonsDisabled(false);
   }
+});
+
+visibilityList.addEventListener("change", (event) => {
+  if (!event.target.matches("input[data-mini-app-visibility]")) {
+    return;
+  }
+
+  updateVisibilityDialogSummary();
 });
 
 bootstrapLauncher();
