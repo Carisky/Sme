@@ -65,6 +65,15 @@ function renderEditableCell(field, value, updatedFields, extraClass = "") {
   )}" class="${classes.join(" ")}"${isUpdated ? ' title="Uzupelnione podczas ostatniej aktualizacji"' : ""} />`;
 }
 
+function shouldUseCompactStopInput(value) {
+  const normalized = String(value ?? "").trim();
+  if (!normalized) {
+    return false;
+  }
+
+  return normalized.length >= 26 || /permission/i.test(normalized);
+}
+
 export function renderProjectIndicator(elements, stateRef, bridge, getActiveProjectTitle) {
   const currentTitle = getActiveProjectTitle();
   const syncLabel = stateRef.currentProjectId ? "projekt w bazie" : "nowy projekt";
@@ -279,6 +288,7 @@ export function renderRows(elements, stateRef) {
         .filter(Boolean)
         .join(" ");
       const sourceText = row.sourceRowNumber || row.origin || "-";
+      const stopExtraClass = shouldUseCompactStopInput(row.stop) ? "row-input--compact" : "";
 
       return `
         <tr data-row-id="${escapeHtml(row.id)}" class="${escapeHtml(rowClasses)}">
@@ -290,13 +300,12 @@ export function renderRows(elements, stateRef) {
           <td>${renderEditableCell("blNumber", row.blNumber, updatedFields)}</td>
           <td>${renderEditableCell("customsOffice", row.customsOffice, updatedFields)}</td>
           <td>${renderEditableCell("status", row.status, updatedFields)}</td>
-          <td>${renderEditableCell("stop", row.stop, updatedFields)}</td>
+          <td>${renderEditableCell("stop", row.stop, updatedFields, stopExtraClass)}</td>
           <td>${renderEditableCell("t1", row.t1, updatedFields)}</td>
           <td>${renderEditableCell("invoiceInfo", row.invoiceInfo, updatedFields)}</td>
           <td>${renderEditableCell("remarks", row.remarks, updatedFields)}</td>
           <td>
             ${escapeHtml(sourceText)}
-            ${isStickyRow ? '<span class="row-tag" title="Wiersz zostal pokazany po aktualizacji mimo filtra.">po aktualizacji</span>' : ""}
           </td>
           <td class="cell-actions">
             <button type="button" data-action="delete-row" data-row-id="${escapeHtml(row.id)}">Usun</button>
