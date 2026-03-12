@@ -9,10 +9,12 @@ import {
   createProjectView,
   createRow,
   deriveProjectName,
+  extractContainerNumbers,
   flattenRows,
   getActiveSheetFilterOptions,
   getFilteredRows,
   getActiveSheet,
+  matchesRowFilters,
   normalizeContainerNumber,
   normalizeLookupRecord,
   normalizeProjectOption,
@@ -96,6 +98,7 @@ const stateRef = {
   lookupRecords: [],
   projectOptions: [],
   recordDraft: createLookupRecord(),
+  manualRowDraft: createManualRowDraft(),
   autosaveTimer: null,
   autosavePromise: null,
   changeToken: 0,
@@ -125,8 +128,182 @@ const VESSEL_DATE_POPOVER_GAP_PX = 8;
 const VESSEL_DATE_POPOVER_VIEWPORT_PADDING_PX = 16;
 const VESSEL_DATE_POPOVER_MAX_WIDTH_PX = 340;
 const VALID_LOOKUP_T1_PATTERN = /^\d{2}PL.*$/i;
+const MANUAL_DRAFT_FIELDS = [
+  "sequenceNumber",
+  "orderDate",
+  "vesselDate",
+  "folderName",
+  "containerNumber",
+  "blNumber",
+  "customsOffice",
+  "status",
+  "stop",
+  "t1",
+  "invoiceInfo",
+  "remarks",
+];
 
 let vesselDatePopoverPositionFrame = 0;
+
+function createManualRowDraft(overrides = {}) {
+  return {
+    sequenceNumber: "",
+    orderDate: "",
+    vesselDate: "",
+    folderName: "",
+    containerNumber: "",
+    blNumber: "",
+    customsOffice: "",
+    status: "",
+    stop: "",
+    t1: "",
+    invoiceInfo: "",
+    remarks: "",
+    ...overrides,
+  };
+}
+
+function normalizeManualDraftFieldValue(field, value) {
+  const normalizedField = asText(field);
+  if (!MANUAL_DRAFT_FIELDS.includes(normalizedField)) {
+    return "";
+  }
+
+  if (normalizedField === "containerNumber") {
+    return String(value ?? "");
+  }
+
+  return asText(value);
+}
+
+function updateManualRowDraftField(field, value) {
+  const normalizedField = asText(field);
+  if (!MANUAL_DRAFT_FIELDS.includes(normalizedField)) {
+    return;
+  }
+
+  stateRef.manualRowDraft = {
+    ...stateRef.manualRowDraft,
+    [normalizedField]: normalizeManualDraftFieldValue(normalizedField, value),
+  };
+}
+
+function getManualRowDraftCommonFields(draft = {}) {
+  return MANUAL_DRAFT_FIELDS.filter((field) => field !== "containerNumber").reduce((acc, field) => {
+    acc[field] = asText(draft?.[field]);
+    return acc;
+  }, {});
+}
+
+function inferManualFieldsFromContainerInput(rawInput, commonFields = {}) {
+  const sourceText = String(rawInput ?? "");
+  if (!sourceText) {
+    return {};
+  }
+
+  const inferred = {};
+  if (!asText(commonFields.blNumber)) {
+    const blMatch = sourceText.match(/\bBL\s*#?\s*[:\-]?\s*([A-Z0-9-]+)/i);
+    if (blMatch?.[1]) {
+      inferred.blNumber = asText(blMatch[1]).toUpperCase();
+    }
+  }
+
+  if (!asText(commonFields.customsOffice)) {
+    const customsOfficeCode = sourceText.match(/\b[A-Z]{2}\d{6}\b/i);
+    if (customsOfficeCode?.[0]) {
+      inferred.customsOffice = asText(customsOfficeCode[0]).toUpperCase();
+    }
+  }
+
+  return inferred;
+}
+
+function getManualRowsFromDraft(draft = {}) {
+  const rawContainerInput = String(draft?.containerNumber ?? "");
+  const normalizedContainerInput = asText(rawContainerInput);
+  const commonFields = getManualRowDraftCommonFields(draft);
+  const inferredFields = inferManualFieldsFromContainerInput(rawContainerInput, commonFields);
+  const mergedCommonFields = {
+    ...commonFields,
+    ...inferredFields,
+  };
+  const containers = extractContainerNumbers(rawContainerInput);
+  const hasCommonValues = Object.values(mergedCommonFields).some((value) => Boolean(asText(value)));
+
+  if (!normalizedContainerInput && !hasCommonValues) {
+    return {
+      rows: [],
+      reason: "empty",
+      inferredFields,
+    };
+  }
+
+  let resolvedContainers = [...containers];
+  if (!resolvedContainers.length && normalizedContainerInput) {
+    const fallbackContainer = normalizeContainerNumber(normalizedContainerInput);
+    const singleTokenInput =
+      !/[,\n;]/.test(normalizedContainerInput) &&
+      normalizedContainerInput.trim().split(/\s+/).filter(Boolean).length <= 2;
+    if (singleTokenInput && fallbackContainer) {
+      resolvedContainers = [fallbackContainer];
+    } else {
+      return {
+        rows: [],
+        reason: "invalid-containers",
+        inferredFields,
+      };
+    }
+  }
+
+  const normalizedRows = (resolvedContainers.length ? resolvedContainers : [""]).map((containerNumber) =>
+    normalizeRow({
+      ...createRow(),
+      ...mergedCommonFields,
+      containerNumber,
+      origin: "manual",
+    })
+  );
+
+  return {
+    rows: normalizedRows,
+    reason: normalizedRows.length > 1 ? "bulk" : "single",
+    inferredFields,
+  };
+}
+
+function buildPreservedManualDraft(previousDraft = {}, inferredFields = {}) {
+  const preserved = MANUAL_DRAFT_FIELDS.filter((field) => field !== "containerNumber").reduce(
+    (acc, field) => {
+      acc[field] = asText(previousDraft?.[field]);
+      return acc;
+    },
+    {}
+  );
+
+  return createManualRowDraft({
+    ...preserved,
+    ...inferredFields,
+    containerNumber: "",
+  });
+}
+
+function focusManualDraftField(field = "containerNumber", { select = true } = {}) {
+  const normalizedField = asText(field);
+  window.requestAnimationFrame(() => {
+    const input = elements.projectRows.querySelector(
+      `[data-manual-draft="true"] [data-draft-field="${normalizedField}"]`
+    );
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+
+    input.focus({ preventScroll: false });
+    if (select) {
+      input.select();
+    }
+  });
+}
 
 function getActiveProjectTitle() {
   const currentName = asText(stateRef.state.projectName);
@@ -747,6 +924,7 @@ function clearCurrentProject() {
 
 function setState(nextState, options = {}) {
   stateRef.state = normalizeState(nextState);
+  stateRef.manualRowDraft = createManualRowDraft();
   recalculateProjectStats();
   restoreProjectViewFromState();
   syncActiveSheetFilters();
@@ -1426,6 +1604,7 @@ function syncEditedRowUi(rowId, field) {
 
   const updatedFields = stateRef.rowHighlights.get(asText(rowId)) || new Set();
   rowNode.classList.toggle("row--updated", updatedFields.size > 0);
+  rowNode.classList.toggle("row--sticky-visible", stateRef.stickyVisibleRowIds.has(asText(rowId)));
 
   const input = rowNode.querySelector(`[data-field="${field}"]`);
   if (!(input instanceof HTMLInputElement)) {
@@ -1448,6 +1627,22 @@ function hasActiveVesselDateFilter() {
       (stateRef.vesselDateFromFilter || stateRef.vesselDateToFilter)) ||
       (stateRef.vesselDateModeFilter === "list" && stateRef.vesselDateSelectedFilter.length > 0)
   );
+}
+
+function syncStickyVisibilityForRow(row) {
+  const rowId = asText(row?.id);
+  if (!rowId) {
+    return;
+  }
+
+  if (matchesRowFilters(row, getProjectFilters())) {
+    if (!stateRef.rowHighlights.has(rowId)) {
+      stateRef.stickyVisibleRowIds.delete(rowId);
+    }
+    return;
+  }
+
+  stateRef.stickyVisibleRowIds.add(rowId);
 }
 
 function shouldRerenderProjectRowsAfterRowEdit(rowId, field) {
@@ -1528,6 +1723,7 @@ function updateRow(rowId, field, value) {
 
   clearRowHighlightForField(rowId, field);
   applyProjectStatsDelta(previousRow, nextRow);
+  syncStickyVisibilityForRow(nextRow);
 
   stateRef.changeToken += 1;
   stateRef.dirty = true;
@@ -1565,20 +1761,96 @@ function ensureDefaultSheet() {
   return sheet;
 }
 
-function addRow() {
+function appendRowsToActiveSheet(
+  rows = [],
+  { preserveProjectTableViewport = true, keepRowsVisible = true } = {}
+) {
+  const normalizedRows = Array.isArray(rows) ? rows.map((row) => normalizeRow(row)) : [];
+  if (!normalizedRows.length) {
+    return 0;
+  }
+
   const activeSheet = ensureDefaultSheet();
-  const nextRow = createRow();
   stateRef.state.sheets = stateRef.state.sheets.map((sheet) =>
     sheet.id === activeSheet.id
       ? normalizeSheet({
           ...sheet,
-          rows: [...sheet.rows, nextRow],
+          rows: [...sheet.rows, ...normalizedRows],
         })
       : sheet
   );
   stateRef.state.activeSheetId = activeSheet.id;
-  applyProjectStatsDelta(null, nextRow);
-  registerProjectMutation({ rerender: "all", preserveProjectTableViewport: true });
+
+  normalizedRows.forEach((row) => {
+    applyProjectStatsDelta(null, row);
+    if (keepRowsVisible) {
+      stateRef.stickyVisibleRowIds.add(asText(row.id));
+    }
+  });
+
+  registerProjectMutation({ rerender: "all", preserveProjectTableViewport });
+  return normalizedRows.length;
+}
+
+function formatManualInferredFieldLabel(field) {
+  switch (field) {
+    case "blNumber":
+      return "BL";
+    case "customsOffice":
+      return "UC";
+    default:
+      return field;
+  }
+}
+
+function addRowsFromManualDraft() {
+  const draftSnapshot = createManualRowDraft(stateRef.manualRowDraft);
+  const result = getManualRowsFromDraft(draftSnapshot);
+
+  if (result.reason === "empty") {
+    setStatus("Wypelnij dolny placeholder, aby dodac nowy wiersz.");
+    focusManualDraftField("containerNumber", { select: false });
+    return 0;
+  }
+
+  if (result.reason === "invalid-containers") {
+    setStatus("Nie rozpoznano numerow kontenerow. Uzyj formatu ABCD1234567.");
+    focusManualDraftField("containerNumber");
+    return 0;
+  }
+
+  stateRef.manualRowDraft = buildPreservedManualDraft(draftSnapshot, result.inferredFields);
+  const addedCount = appendRowsToActiveSheet(result.rows, {
+    preserveProjectTableViewport: true,
+    keepRowsVisible: true,
+  });
+  if (!addedCount) {
+    return 0;
+  }
+
+  const inferredLabels = Object.keys(result.inferredFields || {})
+    .filter((field) => asText(result.inferredFields[field]))
+    .map((field) => formatManualInferredFieldLabel(field));
+  const inferredInfo = inferredLabels.length
+    ? ` Rozpoznano automatycznie: ${inferredLabels.join(", ")}.`
+    : "";
+  setStatus(
+    addedCount > 1
+      ? `Dodano ${addedCount} wierszy na podstawie wspolnych danych.${inferredInfo}`
+      : `Dodano 1 wiersz recznie.${inferredInfo}`
+  );
+  focusManualDraftField("containerNumber");
+  return addedCount;
+}
+
+function addRow() {
+  const addedCount = appendRowsToActiveSheet([createRow()], {
+    preserveProjectTableViewport: true,
+    keepRowsVisible: true,
+  });
+  if (addedCount > 0) {
+    setStatus("Dodano pusty wiersz.");
+  }
 }
 
 function deleteRow(rowId) {
@@ -1622,6 +1894,8 @@ function handleAction(action, payload = {}) {
       return exportVisibleRows();
     case "add-row":
       return addRow();
+    case "add-draft-row":
+      return addRowsFromManualDraft();
     case "delete-row":
       return deleteRow(payload.rowId);
     case "choose-db":
@@ -1817,9 +2091,18 @@ elements.projectRows.addEventListener("input", (event) => {
     return;
   }
 
-  const rowNode = event.target.closest("[data-row-id]");
   const input = event.target instanceof HTMLInputElement ? event.target : null;
-  if (!rowNode || !input?.dataset.field) {
+  if (!input) {
+    return;
+  }
+
+  if (input.dataset.draftField) {
+    updateManualRowDraftField(input.dataset.draftField, input.value);
+    return;
+  }
+
+  const rowNode = input.closest("[data-row-id]");
+  if (!rowNode || !input.dataset.field) {
     return;
   }
 
@@ -1832,6 +2115,20 @@ elements.projectRows.addEventListener("input", (event) => {
   }
 
   updateRow(rowNode.dataset.rowId, input.dataset.field, normalizedValue);
+});
+
+elements.projectRows.addEventListener("keydown", (event) => {
+  if (stateRef.busyAction || event.key !== "Enter") {
+    return;
+  }
+
+  const input = event.target instanceof HTMLInputElement ? event.target : null;
+  if (!input?.dataset.draftField) {
+    return;
+  }
+
+  event.preventDefault();
+  addRowsFromManualDraft();
 });
 
 elements.projectSearch.addEventListener("input", (event) => {

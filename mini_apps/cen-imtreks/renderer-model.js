@@ -12,6 +12,41 @@ export function normalizeContainerNumber(value) {
   return asText(value).replace(/[\s\u00a0]+/g, "").toUpperCase();
 }
 
+const CONTAINER_NUMBER_PATTERN = /\b[A-Z]{4}[\s\u00a0-]*\d{7}\b/g;
+
+function isValidContainerNumber(value) {
+  return /^[A-Z]{4}\d{7}$/.test(asText(value).toUpperCase());
+}
+
+export function extractContainerNumbers(value) {
+  const raw = asText(value).toUpperCase();
+  if (!raw) {
+    return [];
+  }
+
+  const result = [];
+  const seen = new Set();
+  const register = (candidate) => {
+    const normalized = normalizeContainerNumber(candidate);
+    if (!isValidContainerNumber(normalized) || seen.has(normalized)) {
+      return;
+    }
+
+    seen.add(normalized);
+    result.push(normalized);
+  };
+
+  const directCandidate = normalizeContainerNumber(raw);
+  if (isValidContainerNumber(directCandidate)) {
+    register(directCandidate);
+  }
+
+  const matches = raw.match(CONTAINER_NUMBER_PATTERN) || [];
+  matches.forEach((match) => register(match));
+
+  return result;
+}
+
 export function createId(prefix = "row") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }

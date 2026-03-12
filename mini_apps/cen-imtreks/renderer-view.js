@@ -74,6 +74,71 @@ function shouldUseCompactStopInput(value) {
   return normalized.length >= 26 || /permission/i.test(normalized);
 }
 
+const MANUAL_DRAFT_PLACEHOLDERS = {
+  sequenceNumber: "Lp.",
+  orderDate: "dd.mm.rrrr",
+  vesselDate: "dd.mm.rrrr",
+  folderName: "Folder / sprawa",
+  containerNumber: "1 lub wiele kontenerow (MSBU..., MSDU...)",
+  blNumber: "BL",
+  customsOffice: "UC / kod",
+  status: "Status",
+  stop: "Stop",
+  t1: "T1",
+  invoiceInfo: "Faktura",
+  remarks: "Uwagi",
+};
+
+function renderRowsMessageRow(message) {
+  return `
+    <tr class="row--message">
+      <td colspan="14">${escapeHtml(message)}</td>
+    </tr>
+  `;
+}
+
+function renderManualDraftCell(field, value, extraClass = "") {
+  const classes = ["row-input", "row-input--draft"];
+  if (extraClass) {
+    classes.push(extraClass);
+  }
+
+  return `<input
+    type="text"
+    data-draft-field="${escapeHtml(field)}"
+    value="${escapeHtml(value)}"
+    placeholder="${escapeHtml(MANUAL_DRAFT_PLACEHOLDERS[field] || "")}"
+    class="${classes.join(" ")}"
+  />`;
+}
+
+function renderManualDraftRow(draft = {}) {
+  const stopExtraClass = shouldUseCompactStopInput(draft.stop) ? "row-input--compact" : "";
+
+  return `
+    <tr data-manual-draft="true" class="row--draft">
+      <td class="row-index">${renderManualDraftCell("sequenceNumber", draft.sequenceNumber)}</td>
+      <td>${renderManualDraftCell("orderDate", draft.orderDate)}</td>
+      <td>${renderManualDraftCell("vesselDate", draft.vesselDate)}</td>
+      <td>${renderManualDraftCell("folderName", draft.folderName)}</td>
+      <td>${renderManualDraftCell("containerNumber", draft.containerNumber)}</td>
+      <td>${renderManualDraftCell("blNumber", draft.blNumber)}</td>
+      <td>${renderManualDraftCell("customsOffice", draft.customsOffice)}</td>
+      <td>${renderManualDraftCell("status", draft.status)}</td>
+      <td>${renderManualDraftCell("stop", draft.stop, stopExtraClass)}</td>
+      <td>${renderManualDraftCell("t1", draft.t1)}</td>
+      <td>${renderManualDraftCell("invoiceInfo", draft.invoiceInfo)}</td>
+      <td>${renderManualDraftCell("remarks", draft.remarks)}</td>
+      <td class="row-source--draft">Nowy</td>
+      <td class="cell-actions">
+        <button type="button" data-action="add-draft-row" title="Dodaj wiersze z dolnego placeholdera">
+          Dodaj
+        </button>
+      </td>
+    </tr>
+  `;
+}
+
 export function renderProjectIndicator(elements, stateRef, bridge, getActiveProjectTitle) {
   const currentTitle = getActiveProjectTitle();
   const syncLabel = stateRef.currentProjectId ? "projekt w bazie" : "nowy projekt";
@@ -229,34 +294,18 @@ export function renderFilters(elements, stateRef) {
 
 export function renderRows(elements, stateRef) {
   const activeSheet = getActiveSheet(stateRef.state);
-  if (!activeSheet) {
-    elements.projectRows.innerHTML = `
-      <tr>
-        <td colspan="14">Brak miesiecy. Zaimportuj rejestr IMTREKS lub dodaj wiersz recznie.</td>
-      </tr>
-    `;
-    return;
-  }
-
-  if (activeSheet.rows.length === 0) {
-    elements.projectRows.innerHTML = `
-      <tr>
-        <td colspan="14">Brak wierszy w miesiacu ${escapeHtml(activeSheet.name)}.</td>
-      </tr>
-    `;
-    return;
-  }
-
-  const rows = getFilteredRows(stateRef.state, {
-    searchTerm: stateRef.projectSearchTerm,
-    vesselDateMode: stateRef.vesselDateModeFilter,
-    vesselDateFrom: stateRef.vesselDateFromFilter,
-    vesselDateTo: stateRef.vesselDateToFilter,
-    vesselDateSelected: stateRef.vesselDateSelectedFilter,
-    hasT1: stateRef.hasT1Filter,
-    status: stateRef.statusFilter,
-    includeRowIds: Array.from(stateRef.stickyVisibleRowIds || []),
-  });
+  const rows = activeSheet
+    ? getFilteredRows(stateRef.state, {
+        searchTerm: stateRef.projectSearchTerm,
+        vesselDateMode: stateRef.vesselDateModeFilter,
+        vesselDateFrom: stateRef.vesselDateFromFilter,
+        vesselDateTo: stateRef.vesselDateToFilter,
+        vesselDateSelected: stateRef.vesselDateSelectedFilter,
+        hasT1: stateRef.hasT1Filter,
+        status: stateRef.statusFilter,
+        includeRowIds: Array.from(stateRef.stickyVisibleRowIds || []),
+      })
+    : [];
   const baseFilters = {
     searchTerm: stateRef.projectSearchTerm,
     vesselDateMode: stateRef.vesselDateModeFilter,
@@ -266,17 +315,7 @@ export function renderRows(elements, stateRef) {
     hasT1: stateRef.hasT1Filter,
     status: stateRef.statusFilter,
   };
-
-  if (rows.length === 0) {
-    elements.projectRows.innerHTML = `
-      <tr>
-        <td colspan="14">Brak wynikow dla aktywnej zakladki i ustawionych filtrow.</td>
-      </tr>
-    `;
-    return;
-  }
-
-  elements.projectRows.innerHTML = rows
+  const renderedRows = rows
     .map((row) => {
       const updatedFields = stateRef.rowHighlights.get(row.id) || new Set();
       const isStickyRow =
@@ -314,6 +353,24 @@ export function renderRows(elements, stateRef) {
       `;
     })
     .join("");
+
+  const rowBlocks = [];
+  if (!activeSheet) {
+    rowBlocks.push(
+      renderRowsMessageRow("Brak miesiecy. Zaimportuj rejestr IMTREKS lub dodaj wiersz recznie.")
+    );
+  } else if (activeSheet.rows.length === 0) {
+    rowBlocks.push(renderRowsMessageRow(`Brak wierszy w miesiacu ${activeSheet.name}.`));
+  } else if (!rows.length) {
+    rowBlocks.push(renderRowsMessageRow("Brak wynikow dla aktywnej zakladki i ustawionych filtrow."));
+  }
+
+  if (renderedRows) {
+    rowBlocks.push(renderedRows);
+  }
+
+  rowBlocks.push(renderManualDraftRow(stateRef.manualRowDraft || {}));
+  elements.projectRows.innerHTML = rowBlocks.join("");
 }
 
 export function renderLookupRows(elements, stateRef) {

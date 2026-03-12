@@ -810,6 +810,17 @@ select {
   transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
+.row-input--draft {
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.row-input--draft:focus {
+  border-color: rgba(31, 107, 103, 0.48);
+  box-shadow: 0 0 0 3px rgba(31, 107, 103, 0.12);
+  outline: none;
+}
+
 .row-input--updated {
   background: #fff2d6;
   border-color: rgba(200, 107, 53, 0.62);
@@ -827,6 +838,36 @@ select {
 
 .row--sticky-visible {
   background: rgba(230, 244, 240, 0.92);
+}
+
+.row--message td {
+  color: var(--muted);
+  font-style: italic;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.row--draft td {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: rgba(243, 251, 248, 0.98);
+  border-top: 1px dashed rgba(31, 107, 103, 0.38);
+}
+
+.row--draft:hover td {
+  background: rgba(235, 248, 244, 0.98);
+}
+
+.row--draft .cell-actions button {
+  background: var(--accent-strong);
+  color: #fff;
+  border-color: transparent;
+}
+
+.row-source--draft {
+  color: var(--muted);
+  font-size: 0.74rem;
+  white-space: nowrap;
 }
 
 .row-index,
