@@ -124,6 +124,7 @@ const CANCEL_UPDATE_BUTTON_LABEL = "Anuluj aktualizacje";
 const VESSEL_DATE_POPOVER_GAP_PX = 8;
 const VESSEL_DATE_POPOVER_VIEWPORT_PADDING_PX = 16;
 const VESSEL_DATE_POPOVER_MAX_WIDTH_PX = 340;
+const VALID_LOOKUP_T1_PATTERN = /^\d{2}PL.*$/i;
 
 let vesselDatePopoverPositionFrame = 0;
 
@@ -154,6 +155,11 @@ function getUpdateButton() {
 
 function createUpdateRequestId() {
   return `cen-imtreks-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function isValidLookupT1Value(value) {
+  const normalized = asText(value);
+  return !normalized || VALID_LOOKUP_T1_PATTERN.test(normalized);
 }
 
 function formatUpdateSummary(result = {}) {
@@ -885,6 +891,87 @@ async function refreshLookupRecords() {
   renderLookupRows(elements, stateRef);
 }
 
+function clearInvalidProjectT1Values() {
+  if (!Array.isArray(stateRef.state.sheets) || stateRef.state.sheets.length === 0) {
+    return 0;
+  }
+
+  let clearedCount = 0;
+  let hasChanges = false;
+
+  stateRef.state.sheets = stateRef.state.sheets.map((sheet) => {
+    let sheetChanged = false;
+    const nextRows = sheet.rows.map((row) => {
+      if (isValidLookupT1Value(row.t1)) {
+        return row;
+      }
+
+      sheetChanged = true;
+      hasChanges = true;
+      clearedCount += 1;
+      return normalizeRow({
+        ...row,
+        t1: "",
+      });
+    });
+
+    if (!sheetChanged) {
+      return sheet;
+    }
+
+    return normalizeSheet({
+      ...sheet,
+      rows: nextRows,
+    });
+  });
+
+  if (!hasChanges) {
+    return 0;
+  }
+
+  recalculateProjectStats();
+  registerProjectMutation({
+    rerender: "all",
+    preserveProjectTableViewport: true,
+  });
+
+  return clearedCount;
+}
+
+async function repairLookupT1() {
+  const confirmed = window.confirm(
+    "Naprawic T1 w bazie? Wartosci CEN, ktore nie pasuja do wzorca 2 cyfry + PL + dowolny tekst, zostana wyczyszczone."
+  );
+  if (!confirmed) {
+    return null;
+  }
+
+  const dbPath = await ensureDbPath();
+  const selectedContainer = asText(stateRef.recordDraft.containerNumber);
+  const result = await bridge.repairCenImtreksLookupT1(dbPath);
+  stateRef.state.dbPath = asText(result.dbPath) || dbPath;
+  await persistSettings();
+  await refreshLookupRecords();
+  const clearedProjectRows = clearInvalidProjectT1Values();
+
+  if (selectedContainer) {
+    const selectedRecord = stateRef.lookupRecords.find(
+      (record) => record.containerNumber === selectedContainer
+    );
+    if (selectedRecord) {
+      stateRef.recordDraft = normalizeLookupRecord(selectedRecord);
+      renderRecordDraft(elements, stateRef);
+    }
+  }
+
+  setStatus(
+    `Naprawa T1 zakonczona. Sprawdzono: ${result.scannedCount || 0}, wyczyszczono: ${
+      result.clearedCount || 0
+    }, w projekcie: ${clearedProjectRows}.`
+  );
+  return result;
+}
+
 async function refreshProjectOptions(search = stateRef.projectNameDraft) {
   const dbPath = await ensureDbPath();
   const result = await bridge.listCenImtreksProjects(dbPath, {
@@ -1539,6 +1626,8 @@ function handleAction(action, payload = {}) {
       return deleteRow(payload.rowId);
     case "choose-db":
       return chooseDbPath();
+    case "lookup-repair-t1":
+      return repairLookupT1();
     case "lookup-refresh":
       return refreshLookupRecords();
     case "record-new":

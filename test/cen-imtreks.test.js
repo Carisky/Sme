@@ -9,7 +9,13 @@ const {
   importCenImtreksWorkbook,
 } = require("../mini_apps/cen-imtreks/core/excel.cjs");
 const { lookupContainers } = require("../src/wct-cen-lookup");
-const { getProjectByName, saveProjectState } = require("../src/cen-imtreks-db");
+const {
+  getProjectByName,
+  listLookupRecords,
+  repairLookupT1Values,
+  saveLookupRecords,
+  saveProjectState,
+} = require("../src/cen-imtreks-db");
 
 function resolveSampleWorkbookPath() {
   const samplesDir = path.join(__dirname, "..", "samples", "files");
@@ -194,6 +200,63 @@ async function main() {
     assert.equal(reopened.state.view.hasT1, "without");
     assert.equal(reopened.state.view.status, "YARD");
     assert.equal(reopened.state.view.forceUpdate, true);
+
+    await saveLookupRecords(
+      dbPath,
+      [
+        {
+          containerNumber: "ABCU1111111",
+          cen: "26PL322080NS2MCHM7",
+          tState: "READY",
+          stop: "N",
+        },
+        {
+          containerNumber: "ABCU2222222",
+          cen: "PL12345",
+          tState: "READY",
+          stop: "N",
+        },
+        {
+          containerNumber: "ABCU3333333",
+          cen: "26123PLXYZ",
+          tState: "READY",
+          stop: "N",
+        },
+        {
+          containerNumber: "ABCU4444444",
+          cen: "12plabc",
+          tState: "READY",
+          stop: "N",
+        },
+        {
+          containerNumber: "ABCU5555555",
+          cen: "",
+          tState: "READY",
+          stop: "N",
+        },
+      ],
+      "lookup"
+    );
+
+    const repairSummary = await repairLookupT1Values(dbPath);
+    assert.equal(repairSummary.scannedCount, 4);
+    assert.equal(repairSummary.clearedCount, 2);
+
+    const lookupRecords = await listLookupRecords(dbPath, {
+      limit: 50,
+    });
+    const recordsByContainer = new Map(
+      lookupRecords.map((record) => [record.containerNumber, record])
+    );
+    assert.equal(recordsByContainer.get("ABCU1111111")?.cen, "26PL322080NS2MCHM7");
+    assert.equal(recordsByContainer.get("ABCU2222222")?.cen, "");
+    assert.equal(recordsByContainer.get("ABCU3333333")?.cen, "");
+    assert.equal(recordsByContainer.get("ABCU4444444")?.cen, "12plabc");
+    assert.equal(recordsByContainer.get("ABCU5555555")?.cen, "");
+
+    const secondRepairSummary = await repairLookupT1Values(dbPath);
+    assert.equal(secondRepairSummary.scannedCount, 2);
+    assert.equal(secondRepairSummary.clearedCount, 0);
 
     await assert.rejects(
       () =>

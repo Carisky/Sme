@@ -12,6 +12,7 @@ const {
 
 const DEFAULT_CEN_IMTREKS_DB_NAME = "cen_imtreks_db.sqlite";
 const PROJECT_TABLE_NAME = "CenImtreksProject";
+const VALID_LOOKUP_T1_PATTERN = /^\d{2}PL.*$/i;
 
 function getDefaultCenImtreksDbPath(appDataPath) {
   return path.join(appDataPath, "SME", DEFAULT_CEN_IMTREKS_DB_NAME);
@@ -82,6 +83,10 @@ function mapLookupRow(row = {}) {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   });
+}
+
+function matchesLookupT1Pattern(value) {
+  return VALID_LOOKUP_T1_PATTERN.test(asText(value));
 }
 
 function buildProjectNameKey(value) {
@@ -394,6 +399,48 @@ async function listLookupRecords(dbPath, options = {}) {
   });
 }
 
+async function repairLookupT1Values(dbPath) {
+  return withDb(dbPath, async (client) => {
+    const lookupRowsResult = await client.execute({
+      sql: `
+        SELECT "containerNumber", "cen"
+        FROM "ContainerLookup"
+        WHERE LENGTH(TRIM("cen")) > 0
+      `,
+    });
+    const invalidContainers = lookupRowsResult.rows
+      .filter((row) => !matchesLookupT1Pattern(row.cen))
+      .map((row) => asText(row.containerNumber))
+      .filter(Boolean);
+
+    if (invalidContainers.length > 0) {
+      const placeholders = invalidContainers.map(() => "?").join(", ");
+      const transaction = await client.transaction("write");
+
+      try {
+        await transaction.execute({
+          sql: `
+            UPDATE "ContainerLookup"
+            SET
+              "cen" = '',
+              "updatedAt" = CURRENT_TIMESTAMP
+            WHERE "containerNumber" IN (${placeholders})
+          `,
+          args: invalidContainers,
+        });
+        await transaction.commit();
+      } finally {
+        transaction.close();
+      }
+    }
+
+    return {
+      scannedCount: lookupRowsResult.rows.length,
+      clearedCount: invalidContainers.length,
+    };
+  });
+}
+
 async function findLookupRecordsByContainers(dbPath, containers = []) {
   const normalized = Array.from(
     new Set(containers.map(normalizeContainerNumber).filter(Boolean))
@@ -512,6 +559,7 @@ module.exports = {
   getProjectByName,
   listLookupRecords,
   listProjectSummaries,
+  repairLookupT1Values,
   resolveCenImtreksDbPath,
   saveLookupRecord,
   saveLookupRecords,

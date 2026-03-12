@@ -89,6 +89,8 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("cen-imtreks:db:list", dbPath, options),
   saveCenImtreksLookupRecord: (dbPath, record) =>
     ipcRenderer.invoke("cen-imtreks:db:save", dbPath, record),
+  repairCenImtreksLookupT1: (dbPath) =>
+    ipcRenderer.invoke("cen-imtreks:db:repair-t1", dbPath),
   onCenImtreksStatus: (callback) => {
     ipcRenderer.removeAllListeners("cen-imtreks:status");
     ipcRenderer.on("cen-imtreks:status", (_event, payload) => callback(payload));

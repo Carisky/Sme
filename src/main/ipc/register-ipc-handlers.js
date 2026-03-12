@@ -224,6 +224,10 @@ function registerIpcHandlers({
     return cenImtreksService.saveDbRecord(dbPath, record);
   });
 
+  ipcMain.handle("cen-imtreks:db:repair-t1", async (_event, dbPath) => {
+    return cenImtreksService.repairDbT1Records(dbPath);
+  });
+
   ipcMain.handle("wct-cen:project:list", async (_event, dbPath, options) => {
     return wctCenService.listProjects(dbPath, options);
   });

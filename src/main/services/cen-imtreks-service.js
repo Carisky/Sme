@@ -22,6 +22,7 @@ const {
   getProjectByName,
   listLookupRecords,
   listProjectSummaries,
+  repairLookupT1Values,
   resolveCenImtreksDbPath,
   saveLookupRecord,
   saveLookupRecords,
@@ -439,6 +440,15 @@ function createCenImtreksService({ windowController }) {
     };
   }
 
+  async function repairDbT1Records(dbPath) {
+    const resolvedDbPath = resolveDbPath(dbPath);
+    const result = await repairLookupT1Values(resolvedDbPath);
+    return {
+      dbPath: resolvedDbPath,
+      ...result,
+    };
+  }
+
   async function listProjects(dbPath, options = {}) {
     const resolvedDbPath = resolveDbPath(dbPath);
     return {
@@ -808,6 +818,7 @@ function createCenImtreksService({ windowController }) {
     listDbRecords,
     listProjects,
     openProject,
+    repairDbT1Records,
     saveDbRecord,
     saveProject,
     updateProjectState,
