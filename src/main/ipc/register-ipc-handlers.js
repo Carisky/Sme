@@ -194,6 +194,10 @@ function registerIpcHandlers({
     return cenImtreksService.importFromDialog(currentState);
   });
 
+  ipcMain.handle("cen-imtreks:export-visible", async (_event, currentState, rows, options) => {
+    return cenImtreksService.exportRowsToDialog(currentState, rows, options);
+  });
+
   ipcMain.handle("cen-imtreks:update", async (_event, currentState, dbPath, options) => {
     return cenImtreksService.updateProjectState(currentState, dbPath, options);
   });

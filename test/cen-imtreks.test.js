@@ -3,7 +3,11 @@ const fs = require("node:fs/promises");
 const fssync = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
-const { importCenImtreksWorkbook } = require("../mini_apps/cen-imtreks/core/excel.cjs");
+const XLSX = require("xlsx");
+const {
+  exportCenImtreksRowsWorkbook,
+  importCenImtreksWorkbook,
+} = require("../mini_apps/cen-imtreks/core/excel.cjs");
 const { lookupContainers } = require("../src/wct-cen-lookup");
 const { getProjectByName, saveProjectState } = require("../src/cen-imtreks-db");
 
@@ -86,6 +90,52 @@ async function main() {
   const dbPath = path.join(tempDir, "cen-imtreks.sqlite");
 
   try {
+    const exportFilePath = path.join(tempDir, "widoczne-wiersze.xlsx");
+    const exportSummary = exportCenImtreksRowsWorkbook(
+      exportFilePath,
+      [
+        {
+          sequenceNumber: "5",
+          orderDate: "02.03.2026",
+          vesselDate: "17.03.2026",
+          folderName: "DCT GDANSK PF",
+          containerNumber: "temu 3675786",
+          blNumber: "CHN3033488",
+          customsOffice: "GDANSK DCT",
+          status: "iug",
+          remarks: "WIORIN",
+          sourceRowNumber: "6",
+        },
+      ],
+      {
+        sheetName: "Marzec",
+      }
+    );
+    assert.equal(exportSummary.rowCount, 1);
+    assert.equal(exportSummary.sheetName, "Marzec");
+
+    const exportedWorkbook = XLSX.readFile(exportFilePath);
+    const exportedSheet = exportedWorkbook.Sheets[exportedWorkbook.SheetNames[0]];
+    const exportedRows = XLSX.utils.sheet_to_json(exportedSheet, { header: 1, defval: "" });
+    assert.deepEqual(exportedRows[0], [
+      "Lp.",
+      "Data zlecenia",
+      "Data statku",
+      "Folder",
+      "Container",
+      "BL",
+      "UC",
+      "Status",
+      "Stop",
+      "T1",
+      "Faktura",
+      "Uwagi",
+      "Src",
+    ]);
+    assert.equal(exportedRows[1][0], "5");
+    assert.equal(exportedRows[1][4], "TEMU3675786");
+    assert.equal(exportedRows[1][12], "6");
+
     const created = await saveProjectState(dbPath, {
       projectName: "IM Alpha",
       sourceFileName: path.basename(workbookPath),

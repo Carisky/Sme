@@ -31,6 +31,22 @@ const HEADER_FIELD_MAP = {
 };
 
 const REQUIRED_HEADERS = ["datazlecenia", "kontener", "ucotwarcia"];
+const DEFAULT_EXPORT_SHEET_NAME = "Wiersze robocze";
+const EXPORT_COLUMNS = [
+  { label: "Lp.", field: "sequenceNumber", width: 8 },
+  { label: "Data zlecenia", field: "orderDate", width: 14 },
+  { label: "Data statku", field: "vesselDate", width: 14 },
+  { label: "Folder", field: "folderName", width: 20 },
+  { label: "Container", field: "containerNumber", width: 16 },
+  { label: "BL", field: "blNumber", width: 14 },
+  { label: "UC", field: "customsOffice", width: 16 },
+  { label: "Status", field: "status", width: 14 },
+  { label: "Stop", field: "stop", width: 12 },
+  { label: "T1", field: "t1", width: 22 },
+  { label: "Faktura", field: "invoiceInfo", width: 18 },
+  { label: "Uwagi", field: "remarks", width: 20 },
+  { label: "Src", field: "source", width: 10 },
+];
 
 function normalizeHeader(value) {
   const source = asText(value)
@@ -82,6 +98,26 @@ function findHeaderRow(rows = []) {
   }
 
   return -1;
+}
+
+function sanitizeWorkbookSheetName(value) {
+  const candidate = asText(value)
+    .replace(/[\\/*?:]/g, " ")
+    .replace(/\[/g, " ")
+    .replace(/\]/g, " ")
+    .replace(/[\u0000-\u001f]/g, " ")
+    .trim();
+  return (candidate || DEFAULT_EXPORT_SHEET_NAME).slice(0, 31);
+}
+
+function buildExportRowCells(row = {}) {
+  return EXPORT_COLUMNS.map((column) => {
+    if (column.field === "source") {
+      return asText(row.sourceRowNumber) || asText(row.origin) || "-";
+    }
+
+    return asText(row[column.field]);
+  });
 }
 
 function buildRowImportKey(row = {}) {
@@ -233,6 +269,27 @@ function importCenImtreksWorkbook(filePath, previousState = createEmptyState()) 
   });
 }
 
+function exportCenImtreksRowsWorkbook(filePath, rows = [], options = {}) {
+  const normalizedRows = Array.isArray(rows) ? rows.map(normalizeProjectRow) : [];
+  const sheetName = sanitizeWorkbookSheetName(options.sheetName);
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    EXPORT_COLUMNS.map((column) => column.label),
+    ...normalizedRows.map((row) => buildExportRowCells(row)),
+  ]);
+  worksheet["!cols"] = EXPORT_COLUMNS.map((column) => ({ wch: column.width }));
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+  XLSX.writeFile(workbook, filePath);
+
+  return {
+    filePath,
+    rowCount: normalizedRows.length,
+    sheetName,
+  };
+}
+
 module.exports = {
+  exportCenImtreksRowsWorkbook,
   importCenImtreksWorkbook,
 };

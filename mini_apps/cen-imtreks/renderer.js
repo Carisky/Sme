@@ -1279,6 +1279,26 @@ async function saveProjectAs() {
   return result;
 }
 
+async function exportVisibleRows() {
+  const activeSheet = getActiveSheet(stateRef.state);
+  const visibleRows = getFilteredRows(stateRef.state, getProjectFilters({ includeSticky: true }));
+  if (!visibleRows.length) {
+    window.alert("Brak widocznych wierszy do eksportu.");
+    return null;
+  }
+
+  const result = await bridge.exportCenImtreksVisibleRows(stateRef.state, visibleRows, {
+    sheetName: activeSheet?.name || "Wiersze robocze",
+  });
+
+  if (result?.canceled) {
+    return null;
+  }
+
+  setStatus(`Wyeksportowano ${result.rowCount || visibleRows.length} wierszy do ${basename(result.filePath)}.`);
+  return result;
+}
+
 function switchMonth(sheetId) {
   resetRowFeedback();
   stateRef.state.activeSheetId = asText(sheetId);
@@ -1511,6 +1531,8 @@ function handleAction(action, payload = {}) {
       return saveProjectAs();
     case "clear-filters":
       return resetProjectFilters();
+    case "export-visible":
+      return exportVisibleRows();
     case "add-row":
       return addRow();
     case "delete-row":

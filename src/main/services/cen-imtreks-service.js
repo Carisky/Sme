@@ -1,4 +1,5 @@
 const { app, dialog } = require("electron");
+const path = require("path");
 const {
   asText,
   flattenProjectRows,
@@ -7,8 +8,12 @@ const {
   normalizeProjectRow,
   normalizeProjectSheet,
   normalizeState,
+  suggestProjectName,
 } = require("../../../mini_apps/cen-imtreks/core/index.cjs");
-const { importCenImtreksWorkbook } = require("../../../mini_apps/cen-imtreks/core/excel.cjs");
+const {
+  exportCenImtreksRowsWorkbook,
+  importCenImtreksWorkbook,
+} = require("../../../mini_apps/cen-imtreks/core/excel.cjs");
 const { LOOKUP_URL, lookupContainers } = require("../../wct-cen-lookup");
 const {
   findLookupRecordsByContainers,
@@ -145,6 +150,33 @@ function filterRowsByTargetIds(rows = [], targetRowIds = new Set()) {
   }
 
   return rows.filter((row) => targetRowIds.has(asText(row.id)));
+}
+
+function ensureXlsxExtension(filePath) {
+  return /\.xlsx$/i.test(asText(filePath)) ? filePath : `${filePath}.xlsx`;
+}
+
+function sanitizeFileNameSegment(value, fallback) {
+  return (
+    asText(value)
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || fallback
+  );
+}
+
+function buildExportDefaultPath(state, sheetName) {
+  const normalizedState = normalizeState(state);
+  const projectName = suggestProjectName(normalizedState);
+  const sheetSegment = sanitizeFileNameSegment(sheetName, "wiersze-robocze");
+  const fileName = `${projectName}-${sheetSegment}-eksport.xlsx`;
+  const sourceFilePath = asText(normalizedState.sourceFilePath);
+  const baseDirectory =
+    asText(normalizedState.fileLocation) ||
+    (sourceFilePath ? path.dirname(sourceFilePath) : "") ||
+    app.getPath("documents");
+  return path.join(baseDirectory, fileName);
 }
 
 function mergeStats(target, delta = {}) {
@@ -358,6 +390,36 @@ function createCenImtreksService({ windowController }) {
       canceled: false,
       filePath,
       state: importCenImtreksWorkbook(filePath, currentState),
+    };
+  }
+
+  async function exportRowsToDialog(currentState, rows = [], options = {}) {
+    const normalizedState = normalizeState(currentState);
+    const normalizedRows = Array.isArray(rows) ? rows.map(normalizeProjectRow) : [];
+    if (normalizedRows.length === 0) {
+      throw new Error("Brak widocznych wierszy do eksportu.");
+    }
+
+    const requestedSheetName = asText(options.sheetName) || "Wiersze robocze";
+    const result = await dialog.showSaveDialog(windowController.getMainWindow(), {
+      title: "Eksportuj widoczne wiersze CEN IMTREKS",
+      defaultPath: buildExportDefaultPath(normalizedState, requestedSheetName),
+      filters: [{ name: "Excel", extensions: ["xlsx"] }],
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { canceled: true };
+    }
+
+    const filePath = ensureXlsxExtension(result.filePath);
+    const exportResult = exportCenImtreksRowsWorkbook(filePath, normalizedRows, {
+      sheetName: requestedSheetName,
+    });
+    return {
+      canceled: false,
+      filePath,
+      rowCount: exportResult.rowCount,
+      sheetName: exportResult.sheetName,
     };
   }
 
@@ -740,6 +802,7 @@ function createCenImtreksService({ windowController }) {
   return {
     cancelProjectUpdate,
     chooseDatabasePath,
+    exportRowsToDialog,
     getDefaultDbPath: () => getDefaultCenImtreksDbPath(app.getPath("appData")),
     importFromDialog,
     listDbRecords,
