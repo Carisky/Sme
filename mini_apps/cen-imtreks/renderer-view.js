@@ -1,6 +1,6 @@
 import {
+  collectProjectStats,
   escapeHtml,
-  flattenRows,
   formatTimestamp,
   getActiveSheet,
   getActiveSheetFilterOptions,
@@ -89,11 +89,8 @@ export function renderProjectOptions(elements, stateRef) {
 }
 
 export function renderSummary(elements, stateRef, getActiveProjectTitle) {
-  const rows = flattenRows(stateRef.state);
   const activeSheet = getActiveSheet(stateRef.state);
-  const filledCount = rows.filter((row) => row.t1).length;
-  const pendingCount = rows.filter((row) => row.containerNumber && !row.t1).length;
-  const manualCount = rows.filter((row) => row.origin === "manual").length;
+  const stats = stateRef.projectStats || collectProjectStats(stateRef.state);
   const syncLabel = stateRef.dirty
     ? "Oczekuje na zapis"
     : stateRef.currentProjectSummary?.updatedAt
@@ -105,18 +102,18 @@ export function renderSummary(elements, stateRef, getActiveProjectTitle) {
   elements.summaryProjectSync.textContent = syncLabel;
   elements.summaryProjectSyncInline.textContent = syncLabel;
   elements.summaryActiveMonthInline.textContent = `Arkusz: ${activeSheet?.name || "-"}`;
-  elements.summaryRowCountInline.textContent = `${rows.length} wierszy`;
+  elements.summaryRowCountInline.textContent = `${stats.rowCount} wierszy`;
   elements.summarySourceFile.textContent = stateRef.state.sourceFileName || "-";
   elements.summaryActiveMonth.textContent = activeSheet?.name || "-";
   elements.summaryMonthCount.textContent = String(stateRef.state.sheets.length);
-  elements.summaryRowCount.textContent = String(rows.length);
-  elements.summaryFilledCount.textContent = String(filledCount);
-  elements.summaryPendingCount.textContent = String(pendingCount);
-  elements.summaryManualCount.textContent = String(manualCount);
+  elements.summaryRowCount.textContent = String(stats.rowCount);
+  elements.summaryFilledCount.textContent = String(stats.filledCount);
+  elements.summaryPendingCount.textContent = String(stats.pendingCount);
+  elements.summaryManualCount.textContent = String(stats.manualCount);
   elements.summaryDbPath.textContent = stateRef.state.dbPath || "-";
   elements.summaryDbStatus.textContent = dbStatusLabel;
   elements.summaryDbStatusInline.textContent = dbStatusLabel;
-  elements.summaryManualCountInline.textContent = `${manualCount} recznych`;
+  elements.summaryManualCountInline.textContent = `${stats.manualCount} recznych`;
   elements.activeMonthLabel.textContent = activeSheet?.name || "Brak miesiecy";
   elements.dbPath.value = stateRef.state.dbPath;
 

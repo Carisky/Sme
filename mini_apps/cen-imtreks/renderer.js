@@ -1,4 +1,5 @@
 import {
+  collectProjectStats,
   DEFAULT_SHEET_NAME,
   asText,
   basename,
@@ -23,6 +24,7 @@ import {
   renderAll,
   renderFilters,
   renderProjectIndicator,
+  renderProjectOptions,
   renderLookupRows,
   renderMonthTabs,
   renderRecordDraft,
@@ -50,6 +52,7 @@ const elements = {
   filterVesselDateMode: document.getElementById("filter-vessel-date-mode"),
   filterVesselDateRange: document.getElementById("filter-vessel-date-range"),
   filterVesselDateList: document.getElementById("filter-vessel-date-list"),
+  filterVesselDatePanel: document.querySelector("#filter-vessel-date-list .filter-multiselect__panel"),
   filterVesselDateListPanel: document.getElementById("filter-vessel-date-list-panel"),
   filterVesselDateSummary: document.getElementById("filter-vessel-date-summary"),
   filterVesselDateOptions: document.getElementById("filter-vessel-date-options"),
@@ -111,10 +114,18 @@ const stateRef = {
   stickyVisibleRowIds: new Set(),
   updateSession: null,
   pendingProjectRender: 0,
+  pendingProjectRenderPreserveViewport: false,
+  projectStats: collectProjectStats(createEmptyState()),
+  lastBusyStateSignature: "",
 };
 
 const UPDATE_BUTTON_LABEL = "Zaktualizuj";
 const CANCEL_UPDATE_BUTTON_LABEL = "Anuluj aktualizacje";
+const VESSEL_DATE_POPOVER_GAP_PX = 8;
+const VESSEL_DATE_POPOVER_VIEWPORT_PADDING_PX = 16;
+const VESSEL_DATE_POPOVER_MAX_WIDTH_PX = 340;
+
+let vesselDatePopoverPositionFrame = 0;
 
 function getActiveProjectTitle() {
   const currentName = asText(stateRef.state.projectName);
@@ -127,6 +138,10 @@ function getActiveProjectTitle() {
   }
 
   return deriveProjectName(stateRef.state);
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function setStatus(message) {
@@ -199,10 +214,92 @@ function restoreProjectViewFromState() {
 }
 
 function syncProjectViewToState() {
-  stateRef.state = normalizeState({
+  stateRef.state = {
     ...stateRef.state,
     view: createProjectViewSnapshot(),
-  });
+  };
+}
+
+function getRowStatsContribution(row) {
+  return {
+    rowCount: 1,
+    filledCount: asText(row?.t1) ? 1 : 0,
+    pendingCount: asText(row?.containerNumber) && !asText(row?.t1) ? 1 : 0,
+    manualCount: asText(row?.origin) === "manual" ? 1 : 0,
+  };
+}
+
+function recalculateProjectStats() {
+  stateRef.projectStats = collectProjectStats(stateRef.state);
+}
+
+function applyProjectStatsDelta(previousRow, nextRow) {
+  if (!stateRef.projectStats) {
+    recalculateProjectStats();
+    return;
+  }
+
+  const previous = previousRow ? getRowStatsContribution(previousRow) : null;
+  const next = nextRow ? getRowStatsContribution(nextRow) : null;
+  stateRef.projectStats = {
+    rowCount:
+      stateRef.projectStats.rowCount - (previous?.rowCount || 0) + (next?.rowCount || 0),
+    filledCount:
+      stateRef.projectStats.filledCount -
+      (previous?.filledCount || 0) +
+      (next?.filledCount || 0),
+    pendingCount:
+      stateRef.projectStats.pendingCount -
+      (previous?.pendingCount || 0) +
+      (next?.pendingCount || 0),
+    manualCount:
+      stateRef.projectStats.manualCount -
+      (previous?.manualCount || 0) +
+      (next?.manualCount || 0),
+  };
+}
+
+function syncProjectFilterControls() {
+  elements.projectSearch.value = stateRef.projectSearchTerm;
+  elements.filterVesselDateMode.value = stateRef.vesselDateModeFilter;
+  elements.filterVesselDateFrom.value = stateRef.vesselDateFromFilter;
+  elements.filterVesselDateTo.value = stateRef.vesselDateToFilter;
+  elements.filterHasT1.value = stateRef.hasT1Filter;
+  elements.filterStatus.value = stateRef.statusFilter;
+  elements.forceUpdate.checked = stateRef.forceUpdateEnabled;
+}
+
+function renderProjectSummaryArea() {
+  renderProjectIndicator(elements, stateRef, bridge, getActiveProjectTitle);
+  renderSummary(elements, stateRef, getActiveProjectTitle);
+}
+
+function renderProjectFiltersArea() {
+  renderFilters(elements, stateRef);
+  syncProjectFilterControls();
+  queueVesselDatePopoverPositionSync();
+}
+
+function renderProjectOptionsArea() {
+  renderProjectOptions(elements, stateRef);
+}
+
+function renderProjectMetaArea({ includeMonthTabs = false, includeFilters = false, includeOptions = false } = {}) {
+  if (includeOptions) {
+    renderProjectOptionsArea();
+  }
+
+  renderProjectSummaryArea();
+
+  if (includeMonthTabs) {
+    renderMonthTabs(elements, stateRef);
+  }
+
+  if (includeFilters) {
+    renderProjectFiltersArea();
+  }
+
+  applyBusyState();
 }
 
 function resetRowFeedback() {
@@ -289,7 +386,7 @@ function commitViewMutation({ rerender = "project", clearFeedback = false } = {}
     return;
   }
 
-  renderProjectData();
+  queueProjectDataRender();
 }
 
 function syncActiveSheetFilters() {
@@ -345,32 +442,107 @@ function syncActiveSheetFilters() {
     : "all";
 }
 
-function renderProjectData() {
-  syncActiveSheetFilters();
-  syncProjectViewToState();
-  renderProjectIndicator(elements, stateRef, bridge, getActiveProjectTitle);
-  renderSummary(elements, stateRef, getActiveProjectTitle);
-  renderMonthTabs(elements, stateRef);
-  renderFilters(elements, stateRef);
-  renderRows(elements, stateRef);
-  elements.projectSearch.value = stateRef.projectSearchTerm;
-  elements.filterVesselDateMode.value = stateRef.vesselDateModeFilter;
-  elements.filterVesselDateFrom.value = stateRef.vesselDateFromFilter;
-  elements.filterVesselDateTo.value = stateRef.vesselDateToFilter;
-  elements.filterHasT1.value = stateRef.hasT1Filter;
-  elements.filterStatus.value = stateRef.statusFilter;
-  elements.forceUpdate.checked = stateRef.forceUpdateEnabled;
-  applyBusyState();
+function getProjectTableWrapper() {
+  return elements.projectRows.closest(".table-wrapper");
 }
 
-function queueProjectDataRender() {
+function captureProjectTableViewport() {
+  const wrapper = getProjectTableWrapper();
+  const activeElement = document.activeElement;
+  const activeInput =
+    activeElement instanceof HTMLInputElement &&
+    activeElement.closest("[data-row-id]") &&
+    activeElement.closest(".table-wrapper") === wrapper
+      ? activeElement
+      : null;
+  const rowNode = activeInput?.closest("[data-row-id]");
+
+  return {
+    scrollTop: wrapper?.scrollTop ?? 0,
+    scrollLeft: wrapper?.scrollLeft ?? 0,
+    windowScrollX: window.scrollX,
+    windowScrollY: window.scrollY,
+    rowId: rowNode?.dataset.rowId || "",
+    field: activeInput?.dataset.field || "",
+    selectionStart:
+      typeof activeInput?.selectionStart === "number" ? activeInput.selectionStart : null,
+    selectionEnd: typeof activeInput?.selectionEnd === "number" ? activeInput.selectionEnd : null,
+  };
+}
+
+function restoreProjectTableViewport(snapshot) {
+  if (!snapshot) {
+    return;
+  }
+
+  const wrapper = getProjectTableWrapper();
+  if (wrapper) {
+    wrapper.scrollTop = snapshot.scrollTop;
+    wrapper.scrollLeft = snapshot.scrollLeft;
+  }
+
+  if (snapshot.rowId && snapshot.field) {
+    const input = elements.projectRows.querySelector(
+      `[data-row-id="${snapshot.rowId}"] [data-field="${snapshot.field}"]`
+    );
+    if (input instanceof HTMLInputElement) {
+      input.focus({ preventScroll: true });
+      if (
+        typeof snapshot.selectionStart === "number" &&
+        typeof snapshot.selectionEnd === "number"
+      ) {
+        const selectionStart = Math.min(snapshot.selectionStart, input.value.length);
+        const selectionEnd = Math.min(snapshot.selectionEnd, input.value.length);
+        input.setSelectionRange(selectionStart, selectionEnd);
+      }
+    }
+  }
+
+  if (wrapper) {
+    wrapper.scrollTop = snapshot.scrollTop;
+    wrapper.scrollLeft = snapshot.scrollLeft;
+  }
+  window.scrollTo(snapshot.windowScrollX, snapshot.windowScrollY);
+}
+
+function withProjectTableViewportPreserved(callback, preserveViewport = false) {
+  if (!preserveViewport) {
+    callback();
+    return;
+  }
+
+  const snapshot = captureProjectTableViewport();
+  callback();
+  restoreProjectTableViewport(snapshot);
+}
+
+function renderProjectData({ preserveProjectTableViewport = false } = {}) {
+  syncActiveSheetFilters();
+  syncProjectViewToState();
+
+  withProjectTableViewportPreserved(() => {
+    renderProjectMetaArea({
+      includeMonthTabs: true,
+      includeFilters: true,
+    });
+    renderRows(elements, stateRef);
+    applyBusyState({ force: true });
+  }, preserveProjectTableViewport);
+}
+
+function queueProjectDataRender({ preserveProjectTableViewport = false } = {}) {
+  stateRef.pendingProjectRenderPreserveViewport =
+    stateRef.pendingProjectRenderPreserveViewport || preserveProjectTableViewport;
+
   if (stateRef.pendingProjectRender) {
     return;
   }
 
   stateRef.pendingProjectRender = window.requestAnimationFrame(() => {
+    const shouldPreserveViewport = stateRef.pendingProjectRenderPreserveViewport;
     stateRef.pendingProjectRender = 0;
-    renderProjectData();
+    stateRef.pendingProjectRenderPreserveViewport = false;
+    renderProjectData({ preserveProjectTableViewport: shouldPreserveViewport });
   });
 }
 
@@ -404,12 +576,20 @@ function applyProjectRowPatches(changes = []) {
       .filter((entry) => entry.fields.length > 0)
   );
   stateRef.dirty = true;
-  queueProjectDataRender();
+  recalculateProjectStats();
+  queueProjectDataRender({ preserveProjectTableViewport: true });
 }
 
-function applyBusyState() {
+function applyBusyState({ force = false } = {}) {
   const isBusy = Boolean(stateRef.busyAction);
   const normalizedProgress = Math.max(0, Math.min(Number(stateRef.busyProgress) || 0, 100));
+  const signature = `${Number(isBusy)}|${stateRef.busyAction}|${normalizedProgress}|${stateRef.busyMessage}`;
+
+  if (!force && signature === stateRef.lastBusyStateSignature) {
+    return;
+  }
+
+  stateRef.lastBusyStateSignature = signature;
 
   document.body.classList.toggle("is-busy", isBusy);
   document.querySelectorAll("button, input, select").forEach((node) => {
@@ -524,24 +704,24 @@ async function finalizeFailedUpdate(error) {
   return true;
 }
 
-function renderAllApp() {
+function renderAllApp({ preserveProjectTableViewport = false } = {}) {
   syncActiveSheetFilters();
   syncProjectViewToState();
-  renderAll(elements, stateRef, bridge, getActiveProjectTitle);
-  elements.projectSearch.value = stateRef.projectSearchTerm;
-  elements.filterVesselDateMode.value = stateRef.vesselDateModeFilter;
-  elements.filterVesselDateFrom.value = stateRef.vesselDateFromFilter;
-  elements.filterVesselDateTo.value = stateRef.vesselDateToFilter;
-  elements.filterHasT1.value = stateRef.hasT1Filter;
-  elements.filterStatus.value = stateRef.statusFilter;
-  elements.forceUpdate.checked = stateRef.forceUpdateEnabled;
-  applyBusyState();
+
+  withProjectTableViewportPreserved(() => {
+    renderAll(elements, stateRef, bridge, getActiveProjectTitle);
+    syncProjectFilterControls();
+    applyBusyState({ force: true });
+  }, preserveProjectTableViewport);
 }
 
 function markDirty(value = true) {
   stateRef.dirty = Boolean(value);
-  renderSummary(elements, stateRef, getActiveProjectTitle);
-  renderAll(elements, stateRef, bridge, getActiveProjectTitle);
+  renderProjectMetaArea({
+    includeMonthTabs: true,
+    includeFilters: true,
+    includeOptions: true,
+  });
 }
 
 function setCurrentProject(project) {
@@ -561,6 +741,7 @@ function clearCurrentProject() {
 
 function setState(nextState, options = {}) {
   stateRef.state = normalizeState(nextState);
+  recalculateProjectStats();
   restoreProjectViewFromState();
   syncActiveSheetFilters();
   if (options.currentProject !== undefined) {
@@ -578,7 +759,8 @@ function setState(nextState, options = {}) {
 }
 
 function hasProjectContent(state = stateRef.state) {
-  const normalized = normalizeState(state);
+  const normalized =
+    state && typeof state === "object" && Array.isArray(state.sheets) ? state : normalizeState(state);
   return Boolean(
     normalized.sheets.length ||
       normalized.sourceFileName ||
@@ -652,16 +834,18 @@ function scheduleProjectSave(delay = AUTOSAVE_DELAY_MS) {
   }, delay);
 }
 
-function registerProjectMutation({ rerender = "summary", autosave = true } = {}) {
+function registerProjectMutation({
+  rerender = "summary",
+  autosave = true,
+  preserveProjectTableViewport = false,
+} = {}) {
   stateRef.changeToken += 1;
   stateRef.dirty = true;
 
   if (rerender === "all") {
-    renderAllApp();
+    renderAllApp({ preserveProjectTableViewport });
   } else {
-    renderProjectIndicator(elements, stateRef, bridge, getActiveProjectTitle);
-    renderSummary(elements, stateRef, getActiveProjectTitle);
-    applyBusyState();
+    renderProjectMetaArea();
   }
 
   if (autosave) {
@@ -711,7 +895,9 @@ async function refreshProjectOptions(search = stateRef.projectNameDraft) {
   stateRef.projectOptions = Array.isArray(result.projects)
     ? result.projects.map(normalizeProjectOption)
     : [];
-  renderAllApp();
+  renderProjectOptionsArea();
+  renderProjectSummaryArea();
+  applyBusyState();
 }
 
 async function persistCurrentProject(options = {}) {
@@ -776,7 +962,10 @@ async function persistCurrentProject(options = {}) {
       scheduleProjectSave(200);
     }
 
-    renderAllApp();
+    recalculateProjectStats();
+    renderProjectOptionsArea();
+    renderProjectSummaryArea();
+    applyBusyState();
     if (!options.silent) {
       setStatus(options.statusMessage || `Zapisano projekt ${stateRef.projectNameDraft}.`);
     }
@@ -863,6 +1052,7 @@ async function saveLookupRecord() {
     })
   );
 
+  recalculateProjectStats();
   await persistSettings();
   registerProjectMutation({ rerender: "all", autosave: false });
   await Promise.all([refreshLookupRecords(), persistCurrentProject({ silent: true })]);
@@ -1096,22 +1286,163 @@ function switchMonth(sheetId) {
   renderProjectData();
 }
 
-function updateRow(rowId, field, value) {
-  stateRef.state.sheets = stateRef.state.sheets.map((sheet) =>
-    normalizeSheet({
-      ...sheet,
-      rows: sheet.rows.map((row) =>
-        row.id === rowId
-          ? normalizeRow({
-              ...row,
-              [field]: field === "containerNumber" ? normalizeContainerNumber(value) : value,
-            })
-          : row
-      ),
-    })
+function resetProjectFilters() {
+  stateRef.projectSearchTerm = "";
+  stateRef.vesselDateModeFilter = "range";
+  stateRef.vesselDateFromFilter = "";
+  stateRef.vesselDateToFilter = "";
+  stateRef.vesselDateSelectedFilter = [];
+  stateRef.hasT1Filter = "all";
+  stateRef.statusFilter = "";
+  elements.filterVesselDateList.open = false;
+  commitViewMutation({ clearFeedback: true });
+  setStatus("Wyczyszczono aktywne filtry.");
+}
+
+function findActiveSheetRowIndex(rowId) {
+  const activeSheet = getActiveSheet(stateRef.state);
+  if (!activeSheet) {
+    return { activeSheet: null, rowIndex: -1 };
+  }
+
+  return {
+    activeSheet,
+    rowIndex: activeSheet.rows.findIndex((row) => row.id === rowId),
+  };
+}
+
+function syncEditedRowUi(rowId, field) {
+  const rowNode = elements.projectRows.querySelector(`[data-row-id="${rowId}"]`);
+  if (!(rowNode instanceof HTMLTableRowElement)) {
+    return;
+  }
+
+  const updatedFields = stateRef.rowHighlights.get(asText(rowId)) || new Set();
+  rowNode.classList.toggle("row--updated", updatedFields.size > 0);
+
+  const input = rowNode.querySelector(`[data-field="${field}"]`);
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+
+  const isUpdated = updatedFields.has(asText(field));
+  input.classList.toggle("row-input--updated", isUpdated);
+  if (isUpdated) {
+    input.title = "Uzupelnione podczas ostatniej aktualizacji";
+    return;
+  }
+
+  input.removeAttribute("title");
+}
+
+function hasActiveVesselDateFilter() {
+  return Boolean(
+    (stateRef.vesselDateModeFilter === "range" &&
+      (stateRef.vesselDateFromFilter || stateRef.vesselDateToFilter)) ||
+      (stateRef.vesselDateModeFilter === "list" && stateRef.vesselDateSelectedFilter.length > 0)
   );
+}
+
+function shouldRerenderProjectRowsAfterRowEdit(rowId, field) {
+  const normalizedField = asText(field);
+  if (!normalizedField) {
+    return false;
+  }
+
+  if (
+    normalizedField === "containerNumber" &&
+    (stateRef.projectSearchTerm || stateRef.stickyVisibleRowIds.has(asText(rowId)))
+  ) {
+    return true;
+  }
+
+  if (
+    normalizedField === "vesselDate" &&
+    (hasActiveVesselDateFilter() || stateRef.stickyVisibleRowIds.has(asText(rowId)))
+  ) {
+    return true;
+  }
+
+  if (normalizedField === "t1" && stateRef.hasT1Filter !== "all") {
+    return true;
+  }
+
+  if (
+    normalizedField === "status" &&
+    (stateRef.statusFilter || stateRef.stickyVisibleRowIds.has(asText(rowId)))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function shouldRefreshProjectFiltersAfterRowEdit(field, previousRow, nextRow) {
+  const normalizedField = asText(field);
+  if (normalizedField === "status") {
+    return asText(previousRow?.status) !== asText(nextRow?.status);
+  }
+
+  if (normalizedField === "vesselDate") {
+    return asText(previousRow?.vesselDate) !== asText(nextRow?.vesselDate);
+  }
+
+  return false;
+}
+
+function shouldRefreshProjectSummaryAfterRowEdit(field, previousRow, nextRow) {
+  const normalizedField = asText(field);
+  if (!normalizedField) {
+    return false;
+  }
+
+  return (
+    normalizedField === "t1" ||
+    normalizedField === "containerNumber" ||
+    normalizedField === "status" ||
+    normalizedField === "vesselDate" ||
+    normalizedField === "origin" ||
+    shouldRefreshProjectFiltersAfterRowEdit(normalizedField, previousRow, nextRow)
+  );
+}
+
+function updateRow(rowId, field, value) {
+  const { activeSheet, rowIndex } = findActiveSheetRowIndex(rowId);
+  if (!activeSheet || rowIndex < 0) {
+    return;
+  }
+
+  const previousRow = activeSheet.rows[rowIndex];
+  const nextRow = normalizeRow({
+    ...previousRow,
+    [field]: field === "containerNumber" ? normalizeContainerNumber(value) : value,
+  });
+  activeSheet.rows[rowIndex] = nextRow;
+
   clearRowHighlightForField(rowId, field);
-  registerProjectMutation({ rerender: "all" });
+  applyProjectStatsDelta(previousRow, nextRow);
+
+  stateRef.changeToken += 1;
+  stateRef.dirty = true;
+  scheduleProjectSave();
+
+  if (shouldRerenderProjectRowsAfterRowEdit(rowId, field)) {
+    renderProjectData({ preserveProjectTableViewport: true });
+    return;
+  }
+
+  syncEditedRowUi(rowId, field);
+
+  if (shouldRefreshProjectSummaryAfterRowEdit(field, previousRow, nextRow)) {
+    renderProjectSummaryArea();
+  } else {
+    renderProjectIndicator(elements, stateRef, bridge, getActiveProjectTitle);
+    applyBusyState();
+  }
+
+  if (shouldRefreshProjectFiltersAfterRowEdit(field, previousRow, nextRow)) {
+    renderProjectFiltersArea();
+  }
 }
 
 function ensureDefaultSheet() {
@@ -1129,19 +1460,22 @@ function ensureDefaultSheet() {
 
 function addRow() {
   const activeSheet = ensureDefaultSheet();
+  const nextRow = createRow();
   stateRef.state.sheets = stateRef.state.sheets.map((sheet) =>
     sheet.id === activeSheet.id
       ? normalizeSheet({
           ...sheet,
-          rows: [...sheet.rows, createRow()],
+          rows: [...sheet.rows, nextRow],
         })
       : sheet
   );
   stateRef.state.activeSheetId = activeSheet.id;
-  registerProjectMutation({ rerender: "all" });
+  applyProjectStatsDelta(null, nextRow);
+  registerProjectMutation({ rerender: "all", preserveProjectTableViewport: true });
 }
 
 function deleteRow(rowId) {
+  const removedRow = flattenRows(stateRef.state).find((row) => row.id === rowId) || null;
   stateRef.state.sheets = stateRef.state.sheets.map((sheet) =>
     normalizeSheet({
       ...sheet,
@@ -1150,7 +1484,8 @@ function deleteRow(rowId) {
   );
   stateRef.rowHighlights.delete(asText(rowId));
   stateRef.stickyVisibleRowIds.delete(asText(rowId));
-  registerProjectMutation({ rerender: "all" });
+  applyProjectStatsDelta(removedRow, null);
+  registerProjectMutation({ rerender: "all", preserveProjectTableViewport: true });
 }
 
 async function handleHome() {
@@ -1174,6 +1509,8 @@ function handleAction(action, payload = {}) {
       return saveProject();
     case "saveAs":
       return saveProjectAs();
+    case "clear-filters":
+      return resetProjectFilters();
     case "add-row":
       return addRow();
     case "delete-row":
@@ -1191,7 +1528,109 @@ function handleAction(action, payload = {}) {
   }
 }
 
+function clearVesselDatePopoverPosition() {
+  elements.filterVesselDatePanel?.style.removeProperty("--vessel-date-popover-top");
+  elements.filterVesselDatePanel?.style.removeProperty("--vessel-date-popover-left");
+  elements.filterVesselDatePanel?.style.removeProperty("--vessel-date-popover-width");
+  elements.filterVesselDatePanel?.style.removeProperty("--vessel-date-popover-max-height");
+}
+
+function mountVesselDatePopoverPanel() {
+  if (!(elements.filterVesselDatePanel instanceof HTMLElement)) {
+    return;
+  }
+
+  if (elements.filterVesselDatePanel.parentElement !== document.body) {
+    document.body.append(elements.filterVesselDatePanel);
+  }
+
+  elements.filterVesselDatePanel.classList.add("filter-multiselect__panel--floating");
+}
+
+function restoreVesselDatePopoverPanel() {
+  if (!(elements.filterVesselDatePanel instanceof HTMLElement)) {
+    return;
+  }
+
+  if (elements.filterVesselDatePanel.parentElement !== elements.filterVesselDateList) {
+    elements.filterVesselDateList.append(elements.filterVesselDatePanel);
+  }
+
+  elements.filterVesselDatePanel.classList.remove("filter-multiselect__panel--floating");
+  clearVesselDatePopoverPosition();
+}
+
+function syncVesselDatePopoverPosition() {
+  if (!elements.filterVesselDateList.open) {
+    restoreVesselDatePopoverPanel();
+    return;
+  }
+
+  const summary = elements.filterVesselDateSummary;
+  const panel = elements.filterVesselDatePanel;
+  if (!(summary instanceof HTMLElement) || !(panel instanceof HTMLElement)) {
+    restoreVesselDatePopoverPanel();
+    return;
+  }
+
+  mountVesselDatePopoverPanel();
+
+  const summaryRect = summary.getBoundingClientRect();
+  const viewportWidth = Math.max(0, window.innerWidth - VESSEL_DATE_POPOVER_VIEWPORT_PADDING_PX * 2);
+  const width = Math.max(0, Math.min(VESSEL_DATE_POPOVER_MAX_WIDTH_PX, viewportWidth));
+  panel.style.setProperty("--vessel-date-popover-width", `${width}px`);
+  panel.style.removeProperty("--vessel-date-popover-max-height");
+
+  const availableAbove = Math.max(
+    0,
+    summaryRect.top - VESSEL_DATE_POPOVER_VIEWPORT_PADDING_PX - VESSEL_DATE_POPOVER_GAP_PX
+  );
+  const maxHeight = Math.max(0, Math.floor(availableAbove));
+  const renderedHeight = Math.min(panel.scrollHeight, maxHeight);
+  const left = clamp(
+    Math.round(summaryRect.right - width),
+    VESSEL_DATE_POPOVER_VIEWPORT_PADDING_PX,
+    Math.max(
+      VESSEL_DATE_POPOVER_VIEWPORT_PADDING_PX,
+      Math.round(window.innerWidth - VESSEL_DATE_POPOVER_VIEWPORT_PADDING_PX - width)
+    )
+  );
+  const top = Math.round(
+    Math.max(
+      VESSEL_DATE_POPOVER_VIEWPORT_PADDING_PX,
+      summaryRect.top - VESSEL_DATE_POPOVER_GAP_PX - renderedHeight
+    )
+  );
+
+  panel.style.setProperty("--vessel-date-popover-top", `${top}px`);
+  panel.style.setProperty("--vessel-date-popover-left", `${left}px`);
+  panel.style.setProperty("--vessel-date-popover-max-height", `${maxHeight}px`);
+}
+
+function queueVesselDatePopoverPositionSync() {
+  if (vesselDatePopoverPositionFrame) {
+    window.cancelAnimationFrame(vesselDatePopoverPositionFrame);
+  }
+
+  vesselDatePopoverPositionFrame = window.requestAnimationFrame(() => {
+    vesselDatePopoverPositionFrame = 0;
+    syncVesselDatePopoverPosition();
+  });
+}
+
+function isClickInsideVesselDateFilter(target) {
+  return (
+    target instanceof Element &&
+    (Boolean(target.closest("#filter-vessel-date-list")) ||
+      Boolean(target.closest(".filter-multiselect__panel--floating")))
+  );
+}
+
 document.addEventListener("click", async (event) => {
+  if (elements.filterVesselDateList.open && !isClickInsideVesselDateFilter(event.target)) {
+    elements.filterVesselDateList.open = false;
+  }
+
   const actionNode = event.target.closest("[data-action]");
   if (actionNode) {
     if (stateRef.busyAction && actionNode.dataset.action !== "update") {
@@ -1268,20 +1707,35 @@ elements.projectRows.addEventListener("input", (event) => {
   }
 
   const rowNode = event.target.closest("[data-row-id]");
-  if (!rowNode || !event.target.dataset.field) {
+  const input = event.target instanceof HTMLInputElement ? event.target : null;
+  if (!rowNode || !input?.dataset.field) {
     return;
   }
 
-  if (event.target.dataset.field === "containerNumber") {
-    event.target.value = normalizeContainerNumber(event.target.value);
+  const normalizedValue =
+    input.dataset.field === "containerNumber"
+      ? normalizeContainerNumber(input.value)
+      : asText(input.value);
+  if (input.value !== normalizedValue) {
+    input.value = normalizedValue;
   }
 
-  updateRow(rowNode.dataset.rowId, event.target.dataset.field, event.target.value);
+  updateRow(rowNode.dataset.rowId, input.dataset.field, normalizedValue);
 });
 
 elements.projectSearch.addEventListener("input", (event) => {
   stateRef.projectSearchTerm = asText(event.target.value);
   commitViewMutation({ clearFeedback: true });
+});
+
+elements.filterVesselDateList.addEventListener("toggle", () => {
+  if (elements.filterVesselDateList.open) {
+    mountVesselDatePopoverPanel();
+    queueVesselDatePopoverPositionSync();
+    return;
+  }
+
+  restoreVesselDatePopoverPanel();
 });
 
 elements.filterVesselDateMode.addEventListener("change", (event) => {
@@ -1370,6 +1824,22 @@ elements.filterStatus.addEventListener("change", (event) => {
   stateRef.statusFilter = asText(event.target.value);
   commitViewMutation({ clearFeedback: true });
 });
+
+window.addEventListener("resize", () => {
+  if (elements.filterVesselDateList.open) {
+    queueVesselDatePopoverPositionSync();
+  }
+});
+
+document.addEventListener(
+  "scroll",
+  () => {
+    if (elements.filterVesselDateList.open) {
+      queueVesselDatePopoverPositionSync();
+    }
+  },
+  true
+);
 
 elements.forceUpdate.addEventListener("change", (event) => {
   if (stateRef.busyAction) {

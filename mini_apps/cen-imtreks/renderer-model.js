@@ -186,6 +186,29 @@ export function normalizeState(input = {}) {
   };
 }
 
+function resolveState(state = {}) {
+  if (!state || typeof state !== "object" || !Array.isArray(state.sheets)) {
+    return normalizeState(state);
+  }
+
+  const activeSheetId = asText(state.activeSheetId);
+  const resolvedActiveSheetId =
+    (activeSheetId &&
+      state.sheets.some((sheet) => asText(sheet?.id) === activeSheetId) &&
+      activeSheetId) ||
+    state.sheets[0]?.id ||
+    "";
+
+  if (resolvedActiveSheetId === activeSheetId) {
+    return state;
+  }
+
+  return {
+    ...state,
+    activeSheetId: resolvedActiveSheetId,
+  };
+}
+
 export function createEmptyState(overrides = {}) {
   return normalizeState({
     projectName: "",
@@ -202,12 +225,22 @@ export function createEmptyState(overrides = {}) {
 }
 
 export function flattenRows(state) {
-  return normalizeState(state).sheets.flatMap((sheet) => sheet.rows);
+  return resolveState(state).sheets.flatMap((sheet) => sheet.rows);
 }
 
 export function getActiveSheet(state) {
-  const normalized = normalizeState(state);
-  return normalized.sheets.find((sheet) => sheet.id === normalized.activeSheetId) || normalized.sheets[0] || null;
+  const resolved = resolveState(state);
+  return resolved.sheets.find((sheet) => sheet.id === resolved.activeSheetId) || resolved.sheets[0] || null;
+}
+
+export function collectProjectStats(state = {}) {
+  const rows = flattenRows(state);
+  return {
+    rowCount: rows.length,
+    filledCount: rows.filter((row) => asText(row.t1)).length,
+    pendingCount: rows.filter((row) => asText(row.containerNumber) && !asText(row.t1)).length,
+    manualCount: rows.filter((row) => asText(row.origin) === "manual").length,
+  };
 }
 
 export function createLookupRecord(overrides = {}) {
