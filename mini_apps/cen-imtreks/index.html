@@ -43,6 +43,7 @@
       <div class="tabs-row">
         <nav class="tabs">
           <button class="tab is-active" type="button" data-tab="dane">Dane</button>
+          <button class="tab" type="button" data-tab="do-faktur">Do faktur</button>
           <button class="tab" type="button" data-tab="ustawienia">Ustawienia</button>
         </nav>
       </div>
@@ -266,6 +267,140 @@
                   </tr>
                 </thead>
                 <tbody id="project-rows"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="panel" data-panel="do-faktur">
+          <section class="summary-grid summary-grid--compact">
+            <article class="card">
+              <div class="card__header card__header--spread">
+                <div>
+                  <p class="card__eyebrow">Porownanie</p>
+                  <h2>Lista kontenerow</h2>
+                </div>
+                <div class="toolbar">
+                  <button type="button" data-action="comparison-import" class="button--accent">
+                    Importuj baze Excel
+                  </button>
+                  <button type="button" data-action="comparison-export" class="button--strong">
+                    Eksportuj liste
+                  </button>
+                  <button type="button" data-action="comparison-clear" class="button--minimal">
+                    Wyczysc
+                  </button>
+                </div>
+              </div>
+
+              <dl class="stats-list stats-list--compact">
+                <div>
+                  <dt>Kontenery w projekcie</dt>
+                  <dd id="comparison-project-count">0</dd>
+                </div>
+                <div>
+                  <dt>W bazie porownawczej</dt>
+                  <dd id="comparison-matched-count">0</dd>
+                </div>
+                <div>
+                  <dt>Do faktur</dt>
+                  <dd id="comparison-missing-count">0</dd>
+                </div>
+                <div>
+                  <dt>Kontenery z bazy</dt>
+                  <dd id="comparison-base-count">0</dd>
+                </div>
+              </dl>
+
+              <p id="comparison-source-meta" class="muted-copy card__note card__note--compact">
+                Lista jest budowana automatycznie z kontenerow zapisanych w tym projekcie.
+              </p>
+            </article>
+
+            <article class="card">
+              <div class="card__header">
+                <div>
+                  <p class="card__eyebrow">Baza porownawcza</p>
+                  <h2>Ustawienia importu</h2>
+                </div>
+              </div>
+
+              <label class="field field--wide">
+                <span>Plik porownawczy</span>
+                <input
+                  type="text"
+                  id="comparison-file-path"
+                  placeholder="Brak zaimportowanej bazy Excel"
+                  readonly
+                />
+              </label>
+
+              <div class="form-grid">
+                <label class="field">
+                  <span>Arkusz</span>
+                  <select id="comparison-sheet"></select>
+                </label>
+                <label class="field">
+                  <span>Kolumna</span>
+                  <select id="comparison-column"></select>
+                </label>
+                <details id="comparison-sheet-filter" class="filter-multiselect field field--wide">
+                  <summary id="comparison-sheet-summary">Arkusze: wszystkie</summary>
+                  <div class="filter-multiselect__panel">
+                    <div id="comparison-sheet-options"></div>
+                  </div>
+                </details>
+                <label class="field">
+                  <span>Status filtr</span>
+                  <select id="comparison-status-filter">
+                    <option value="all">Wszystkie</option>
+                    <option value="missing">Tylko do faktur</option>
+                    <option value="matched">Tylko znalezione</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Status sortowanie</span>
+                  <select id="comparison-status-sort">
+                    <option value="missing-first">Do faktur na gorze</option>
+                    <option value="matched-first">Jest w bazie na gorze</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Szukaj</span>
+                  <input
+                    type="search"
+                    id="comparison-search"
+                    class="search-input"
+                    placeholder="Szukaj po kontenerze"
+                  />
+                </label>
+              </div>
+
+              <p class="muted-copy">
+                Po zmianie arkusza lub kolumny lista zostanie przeliczona na nowo i zapisana w projekcie.
+              </p>
+            </article>
+          </section>
+
+          <section class="card card--table">
+            <div class="card__header card__header--spread">
+              <div>
+                <p class="card__eyebrow">Do faktur</p>
+                <h2>Kontenery z projektu</h2>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table class="data-table data-table--comparison">
+                <thead>
+                  <tr>
+                    <th>Container</th>
+                    <th>Status</th>
+                    <th>Wierszy projektu</th>
+                    <th>Arkusze</th>
+                  </tr>
+                </thead>
+                <tbody id="comparison-rows"></tbody>
               </table>
             </div>
           </section>

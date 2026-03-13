@@ -1,9 +1,12 @@
 import {
+  collectInvoiceComparisonRows,
+  collectInvoiceComparisonStats,
   collectProjectStats,
   escapeHtml,
   formatTimestamp,
   getActiveSheet,
   getActiveSheetFilterOptions,
+  getInvoiceComparisonSheetOptions,
   getFilteredRows,
   matchesRowFilters,
 } from "./renderer-model.js";
@@ -48,6 +51,23 @@ function renderSelectedDateSummary(filterOptions, selectedValues = [], stateRef)
   }
 
   return `Daty statku: ${selectedOptions.length} z ${options.length}`;
+}
+
+function renderComparisonSheetSummary(sheetOptions = [], selectedSheets = []) {
+  if (!sheetOptions.length) {
+    return "Arkusze: brak";
+  }
+
+  const selected = sheetOptions.filter((sheetName) => selectedSheets.includes(sheetName));
+  if (!selected.length || selected.length === sheetOptions.length) {
+    return `Arkusze: wszystkie (${sheetOptions.length})`;
+  }
+
+  if (selected.length <= 3) {
+    return `Arkusze: ${selected.join(", ")}`;
+  }
+
+  return `Arkusze: ${selected.length} z ${sheetOptions.length}`;
 }
 
 function renderEditableCell(field, value, updatedFields, extraClass = "") {
@@ -95,6 +115,13 @@ function renderRowsMessageRow(message) {
       <td colspan="14">${escapeHtml(message)}</td>
     </tr>
   `;
+}
+
+function renderComparisonStatusBadge(row) {
+  const statusClass = row.hasComparisonMatch
+    ? "comparison-badge comparison-badge--matched"
+    : "comparison-badge comparison-badge--missing";
+  return `<span class="${statusClass}">${escapeHtml(row.statusLabel)}</span>`;
 }
 
 function renderManualDraftCell(field, value, extraClass = "") {
@@ -406,6 +433,145 @@ export function renderRecordDraft(elements, stateRef) {
   elements.recordStop.value = stateRef.recordDraft.stop;
 }
 
+export function renderInvoiceComparison(elements, stateRef) {
+  const sheetOptions = getInvoiceComparisonSheetOptions(stateRef.state);
+  const selectedSheets = (Array.isArray(stateRef.comparisonSelectedSheets)
+    ? stateRef.comparisonSelectedSheets
+    : []
+  ).filter((sheetName) => sheetOptions.includes(sheetName));
+  const comparisonOptions = {
+    sheetNames: selectedSheets,
+    statusSort: stateRef.comparisonStatusSort,
+  };
+  const stats = collectInvoiceComparisonStats(stateRef.state, comparisonOptions);
+  const rows = collectInvoiceComparisonRows(stateRef.state, comparisonOptions).filter((row) => {
+    const matchesSearch = !stateRef.comparisonSearchTerm
+      ? true
+      : row.containerNumber.includes(stateRef.comparisonSearchTerm);
+    const matchesStatus =
+      stateRef.comparisonStatusFilter === "matched"
+        ? row.hasComparisonMatch
+        : stateRef.comparisonStatusFilter === "missing"
+          ? !row.hasComparisonMatch
+          : true;
+    return matchesSearch && matchesStatus;
+  });
+  const comparison = stateRef.state.invoiceComparison || {};
+  const workbook = stateRef.comparisonWorkbook || null;
+  const requestedSheetName = comparison.sheetName || workbook?.selectedSheetName || "";
+  const workbookSheets = Array.isArray(workbook?.sheets) ? workbook.sheets : [];
+  const selectedSheet =
+    workbookSheets.find((sheet) => sheet.name === requestedSheetName) || workbookSheets[0] || null;
+  const selectedSheetName = selectedSheet?.name || requestedSheetName;
+  const requestedColumnKey = comparison.columnKey || workbook?.selectedColumnKey || "";
+  const selectedColumn =
+    selectedSheet?.columns?.find((column) => column.key === requestedColumnKey) ||
+    selectedSheet?.columns?.[0] ||
+    null;
+
+  elements.comparisonProjectCount.textContent = String(stats.projectContainers);
+  elements.comparisonMatchedCount.textContent = String(stats.matchedContainers);
+  elements.comparisonMissingCount.textContent = String(stats.missingContainers);
+  elements.comparisonBaseCount.textContent = String(stats.comparisonContainers);
+  elements.comparisonFilePath.value = comparison.filePath || "";
+  elements.comparisonSearch.value = stateRef.comparisonSearchTerm || "";
+  elements.comparisonStatusFilter.value = stateRef.comparisonStatusFilter || "all";
+  elements.comparisonStatusSort.value = stateRef.comparisonStatusSort || "missing-first";
+  elements.comparisonSheetSummary.textContent = renderComparisonSheetSummary(
+    sheetOptions,
+    selectedSheets
+  );
+  elements.comparisonSourceMeta.textContent = comparison.fileName
+    ? `Plik: ${comparison.fileName} | Arkusz: ${comparison.sheetName || "-"} | Kolumna: ${
+        comparison.columnKey || "-"
+      }${comparison.columnHeader ? ` - ${comparison.columnHeader}` : ""}`
+    : "Lista jest budowana automatycznie z kontenerow zapisanych w tym projekcie.";
+
+  elements.comparisonSheetOptions.innerHTML = sheetOptions.length
+    ? `
+      <div class="filter-multiselect__actions">
+        <button type="button" class="button--minimal filter-multiselect__button" data-comparison-sheet-selection="all">
+          Wszystkie
+        </button>
+        <button type="button" class="button--minimal filter-multiselect__button" data-comparison-sheet-selection="clear">
+          Wyczysc
+        </button>
+      </div>
+      <div class="filter-multiselect__list">
+        ${sheetOptions
+          .map(
+            (sheetName) => `
+              <label class="filter-checkbox">
+                <input
+                  type="checkbox"
+                  data-comparison-sheet-value="${escapeHtml(sheetName)}"
+                  ${selectedSheets.includes(sheetName) ? "checked" : ""}
+                />
+                <span>${escapeHtml(sheetName)}</span>
+              </label>
+            `
+          )
+          .join("")}
+      </div>
+    `
+    : `<div class="filter-multiselect__empty">Brak arkuszy w projekcie.</div>`;
+
+  if (workbookSheets.length > 0) {
+    elements.comparisonSheet.innerHTML = workbookSheets
+      .map(
+        (sheet) =>
+          `<option value="${escapeHtml(sheet.name)}"${sheet.name === selectedSheetName ? " selected" : ""}>${escapeHtml(sheet.name)}</option>`
+      )
+      .join("");
+    elements.comparisonSheet.disabled = false;
+  } else {
+    elements.comparisonSheet.innerHTML = `<option value="">Brak arkuszy</option>`;
+    elements.comparisonSheet.disabled = true;
+  }
+
+  if (selectedSheet?.columns?.length) {
+    elements.comparisonColumn.innerHTML = selectedSheet.columns
+      .map(
+        (column) =>
+          `<option value="${escapeHtml(column.key)}"${column.key === selectedColumn?.key ? " selected" : ""}>${escapeHtml(column.key)} - ${escapeHtml(column.header)}</option>`
+      )
+      .join("");
+    elements.comparisonColumn.disabled = false;
+  } else {
+    const fallbackLabel = comparison.columnKey
+      ? `${comparison.columnKey} - ${comparison.columnHeader || "wybrana kolumna"}`
+      : "Brak kolumn";
+    elements.comparisonColumn.innerHTML = `<option value="${escapeHtml(comparison.columnKey || "")}">${escapeHtml(fallbackLabel)}</option>`;
+    elements.comparisonColumn.disabled = true;
+  }
+
+  if (!rows.length) {
+    elements.comparisonRows.innerHTML = `
+      <tr class="row--message">
+        <td colspan="4">${
+          stats.projectContainers
+            ? "Brak kontenerow dla aktywnego filtra porownania."
+            : "Brak kontenerow w projekcie do porownania."
+        }</td>
+      </tr>
+    `;
+    return;
+  }
+
+  elements.comparisonRows.innerHTML = rows
+    .map(
+      (row) => `
+        <tr class="${row.hasComparisonMatch ? "comparison-row comparison-row--matched" : "comparison-row comparison-row--missing"}">
+          <td>${escapeHtml(row.containerNumber)}</td>
+          <td>${renderComparisonStatusBadge(row)}</td>
+          <td>${escapeHtml(String(row.rowCount))}</td>
+          <td>${escapeHtml(row.sheetLabel || "-")}</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
 export function renderAll(elements, stateRef, bridge, getActiveProjectTitle) {
   renderProjectIndicator(elements, stateRef, bridge, getActiveProjectTitle);
   renderProjectOptions(elements, stateRef);
@@ -413,6 +579,7 @@ export function renderAll(elements, stateRef, bridge, getActiveProjectTitle) {
   renderMonthTabs(elements, stateRef);
   renderFilters(elements, stateRef);
   renderRows(elements, stateRef);
+  renderInvoiceComparison(elements, stateRef);
   renderLookupRows(elements, stateRef);
   renderRecordDraft(elements, stateRef);
 }

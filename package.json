@@ -1,7 +1,7 @@
 {
   "name": "sme",
   "productName": "SME",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Aplikacja do korekt dokumentow SME",
   "main": "main.js",
   "scripts": {

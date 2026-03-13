@@ -194,8 +194,24 @@ function registerIpcHandlers({
     return cenImtreksService.importFromDialog(currentState);
   });
 
+  ipcMain.handle("cen-imtreks:comparison:import", async (_event, selection) => {
+    return cenImtreksService.importComparisonFromDialog(selection);
+  });
+
+  ipcMain.handle("cen-imtreks:comparison:inspect", async (_event, filePath) => {
+    return cenImtreksService.inspectComparisonWorkbook(filePath);
+  });
+
+  ipcMain.handle("cen-imtreks:comparison:select", async (_event, filePath, selection) => {
+    return cenImtreksService.selectComparisonWorkbook(filePath, selection);
+  });
+
   ipcMain.handle("cen-imtreks:export-visible", async (_event, currentState, rows, options) => {
     return cenImtreksService.exportRowsToDialog(currentState, rows, options);
+  });
+
+  ipcMain.handle("cen-imtreks:comparison:export", async (_event, currentState, rows, options) => {
+    return cenImtreksService.exportComparisonRowsToDialog(currentState, rows, options);
   });
 
   ipcMain.handle("cen-imtreks:update", async (_event, currentState, dbPath, options) => {

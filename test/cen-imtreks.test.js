@@ -5,8 +5,11 @@ const os = require("node:os");
 const path = require("node:path");
 const XLSX = require("xlsx");
 const {
+  exportCenImtreksComparisonWorkbook,
   exportCenImtreksRowsWorkbook,
+  extractCenImtreksComparisonSelection,
   importCenImtreksWorkbook,
+  inspectCenImtreksComparisonWorkbook,
 } = require("../mini_apps/cen-imtreks/core/excel.cjs");
 const { lookupContainers } = require("../src/wct-cen-lookup");
 const {
@@ -142,6 +145,88 @@ async function main() {
     assert.equal(exportedRows[1][4], "TEMU3675786");
     assert.equal(exportedRows[1][12], "6");
 
+    const comparisonWorkbookPath = path.join(tempDir, "comparison-source.xlsx");
+    const comparisonWorkbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      comparisonWorkbook,
+      XLSX.utils.aoa_to_sheet([
+        ["Container Number", "Opis"],
+        ["TRHU9692566", "match"],
+        [" msku 1234567 ", "manual"],
+        ["Brak", "ignore"],
+        ["MSKU1234567", "duplicate"],
+      ]),
+      "Baza"
+    );
+    XLSX.utils.book_append_sheet(
+      comparisonWorkbook,
+      XLSX.utils.aoa_to_sheet([
+        ["Kod", "Kontener"],
+        ["1", "OOLU1111111"],
+      ]),
+      "Arkusz2"
+    );
+    XLSX.writeFile(comparisonWorkbook, comparisonWorkbookPath);
+
+    const comparisonWorkbookInfo = inspectCenImtreksComparisonWorkbook(comparisonWorkbookPath);
+    assert.equal(comparisonWorkbookInfo.selectedSheetName, "Baza");
+    assert.equal(comparisonWorkbookInfo.selectedColumnKey, "A");
+    assert.equal(comparisonWorkbookInfo.sheets[0].columns[0].header, "Container Number");
+
+    const comparisonSelection = extractCenImtreksComparisonSelection(
+      comparisonWorkbookPath,
+      "Baza",
+      "A"
+    );
+    assert.equal(comparisonSelection.comparison.sheetName, "Baza");
+    assert.equal(comparisonSelection.comparison.columnKey, "A");
+    assert.deepEqual(comparisonSelection.comparison.containers, [
+      "MSKU1234567",
+      "TRHU9692566",
+    ]);
+
+    const comparisonExportPath = path.join(tempDir, "do-faktur.xlsx");
+    const comparisonExportSummary = exportCenImtreksComparisonWorkbook(
+      comparisonExportPath,
+      [
+        {
+          containerNumber: "TRHU9692566",
+          statusLabel: "Do faktur",
+          hasComparisonMatch: false,
+          rowCount: 2,
+          sheetLabel: "Luty, Marzec",
+        },
+        {
+          containerNumber: "MSKU1234567",
+          statusLabel: "Jest w bazie",
+          hasComparisonMatch: true,
+          rowCount: 1,
+          sheetLabel: "Styczen",
+        },
+      ],
+      {
+        sheetName: "Do faktur",
+      }
+    );
+    assert.equal(comparisonExportSummary.rowCount, 2);
+    const comparisonExportedWorkbook = XLSX.readFile(comparisonExportPath);
+    const comparisonExportedSheet =
+      comparisonExportedWorkbook.Sheets[comparisonExportedWorkbook.SheetNames[0]];
+    const comparisonExportedRows = XLSX.utils.sheet_to_json(comparisonExportedSheet, {
+      header: 1,
+      defval: "",
+    });
+    assert.deepEqual(comparisonExportedRows[0], [
+      "Container",
+      "Status",
+      "W bazie",
+      "Wierszy projektu",
+      "Arkusze",
+    ]);
+    assert.equal(comparisonExportedRows[1][0], "TRHU9692566");
+    assert.equal(comparisonExportedRows[1][2], "NIE");
+    assert.equal(comparisonExportedRows[2][2], "TAK");
+
     const created = await saveProjectState(dbPath, {
       projectName: "IM Alpha",
       sourceFileName: path.basename(workbookPath),
@@ -155,6 +240,14 @@ async function main() {
         hasT1: "without",
         status: "YARD",
         forceUpdate: true,
+      },
+      invoiceComparison: {
+        filePath: comparisonWorkbookPath,
+        fileName: path.basename(comparisonWorkbookPath),
+        sheetName: "Baza",
+        columnKey: "A",
+        columnHeader: "Container Number",
+        containers: ["trhu9692566", " msku 1234567 "],
       },
       sheets: [
         {
@@ -187,6 +280,11 @@ async function main() {
     assert.equal(created.state.sheets[0].rows[0].containerNumber, "MSKU1234567");
     assert.equal(created.state.view.vesselDateMode, "list");
     assert.deepEqual(created.state.view.vesselDateSelected, ["2026-02-02", "2026-02-04"]);
+    assert.equal(created.state.invoiceComparison.sheetName, "Baza");
+    assert.deepEqual(created.state.invoiceComparison.containers, [
+      "MSKU1234567",
+      "TRHU9692566",
+    ]);
 
     const reopened = await getProjectByName(dbPath, "im alpha");
     assert.ok(reopened);
@@ -200,6 +298,11 @@ async function main() {
     assert.equal(reopened.state.view.hasT1, "without");
     assert.equal(reopened.state.view.status, "YARD");
     assert.equal(reopened.state.view.forceUpdate, true);
+    assert.equal(reopened.state.invoiceComparison.fileName, "comparison-source.xlsx");
+    assert.deepEqual(reopened.state.invoiceComparison.containers, [
+      "MSKU1234567",
+      "TRHU9692566",
+    ]);
 
     await saveLookupRecords(
       dbPath,

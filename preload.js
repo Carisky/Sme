@@ -75,8 +75,16 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("cen-imtreks:project:saveAs", dbPath, state, options),
   importCenImtreksWorkbook: (state) =>
     ipcRenderer.invoke("cen-imtreks:import", state),
+  importCenImtreksComparisonWorkbook: (selection) =>
+    ipcRenderer.invoke("cen-imtreks:comparison:import", selection),
+  inspectCenImtreksComparisonWorkbook: (filePath) =>
+    ipcRenderer.invoke("cen-imtreks:comparison:inspect", filePath),
+  selectCenImtreksComparisonWorkbook: (filePath, selection) =>
+    ipcRenderer.invoke("cen-imtreks:comparison:select", filePath, selection),
   exportCenImtreksVisibleRows: (state, rows, options) =>
     ipcRenderer.invoke("cen-imtreks:export-visible", state, rows, options),
+  exportCenImtreksComparisonRows: (state, rows, options) =>
+    ipcRenderer.invoke("cen-imtreks:comparison:export", state, rows, options),
   updateCenImtreksProject: (state, dbPath, options) =>
     ipcRenderer.invoke("cen-imtreks:update", state, dbPath, options),
   cancelCenImtreksProjectUpdate: (updateId) =>

@@ -1,10 +1,12 @@
 import {
+  collectInvoiceComparisonRows,
   collectProjectStats,
   DEFAULT_SHEET_NAME,
   asText,
   basename,
   buildProjectNameKey,
   createEmptyState,
+  createInvoiceComparison,
   createLookupRecord,
   createProjectView,
   createRow,
@@ -15,7 +17,9 @@ import {
   getFilteredRows,
   getActiveSheet,
   matchesRowFilters,
+  normalizeComparisonContainers,
   normalizeContainerNumber,
+  normalizeInvoiceComparison,
   normalizeLookupRecord,
   normalizeProjectOption,
   normalizeRow,
@@ -25,6 +29,7 @@ import {
 import {
   renderAll,
   renderFilters,
+  renderInvoiceComparison,
   renderProjectIndicator,
   renderProjectOptions,
   renderLookupRows,
@@ -63,6 +68,21 @@ const elements = {
   filterHasT1: document.getElementById("filter-has-t1"),
   filterStatus: document.getElementById("filter-status"),
   forceUpdate: document.getElementById("force-update"),
+  comparisonProjectCount: document.getElementById("comparison-project-count"),
+  comparisonMatchedCount: document.getElementById("comparison-matched-count"),
+  comparisonMissingCount: document.getElementById("comparison-missing-count"),
+  comparisonBaseCount: document.getElementById("comparison-base-count"),
+  comparisonSourceMeta: document.getElementById("comparison-source-meta"),
+  comparisonFilePath: document.getElementById("comparison-file-path"),
+  comparisonSheet: document.getElementById("comparison-sheet"),
+  comparisonColumn: document.getElementById("comparison-column"),
+  comparisonSheetFilter: document.getElementById("comparison-sheet-filter"),
+  comparisonSheetSummary: document.getElementById("comparison-sheet-summary"),
+  comparisonSheetOptions: document.getElementById("comparison-sheet-options"),
+  comparisonSearch: document.getElementById("comparison-search"),
+  comparisonStatusFilter: document.getElementById("comparison-status-filter"),
+  comparisonStatusSort: document.getElementById("comparison-status-sort"),
+  comparisonRows: document.getElementById("comparison-rows"),
   lookupRows: document.getElementById("lookup-rows"),
   dbPath: document.getElementById("db-path"),
   lookupSearch: document.getElementById("lookup-search"),
@@ -96,6 +116,7 @@ const stateRef = {
   activeTab: "dane",
   state: createEmptyState(),
   lookupRecords: [],
+  comparisonWorkbook: null,
   projectOptions: [],
   recordDraft: createLookupRecord(),
   manualRowDraft: createManualRowDraft(),
@@ -112,6 +133,10 @@ const stateRef = {
   vesselDateSelectedFilter: [],
   hasT1Filter: "all",
   statusFilter: "",
+  comparisonSearchTerm: "",
+  comparisonStatusFilter: "all",
+  comparisonStatusSort: "missing-first",
+  comparisonSelectedSheets: [],
   forceUpdateEnabled: false,
   rowHighlights: new Map(),
   stickyVisibleRowIds: new Set(),
@@ -324,6 +349,77 @@ function clamp(value, min, max) {
 
 function setStatus(message) {
   elements.statusText.textContent = message;
+}
+
+function normalizeComparisonStatusFilterValue(value) {
+  const normalized = asText(value).toLowerCase();
+  return ["all", "matched", "missing"].includes(normalized) ? normalized : "all";
+}
+
+function normalizeComparisonStatusSortValue(value) {
+  const normalized = asText(value).toLowerCase();
+  return ["missing-first", "matched-first"].includes(normalized)
+    ? normalized
+    : "missing-first";
+}
+
+function getFilteredComparisonRows() {
+  return collectInvoiceComparisonRows(stateRef.state, {
+    sheetNames: stateRef.comparisonSelectedSheets,
+    statusSort: stateRef.comparisonStatusSort,
+  }).filter((row) => {
+    if (
+      stateRef.comparisonSearchTerm &&
+      !row.containerNumber.includes(stateRef.comparisonSearchTerm)
+    ) {
+      return false;
+    }
+
+    if (stateRef.comparisonStatusFilter === "matched") {
+      return row.hasComparisonMatch;
+    }
+
+    if (stateRef.comparisonStatusFilter === "missing") {
+      return !row.hasComparisonMatch;
+    }
+
+    return true;
+  });
+}
+
+function renderComparisonArea() {
+  renderInvoiceComparison(elements, stateRef);
+  applyBusyState();
+}
+
+async function loadComparisonWorkbookMetadata(filePath, { silent = true } = {}) {
+  const normalizedPath = asText(filePath);
+  if (!normalizedPath) {
+    stateRef.comparisonWorkbook = null;
+    renderComparisonArea();
+    return null;
+  }
+
+  try {
+    const workbook = await bridge.inspectCenImtreksComparisonWorkbook(normalizedPath);
+    if (asText(stateRef.state.invoiceComparison?.filePath) !== normalizedPath) {
+      return null;
+    }
+
+    stateRef.comparisonWorkbook = workbook;
+    renderComparisonArea();
+    return workbook;
+  } catch (error) {
+    if (asText(stateRef.state.invoiceComparison?.filePath) === normalizedPath) {
+      stateRef.comparisonWorkbook = null;
+      renderComparisonArea();
+    }
+
+    if (!silent) {
+      setStatus(`Nie udalo sie odczytac bazy porownawczej: ${error.message}`);
+    }
+    return null;
+  }
 }
 
 function getUpdateButton() {
@@ -928,6 +1024,10 @@ function setState(nextState, options = {}) {
   recalculateProjectStats();
   restoreProjectViewFromState();
   syncActiveSheetFilters();
+  stateRef.comparisonSearchTerm = "";
+  stateRef.comparisonStatusFilter = "all";
+  stateRef.comparisonStatusSort = "missing-first";
+  stateRef.comparisonSelectedSheets = [];
   if (options.currentProject !== undefined) {
     setCurrentProject(options.currentProject);
   }
@@ -939,18 +1039,33 @@ function setState(nextState, options = {}) {
   if (options.dirty !== undefined) {
     stateRef.dirty = Boolean(options.dirty);
   }
+  const comparisonFilePath = asText(stateRef.state.invoiceComparison?.filePath);
+  if (
+    !comparisonFilePath ||
+    asText(stateRef.comparisonWorkbook?.filePath) !== comparisonFilePath
+  ) {
+    stateRef.comparisonWorkbook = null;
+  }
   renderAllApp();
+  if (comparisonFilePath && !stateRef.comparisonWorkbook) {
+    loadComparisonWorkbookMetadata(comparisonFilePath, { silent: true }).catch((error) => {
+      console.error(error);
+    });
+  }
 }
 
 function hasProjectContent(state = stateRef.state) {
   const normalized =
     state && typeof state === "object" && Array.isArray(state.sheets) ? state : normalizeState(state);
+  const comparison = normalizeInvoiceComparison(normalized.invoiceComparison);
   return Boolean(
     normalized.sheets.length ||
       normalized.sourceFileName ||
       normalized.sourceFilePath ||
       normalized.fileName ||
       normalized.projectName ||
+      comparison.fileName ||
+      comparison.containers.length ||
       asText(stateRef.projectNameDraft)
   );
 }
@@ -1410,6 +1525,82 @@ async function importWorkbook() {
   return result;
 }
 
+async function importComparisonWorkbook() {
+  const result = await bridge.importCenImtreksComparisonWorkbook({
+    sheetName: stateRef.state.invoiceComparison?.sheetName,
+    columnKey: stateRef.state.invoiceComparison?.columnKey,
+  });
+  if (result.canceled) {
+    return null;
+  }
+
+  stateRef.comparisonWorkbook = result.workbook || null;
+  stateRef.state = normalizeState({
+    ...stateRef.state,
+    invoiceComparison: result.comparison,
+  });
+  registerProjectMutation({ rerender: "all" });
+  setStatus(
+    `Zaimportowano baze porownawcza ${basename(result.filePath)}. Unikalne kontenery: ${
+      result.uniqueCount || normalizeComparisonContainers(result.comparison?.containers).length
+    }.`
+  );
+  return result;
+}
+
+async function applyComparisonSelection() {
+  const filePath = asText(stateRef.state.invoiceComparison?.filePath);
+  if (!filePath) {
+    window.alert("Najpierw zaimportuj baze Excel do porownania.");
+    return null;
+  }
+
+  const requestedSheetName = asText(elements.comparisonSheet.value);
+  const requestedColumnKey = asText(elements.comparisonColumn.value).toUpperCase();
+  if (
+    requestedSheetName === asText(stateRef.state.invoiceComparison?.sheetName) &&
+    requestedColumnKey === asText(stateRef.state.invoiceComparison?.columnKey).toUpperCase()
+  ) {
+    return null;
+  }
+
+  const result = await bridge.selectCenImtreksComparisonWorkbook(filePath, {
+    sheetName: requestedSheetName,
+    columnKey: requestedColumnKey,
+  });
+  stateRef.comparisonWorkbook = result.workbook || null;
+  stateRef.state = normalizeState({
+    ...stateRef.state,
+    invoiceComparison: result.comparison,
+  });
+  registerProjectMutation({ rerender: "all" });
+  setStatus(
+    `Przeliczono baze porownawcza dla arkusza ${result.comparison?.sheetName || requestedSheetName}, kolumna ${
+      result.comparison?.columnKey || requestedColumnKey
+    }.`
+  );
+  return result;
+}
+
+function clearComparisonWorkbook() {
+  const hadComparison =
+    Boolean(asText(stateRef.state.invoiceComparison?.filePath)) ||
+    normalizeComparisonContainers(stateRef.state.invoiceComparison?.containers).length > 0;
+  stateRef.comparisonWorkbook = null;
+  stateRef.state = normalizeState({
+    ...stateRef.state,
+    invoiceComparison: createInvoiceComparison(),
+  });
+
+  if (hadComparison) {
+    registerProjectMutation({ rerender: "all" });
+    setStatus("Wyczyszczono baze porownawcza i liste Do faktur.");
+  } else {
+    renderComparisonArea();
+    setStatus("Brak bazy porownawczej do wyczyszczenia.");
+  }
+}
+
 async function startProjectUpdate() {
   await flushAutosave({ silent: true });
   const dbPath = await ensureDbPath();
@@ -1561,6 +1752,26 @@ async function exportVisibleRows() {
   }
 
   setStatus(`Wyeksportowano ${result.rowCount || visibleRows.length} wierszy do ${basename(result.filePath)}.`);
+  return result;
+}
+
+async function exportComparisonRows() {
+  const rows = getFilteredComparisonRows();
+  if (!rows.length) {
+    window.alert("Brak kontenerow do eksportu.");
+    return null;
+  }
+
+  const result = await bridge.exportCenImtreksComparisonRows(stateRef.state, rows, {
+    sheetName: "Do faktur",
+  });
+  if (result?.canceled) {
+    return null;
+  }
+
+  setStatus(
+    `Wyeksportowano ${result.rowCount || rows.length} kontenerow do ${basename(result.filePath)}.`
+  );
   return result;
 }
 
@@ -1724,6 +1935,7 @@ function updateRow(rowId, field, value) {
   clearRowHighlightForField(rowId, field);
   applyProjectStatsDelta(previousRow, nextRow);
   syncStickyVisibilityForRow(nextRow);
+  const shouldRefreshComparison = asText(field) === "containerNumber";
 
   stateRef.changeToken += 1;
   stateRef.dirty = true;
@@ -1731,6 +1943,9 @@ function updateRow(rowId, field, value) {
 
   if (shouldRerenderProjectRowsAfterRowEdit(rowId, field)) {
     renderProjectData({ preserveProjectTableViewport: true });
+    if (shouldRefreshComparison) {
+      renderComparisonArea();
+    }
     return;
   }
 
@@ -1745,6 +1960,10 @@ function updateRow(rowId, field, value) {
 
   if (shouldRefreshProjectFiltersAfterRowEdit(field, previousRow, nextRow)) {
     renderProjectFiltersArea();
+  }
+
+  if (shouldRefreshComparison) {
+    renderComparisonArea();
   }
 }
 
@@ -1888,6 +2107,12 @@ function handleAction(action, payload = {}) {
       return saveProject();
     case "saveAs":
       return saveProjectAs();
+    case "comparison-import":
+      return importComparisonWorkbook();
+    case "comparison-export":
+      return exportComparisonRows();
+    case "comparison-clear":
+      return clearComparisonWorkbook();
     case "clear-filters":
       return resetProjectFilters();
     case "export-visible":
@@ -2071,6 +2296,25 @@ document.addEventListener("click", async (event) => {
     return;
   }
 
+  const comparisonSheetSelectionNode = event.target.closest("[data-comparison-sheet-selection]");
+  if (comparisonSheetSelectionNode) {
+    if (stateRef.busyAction) {
+      return;
+    }
+
+    const availableSheets = Array.from(
+      elements.comparisonSheetOptions.querySelectorAll("[data-comparison-sheet-value]")
+    )
+      .map((input) => asText(input.dataset.comparisonSheetValue))
+      .filter(Boolean);
+    stateRef.comparisonSelectedSheets =
+      comparisonSheetSelectionNode.dataset.comparisonSheetSelection === "all"
+        ? availableSheets
+        : [];
+    renderComparisonArea();
+    return;
+  }
+
   const recordRow = event.target.closest("[data-record-container]");
   if (!recordRow) {
     return;
@@ -2134,6 +2378,77 @@ elements.projectRows.addEventListener("keydown", (event) => {
 elements.projectSearch.addEventListener("input", (event) => {
   stateRef.projectSearchTerm = asText(event.target.value);
   commitViewMutation({ clearFeedback: true });
+});
+
+elements.comparisonSearch.addEventListener("input", (event) => {
+  stateRef.comparisonSearchTerm = normalizeContainerNumber(event.target.value);
+  renderComparisonArea();
+});
+
+elements.comparisonStatusFilter.addEventListener("change", (event) => {
+  stateRef.comparisonStatusFilter = normalizeComparisonStatusFilterValue(event.target.value);
+  renderComparisonArea();
+});
+
+elements.comparisonStatusSort.addEventListener("change", (event) => {
+  stateRef.comparisonStatusSort = normalizeComparisonStatusSortValue(event.target.value);
+  renderComparisonArea();
+});
+
+elements.comparisonSheetOptions.addEventListener("change", (event) => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  const checkbox = event.target.closest("[data-comparison-sheet-value]");
+  if (!checkbox) {
+    return;
+  }
+
+  const selectedSheets = new Set(stateRef.comparisonSelectedSheets.map((value) => asText(value)));
+  const sheetName = asText(checkbox.dataset.comparisonSheetValue);
+  if (!sheetName) {
+    return;
+  }
+
+  if (checkbox.checked) {
+    selectedSheets.add(sheetName);
+  } else {
+    selectedSheets.delete(sheetName);
+  }
+
+  stateRef.comparisonSelectedSheets = Array.from(selectedSheets).sort((left, right) =>
+    left.localeCompare(right, "pl", { sensitivity: "base" })
+  );
+  renderComparisonArea();
+});
+
+elements.comparisonSheet.addEventListener("change", async () => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  try {
+    await applyComparisonSelection();
+  } catch (error) {
+    console.error(error);
+    window.alert(error.message);
+    setStatus(error.message);
+  }
+});
+
+elements.comparisonColumn.addEventListener("change", async () => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  try {
+    await applyComparisonSelection();
+  } catch (error) {
+    console.error(error);
+    window.alert(error.message);
+    setStatus(error.message);
+  }
 });
 
 elements.filterVesselDateList.addEventListener("toggle", () => {

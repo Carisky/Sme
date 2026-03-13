@@ -11,8 +11,11 @@ const {
   suggestProjectName,
 } = require("../../../mini_apps/cen-imtreks/core/index.cjs");
 const {
+  exportCenImtreksComparisonWorkbook,
   exportCenImtreksRowsWorkbook,
+  extractCenImtreksComparisonSelection,
   importCenImtreksWorkbook,
+  inspectCenImtreksComparisonWorkbook,
 } = require("../../../mini_apps/cen-imtreks/core/excel.cjs");
 const { LOOKUP_URL, lookupContainers } = require("../../wct-cen-lookup");
 const {
@@ -172,6 +175,18 @@ function buildExportDefaultPath(state, sheetName) {
   const projectName = suggestProjectName(normalizedState);
   const sheetSegment = sanitizeFileNameSegment(sheetName, "wiersze-robocze");
   const fileName = `${projectName}-${sheetSegment}-eksport.xlsx`;
+  const sourceFilePath = asText(normalizedState.sourceFilePath);
+  const baseDirectory =
+    asText(normalizedState.fileLocation) ||
+    (sourceFilePath ? path.dirname(sourceFilePath) : "") ||
+    app.getPath("documents");
+  return path.join(baseDirectory, fileName);
+}
+
+function buildComparisonExportDefaultPath(state) {
+  const normalizedState = normalizeState(state);
+  const projectName = suggestProjectName(normalizedState);
+  const fileName = `${projectName}-do-faktur.xlsx`;
   const sourceFilePath = asText(normalizedState.sourceFilePath);
   const baseDirectory =
     asText(normalizedState.fileLocation) ||
@@ -394,6 +409,60 @@ function createCenImtreksService({ windowController }) {
     };
   }
 
+  async function importComparisonFromDialog(preferredSelection = {}) {
+    const result = await dialog.showOpenDialog(windowController.getMainWindow(), {
+      title: "Importuj baze Excel do porownania kontenerow",
+      properties: ["openFile"],
+      filters: [{ name: "Excel", extensions: ["xlsx", "xlsm", "xls"] }],
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return { canceled: true };
+    }
+
+    const filePath = result.filePaths[0];
+    const selection = extractCenImtreksComparisonSelection(
+      filePath,
+      preferredSelection?.sheetName,
+      preferredSelection?.columnKey
+    );
+    return {
+      canceled: false,
+      filePath,
+      workbook: selection.workbook,
+      comparison: selection.comparison,
+      uniqueCount: selection.uniqueCount,
+    };
+  }
+
+  async function inspectComparisonWorkbook(filePath) {
+    const normalizedPath = asText(filePath);
+    if (!normalizedPath) {
+      throw new Error("Brak sciezki do pliku porownawczego.");
+    }
+
+    return inspectCenImtreksComparisonWorkbook(normalizedPath);
+  }
+
+  async function selectComparisonWorkbook(filePath, selection = {}) {
+    const normalizedPath = asText(filePath);
+    if (!normalizedPath) {
+      throw new Error("Brak sciezki do pliku porownawczego.");
+    }
+
+    const result = extractCenImtreksComparisonSelection(
+      normalizedPath,
+      selection?.sheetName,
+      selection?.columnKey
+    );
+    return {
+      filePath: normalizedPath,
+      workbook: result.workbook,
+      comparison: result.comparison,
+      uniqueCount: result.uniqueCount,
+    };
+  }
+
   async function exportRowsToDialog(currentState, rows = [], options = {}) {
     const normalizedState = normalizeState(currentState);
     const normalizedRows = Array.isArray(rows) ? rows.map(normalizeProjectRow) : [];
@@ -415,6 +484,44 @@ function createCenImtreksService({ windowController }) {
     const filePath = ensureXlsxExtension(result.filePath);
     const exportResult = exportCenImtreksRowsWorkbook(filePath, normalizedRows, {
       sheetName: requestedSheetName,
+    });
+    return {
+      canceled: false,
+      filePath,
+      rowCount: exportResult.rowCount,
+      sheetName: exportResult.sheetName,
+    };
+  }
+
+  async function exportComparisonRowsToDialog(currentState, rows = [], options = {}) {
+    const normalizedRows = Array.isArray(rows)
+      ? rows
+          .map((row) => ({
+            containerNumber: normalizeContainerNumber(row.containerNumber),
+            statusLabel: asText(row.statusLabel),
+            hasComparisonMatch: Boolean(row.hasComparisonMatch),
+            rowCount: Number(row.rowCount) || 0,
+            sheetLabel: asText(row.sheetLabel),
+          }))
+          .filter((row) => row.containerNumber)
+      : [];
+    if (normalizedRows.length === 0) {
+      throw new Error("Brak kontenerow do eksportu.");
+    }
+
+    const result = await dialog.showSaveDialog(windowController.getMainWindow(), {
+      title: "Eksportuj liste kontenerow do faktur",
+      defaultPath: buildComparisonExportDefaultPath(currentState),
+      filters: [{ name: "Excel", extensions: ["xlsx"] }],
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { canceled: true };
+    }
+
+    const filePath = ensureXlsxExtension(result.filePath);
+    const exportResult = exportCenImtreksComparisonWorkbook(filePath, normalizedRows, {
+      sheetName: options.sheetName || "Do faktur",
     });
     return {
       canceled: false,
@@ -812,15 +919,19 @@ function createCenImtreksService({ windowController }) {
   return {
     cancelProjectUpdate,
     chooseDatabasePath,
+    exportComparisonRowsToDialog,
     exportRowsToDialog,
     getDefaultDbPath: () => getDefaultCenImtreksDbPath(app.getPath("appData")),
+    importComparisonFromDialog,
     importFromDialog,
+    inspectComparisonWorkbook,
     listDbRecords,
     listProjects,
     openProject,
     repairDbT1Records,
     saveDbRecord,
     saveProject,
+    selectComparisonWorkbook,
     updateProjectState,
   };
 }

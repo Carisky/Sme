@@ -16,6 +16,16 @@ function normalizeContainerNumber(value) {
   return asText(value).replace(/[\s\u00a0]+/g, "").toUpperCase();
 }
 
+function normalizeComparisonContainers(values = []) {
+  return Array.from(
+    new Set(
+      (Array.isArray(values) ? values : [values])
+        .map((value) => normalizeContainerNumber(value))
+        .filter(Boolean)
+    )
+  ).sort((left, right) => left.localeCompare(right, "pl"));
+}
+
 function normalizeVesselDateFilterMode(value) {
   return asText(value).toLowerCase() === "list" ? "list" : DEFAULT_VESSEL_DATE_FILTER_MODE;
 }
@@ -158,6 +168,31 @@ function normalizeLookupRecord(record = {}) {
   });
 }
 
+function createInvoiceComparison(overrides = {}) {
+  return {
+    filePath: "",
+    fileName: "",
+    sheetName: "",
+    columnKey: "",
+    columnHeader: "",
+    containers: [],
+    importedAt: "",
+    ...overrides,
+  };
+}
+
+function normalizeInvoiceComparison(comparison = {}) {
+  return createInvoiceComparison({
+    filePath: asText(comparison.filePath),
+    fileName: asText(comparison.fileName),
+    sheetName: asText(comparison.sheetName),
+    columnKey: asText(comparison.columnKey).toUpperCase(),
+    columnHeader: asText(comparison.columnHeader),
+    containers: normalizeComparisonContainers(comparison.containers),
+    importedAt: asText(comparison.importedAt),
+  });
+}
+
 function sanitizeFileName(value) {
   return (
     asText(value)
@@ -205,6 +240,7 @@ function normalizeState(input = {}) {
     dbPath: asText(input.dbPath),
     activeSheetId: resolvedActiveSheetId,
     view: normalizeProjectView(input.view),
+    invoiceComparison: normalizeInvoiceComparison(input.invoiceComparison),
     sheets,
   };
 }
@@ -219,6 +255,7 @@ function createEmptyState(overrides = {}) {
     dbPath: "",
     activeSheetId: "",
     view: createProjectView(),
+    invoiceComparison: createInvoiceComparison(),
     sheets: [],
     ...overrides,
   });
@@ -251,10 +288,13 @@ module.exports = {
   countProjectRows,
   createEmptyState,
   createLookupRecord,
+  createInvoiceComparison,
   createProjectRow,
   createProjectSheet,
   flattenProjectRows,
+  normalizeComparisonContainers,
   normalizeContainerNumber,
+  normalizeInvoiceComparison,
   normalizeLookupRecord,
   normalizeProjectView,
   normalizeProjectRow,

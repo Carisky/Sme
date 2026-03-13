@@ -12,6 +12,16 @@ export function normalizeContainerNumber(value) {
   return asText(value).replace(/[\s\u00a0]+/g, "").toUpperCase();
 }
 
+export function normalizeComparisonContainers(values = []) {
+  return Array.from(
+    new Set(
+      (Array.isArray(values) ? values : [values])
+        .map((value) => normalizeContainerNumber(value))
+        .filter(Boolean)
+    )
+  ).sort((left, right) => left.localeCompare(right, "pl"));
+}
+
 const CONTAINER_NUMBER_PATTERN = /\b[A-Z]{4}[\s\u00a0-]*\d{7}\b/g;
 
 function isValidContainerNumber(value) {
@@ -92,6 +102,23 @@ function normalizeIncludedRowIds(values = []) {
       .map((value) => asText(value))
       .filter(Boolean)
   );
+}
+
+function normalizeComparisonSheetSelection(values = []) {
+  return Array.from(
+    new Set(
+      (Array.isArray(values) ? values : [values])
+        .map((value) => asText(value))
+        .filter(Boolean)
+    )
+  ).sort((left, right) => left.localeCompare(right, "pl", { sensitivity: "base" }));
+}
+
+function normalizeComparisonStatusSort(value) {
+  const normalized = asText(value).toLowerCase();
+  return ["matched-first", "missing-first"].includes(normalized)
+    ? normalized
+    : "missing-first";
 }
 
 export function createProjectView(overrides = {}) {
@@ -217,6 +244,7 @@ export function normalizeState(input = {}) {
     dbPath: asText(input.dbPath),
     activeSheetId: resolvedActiveSheetId,
     view: normalizeProjectView(input.view),
+    invoiceComparison: normalizeInvoiceComparison(input.invoiceComparison),
     sheets,
   };
 }
@@ -254,6 +282,7 @@ export function createEmptyState(overrides = {}) {
     dbPath: "",
     activeSheetId: "",
     view: createProjectView(),
+    invoiceComparison: createInvoiceComparison(),
     sheets: [],
     ...overrides,
   });
@@ -278,6 +307,89 @@ export function collectProjectStats(state = {}) {
   };
 }
 
+export function getInvoiceComparisonSheetOptions(state = {}) {
+  const normalizedState = resolveState(state);
+  return normalizedState.sheets
+    .map((sheet) => asText(sheet?.name))
+    .filter(Boolean)
+    .filter((sheetName, index, source) => source.indexOf(sheetName) === index)
+    .sort((left, right) => left.localeCompare(right, "pl", { sensitivity: "base" }));
+}
+
+export function collectInvoiceComparisonRows(state = {}, options = {}) {
+  const normalizedState = resolveState(state);
+  const comparisonSet = new Set(
+    normalizeComparisonContainers(normalizedState.invoiceComparison?.containers)
+  );
+  const selectedSheetNames = normalizeComparisonSheetSelection(options.sheetNames);
+  const selectedSheetSet = new Set(selectedSheetNames);
+  const hasSelectedSheets = selectedSheetSet.size > 0;
+  const statusSort = normalizeComparisonStatusSort(options.statusSort);
+  const rowsByContainer = new Map();
+
+  normalizedState.sheets.forEach((sheet) => {
+    const sheetName = asText(sheet?.name) || DEFAULT_SHEET_NAME;
+    if (hasSelectedSheets && !selectedSheetSet.has(sheetName)) {
+      return;
+    }
+
+    sheet.rows.forEach((row) => {
+      const containerNumber = normalizeContainerNumber(row.containerNumber);
+      if (!containerNumber) {
+        return;
+      }
+
+      const current = rowsByContainer.get(containerNumber) || {
+        containerNumber,
+        rowCount: 0,
+        sheetNames: new Set(),
+      };
+      current.rowCount += 1;
+      current.sheetNames.add(sheetName);
+      rowsByContainer.set(containerNumber, current);
+    });
+  });
+
+  return Array.from(rowsByContainer.values())
+    .map((entry) => {
+      const sheetNames = Array.from(entry.sheetNames).sort((left, right) =>
+        left.localeCompare(right, "pl", { sensitivity: "base" })
+      );
+      const hasComparisonMatch = comparisonSet.has(entry.containerNumber);
+      return {
+        containerNumber: entry.containerNumber,
+        rowCount: entry.rowCount,
+        sheetNames,
+        sheetLabel: sheetNames.join(", "),
+        hasComparisonMatch,
+        statusKey: hasComparisonMatch ? "matched" : "missing",
+        statusLabel: hasComparisonMatch ? "Jest w bazie" : "Do faktur",
+      };
+    })
+    .sort((left, right) => {
+      if (left.statusKey !== right.statusKey) {
+        if (statusSort === "matched-first") {
+          return left.statusKey === "matched" ? -1 : 1;
+        }
+
+        return left.statusKey === "missing" ? -1 : 1;
+      }
+
+      return left.containerNumber.localeCompare(right.containerNumber, "pl");
+    });
+}
+
+export function collectInvoiceComparisonStats(state = {}, options = {}) {
+  const rows = collectInvoiceComparisonRows(state, options);
+  const comparisonContainers = normalizeComparisonContainers(state?.invoiceComparison?.containers);
+  return {
+    projectContainers: rows.length,
+    matchedContainers: rows.filter((row) => row.hasComparisonMatch).length,
+    missingContainers: rows.filter((row) => !row.hasComparisonMatch).length,
+    comparisonContainers: comparisonContainers.length,
+  };
+}
+
 export function createLookupRecord(overrides = {}) {
   return {
     containerNumber: "",
@@ -287,6 +399,19 @@ export function createLookupRecord(overrides = {}) {
     source: "manual",
     createdAt: "",
     updatedAt: "",
+    ...overrides,
+  };
+}
+
+export function createInvoiceComparison(overrides = {}) {
+  return {
+    filePath: "",
+    fileName: "",
+    sheetName: "",
+    columnKey: "",
+    columnHeader: "",
+    containers: [],
+    importedAt: "",
     ...overrides,
   };
 }
@@ -302,6 +427,18 @@ export function normalizeLookupRecord(record = {}) {
     createdAt: asText(record.createdAt),
     updatedAt: asText(record.updatedAt),
   };
+}
+
+export function normalizeInvoiceComparison(comparison = {}) {
+  return createInvoiceComparison({
+    filePath: asText(comparison.filePath),
+    fileName: asText(comparison.fileName),
+    sheetName: asText(comparison.sheetName),
+    columnKey: asText(comparison.columnKey).toUpperCase(),
+    columnHeader: asText(comparison.columnHeader),
+    containers: normalizeComparisonContainers(comparison.containers),
+    importedAt: asText(comparison.importedAt),
+  });
 }
 
 export function normalizeProjectOption(project = {}) {

@@ -519,6 +519,12 @@ select {
   overflow: hidden;
 }
 
+#comparison-sheet-filter {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
 .filter-multiselect--popover {
   position: relative;
   overflow: visible;
@@ -806,6 +812,30 @@ select {
   min-width: 210px;
 }
 
+.data-table--comparison {
+  min-width: 640px;
+}
+
+.data-table--comparison th:nth-child(1),
+.data-table--comparison td:nth-child(1) {
+  min-width: 150px;
+}
+
+.data-table--comparison th:nth-child(2),
+.data-table--comparison td:nth-child(2) {
+  min-width: 130px;
+}
+
+.data-table--comparison th:nth-child(3),
+.data-table--comparison td:nth-child(3) {
+  min-width: 110px;
+}
+
+.data-table--comparison th:nth-child(4),
+.data-table--comparison td:nth-child(4) {
+  min-width: 220px;
+}
+
 .row-input {
   transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
@@ -838,6 +868,34 @@ select {
 
 .row--sticky-visible {
   background: rgba(230, 244, 240, 0.92);
+}
+
+.comparison-row--matched td {
+  background: rgba(238, 248, 243, 0.88);
+}
+
+.comparison-row--missing td {
+  background: rgba(255, 244, 232, 0.92);
+}
+
+.comparison-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.14rem 0.48rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.comparison-badge--matched {
+  background: rgba(31, 107, 103, 0.14);
+  color: var(--accent-strong);
+}
+
+.comparison-badge--missing {
+  background: rgba(200, 107, 53, 0.14);
+  color: var(--accent);
 }
 
 .row--message td {
