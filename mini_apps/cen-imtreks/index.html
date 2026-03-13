@@ -229,9 +229,38 @@
                 <select id="filter-status" class="filter-select" aria-label="Filtr statusu">
                   <option value="">Status: wszystkie</option>
                 </select>
+                <select id="filter-comparison" class="filter-select" aria-label="Filtr porownania">
+                  <option value="all">Porownanie: wszystko</option>
+                  <option value="matched">Tylko w bazie</option>
+                  <option value="missing">Tylko do faktur</option>
+                </select>
                 <button type="button" data-action="clear-filters" class="button--minimal">
                   Wyczysc filtry
                 </button>
+                <label class="toggle toggle--compact">
+                  <input type="checkbox" id="comparison-highlight" />
+                  <span>Podswietli</span>
+                </label>
+                <button type="button" data-action="invoice-batch-open" class="button--accent">
+                  Przypisz fakture
+                </button>
+                <button
+                  type="button"
+                  data-action="invoice-preview-accept"
+                  class="button--strong"
+                  hidden
+                >
+                  Akceptuj fakture
+                </button>
+                <button
+                  type="button"
+                  data-action="invoice-preview-cancel"
+                  class="button--minimal"
+                  hidden
+                >
+                  Cofnij podglad
+                </button>
+                <span id="invoice-preview-status" class="meta-pill meta-pill--accent" hidden></span>
                 <button type="button" data-action="export-visible" class="button--minimal">
                   Eksport
                 </button>
@@ -503,6 +532,42 @@
       <footer class="statusbar">
         <span id="status-text">Gotowe.</span>
       </footer>
+    </div>
+
+    <div id="invoice-batch-modal" class="modal" hidden>
+      <div class="modal__backdrop" data-action="invoice-modal-close"></div>
+      <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="invoice-batch-title">
+        <div class="card__header card__header--spread">
+          <div>
+            <p class="card__eyebrow">Faktura seryjna</p>
+            <h2 id="invoice-batch-title">Przypisz fakture do widocznych wierszy</h2>
+          </div>
+        </div>
+
+        <p id="invoice-batch-modal-copy" class="muted-copy">
+          Numer zostanie dodany najpierw do podgladu. Zmiany zapiszesz dopiero po kliknieciu
+          Akceptuj fakture.
+        </p>
+
+        <label class="field field--wide">
+          <span>Numer faktury</span>
+          <input
+            type="text"
+            id="invoice-batch-input"
+            placeholder="Wpisz jeden numer faktury dla widocznych wierszy"
+            autocomplete="off"
+          />
+        </label>
+
+        <div class="toolbar">
+          <button type="button" data-action="invoice-preview-apply" class="button--strong">
+            Podglad
+          </button>
+          <button type="button" data-action="invoice-modal-close" class="button--minimal">
+            Anuluj
+          </button>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="./renderer.js"></script>

@@ -857,6 +857,24 @@ select {
   box-shadow: 0 0 0 1px rgba(200, 107, 53, 0.12);
 }
 
+.row-input--comparison-match {
+  background: rgba(238, 229, 255, 0.92);
+  border-color: rgba(132, 89, 199, 0.32);
+  box-shadow: 0 0 0 1px rgba(132, 89, 199, 0.1);
+}
+
+.row-input--invoice-preview {
+  background: rgba(243, 236, 255, 0.98);
+  border-color: rgba(132, 89, 199, 0.4);
+  color: #503079;
+  font-weight: 600;
+}
+
+.row-input--invoice-preview:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+}
+
 .row-input--compact {
   font-size: 0.75rem;
   letter-spacing: -0.01em;
@@ -868,6 +886,14 @@ select {
 
 .row--sticky-visible {
   background: rgba(230, 244, 240, 0.92);
+}
+
+.row--comparison-highlight {
+  background: rgba(246, 241, 255, 0.78);
+}
+
+.row--invoice-preview {
+  background: rgba(247, 242, 255, 0.96);
 }
 
 .comparison-row--matched td {
@@ -961,6 +987,39 @@ select {
   border-radius: 14px;
   padding: 0.6rem 0.85rem;
   font-size: 0.84rem;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.modal[hidden] {
+  display: none;
+}
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(22, 59, 57, 0.36);
+  backdrop-filter: blur(4px);
+}
+
+.modal__dialog {
+  position: relative;
+  z-index: 1;
+  width: min(480px, calc(100vw - 2rem));
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border-radius: 22px;
+  border: 1px solid rgba(216, 202, 185, 0.88);
+  background: rgba(251, 246, 239, 0.98);
+  box-shadow: 0 24px 48px rgba(22, 59, 57, 0.24);
 }
 
 #status-text {

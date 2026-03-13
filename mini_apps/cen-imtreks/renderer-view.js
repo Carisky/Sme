@@ -9,6 +9,7 @@ import {
   getInvoiceComparisonSheetOptions,
   getFilteredRows,
   matchesRowFilters,
+  normalizeComparisonContainers,
 } from "./renderer-model.js";
 
 function renderSelectedDateSummary(filterOptions, selectedValues = [], stateRef) {
@@ -70,7 +71,7 @@ function renderComparisonSheetSummary(sheetOptions = [], selectedSheets = []) {
   return `Arkusze: ${selected.length} z ${sheetOptions.length}`;
 }
 
-function renderEditableCell(field, value, updatedFields, extraClass = "") {
+function renderEditableCell(field, value, updatedFields, extraClass = "", extraAttributes = "") {
   const isUpdated = updatedFields.has(field);
   const classes = ["row-input"];
   if (extraClass) {
@@ -82,7 +83,7 @@ function renderEditableCell(field, value, updatedFields, extraClass = "") {
 
   return `<input type="text" data-field="${escapeHtml(field)}" value="${escapeHtml(
     value
-  )}" class="${classes.join(" ")}"${isUpdated ? ' title="Uzupelnione podczas ostatniej aktualizacji"' : ""} />`;
+  )}" class="${classes.join(" ")}"${isUpdated ? ' title="Uzupelnione podczas ostatniej aktualizacji"' : ""}${extraAttributes ? ` ${extraAttributes}` : ""} />`;
 }
 
 function shouldUseCompactStopInput(value) {
@@ -317,10 +318,23 @@ export function renderFilters(elements, stateRef) {
     <option value="">Status: wszystkie</option>
     ${statusOptions}
   `;
+  elements.filterComparison.innerHTML = `
+    <option value="all">Porownanie: wszystko</option>
+    <option value="matched"${stateRef.comparisonFilter === "matched" ? " selected" : ""}>Tylko w bazie</option>
+    <option value="missing"${stateRef.comparisonFilter === "missing" ? " selected" : ""}>Tylko do faktur</option>
+  `;
 }
 
 export function renderRows(elements, stateRef) {
   const activeSheet = getActiveSheet(stateRef.state);
+  const comparisonSet = new Set(
+    normalizeComparisonContainers(stateRef.state.invoiceComparison?.containers)
+  );
+  const invoicePreviewMap = new Map(
+    Array.isArray(stateRef.invoicePreview?.entries)
+      ? stateRef.invoicePreview.entries.map((entry) => [entry.rowId, entry.nextValue])
+      : []
+  );
   const rows = activeSheet
     ? getFilteredRows(stateRef.state, {
         searchTerm: stateRef.projectSearchTerm,
@@ -330,6 +344,8 @@ export function renderRows(elements, stateRef) {
         vesselDateSelected: stateRef.vesselDateSelectedFilter,
         hasT1: stateRef.hasT1Filter,
         status: stateRef.statusFilter,
+        comparisonStatus: stateRef.comparisonFilter,
+        comparisonContainers: stateRef.state.invoiceComparison?.containers || [],
         includeRowIds: Array.from(stateRef.stickyVisibleRowIds || []),
       })
     : [];
@@ -341,20 +357,34 @@ export function renderRows(elements, stateRef) {
     vesselDateSelected: stateRef.vesselDateSelectedFilter,
     hasT1: stateRef.hasT1Filter,
     status: stateRef.statusFilter,
+    comparisonStatus: stateRef.comparisonFilter,
+    comparisonContainers: stateRef.state.invoiceComparison?.containers || [],
   };
   const renderedRows = rows
     .map((row) => {
       const updatedFields = stateRef.rowHighlights.get(row.id) || new Set();
       const isStickyRow =
         stateRef.stickyVisibleRowIds?.has(row.id) && !matchesRowFilters(row, baseFilters);
+      const hasComparisonMatch = comparisonSet.has(row.containerNumber);
+      const shouldHighlightComparison =
+        stateRef.comparisonHighlightEnabled && hasComparisonMatch;
+      const previewInvoiceValue = invoicePreviewMap.get(row.id);
+      const hasInvoicePreview = previewInvoiceValue !== undefined;
       const rowClasses = [
         updatedFields.size ? "row--updated" : "",
         isStickyRow ? "row--sticky-visible" : "",
+        shouldHighlightComparison ? "row--comparison-highlight" : "",
+        hasInvoicePreview ? "row--invoice-preview" : "",
       ]
         .filter(Boolean)
         .join(" ");
       const sourceText = row.sourceRowNumber || row.origin || "-";
       const stopExtraClass = shouldUseCompactStopInput(row.stop) ? "row-input--compact" : "";
+      const containerExtraClass = shouldHighlightComparison ? "row-input--comparison-match" : "";
+      const invoiceExtraClass = hasInvoicePreview ? "row-input--invoice-preview" : "";
+      const invoiceAttributes = hasInvoicePreview
+        ? 'disabled title="Podglad faktury. Uzyj Akceptuj fakture, aby zapisac zmiany."'
+        : "";
 
       return `
         <tr data-row-id="${escapeHtml(row.id)}" class="${escapeHtml(rowClasses)}">
@@ -362,13 +392,13 @@ export function renderRows(elements, stateRef) {
           <td>${renderEditableCell("orderDate", row.orderDate, updatedFields)}</td>
           <td>${renderEditableCell("vesselDate", row.vesselDate, updatedFields)}</td>
           <td>${renderEditableCell("folderName", row.folderName, updatedFields)}</td>
-          <td>${renderEditableCell("containerNumber", row.containerNumber, updatedFields)}</td>
+          <td>${renderEditableCell("containerNumber", row.containerNumber, updatedFields, containerExtraClass)}</td>
           <td>${renderEditableCell("blNumber", row.blNumber, updatedFields)}</td>
           <td>${renderEditableCell("customsOffice", row.customsOffice, updatedFields)}</td>
           <td>${renderEditableCell("status", row.status, updatedFields)}</td>
           <td>${renderEditableCell("stop", row.stop, updatedFields, stopExtraClass)}</td>
           <td>${renderEditableCell("t1", row.t1, updatedFields)}</td>
-          <td>${renderEditableCell("invoiceInfo", row.invoiceInfo, updatedFields)}</td>
+          <td>${renderEditableCell("invoiceInfo", hasInvoicePreview ? previewInvoiceValue : row.invoiceInfo, updatedFields, invoiceExtraClass, invoiceAttributes)}</td>
           <td>${renderEditableCell("remarks", row.remarks, updatedFields)}</td>
           <td>
             ${escapeHtml(sourceText)}

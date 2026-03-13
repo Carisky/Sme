@@ -67,7 +67,10 @@ const elements = {
   filterVesselDateTo: document.getElementById("filter-vessel-date-to"),
   filterHasT1: document.getElementById("filter-has-t1"),
   filterStatus: document.getElementById("filter-status"),
+  filterComparison: document.getElementById("filter-comparison"),
   forceUpdate: document.getElementById("force-update"),
+  comparisonHighlight: document.getElementById("comparison-highlight"),
+  invoicePreviewStatus: document.getElementById("invoice-preview-status"),
   comparisonProjectCount: document.getElementById("comparison-project-count"),
   comparisonMatchedCount: document.getElementById("comparison-matched-count"),
   comparisonMissingCount: document.getElementById("comparison-missing-count"),
@@ -106,6 +109,9 @@ const elements = {
   summaryDbStatus: document.getElementById("summary-db-status"),
   summaryDbStatusInline: document.getElementById("summary-db-status-inline"),
   summaryManualCountInline: document.getElementById("summary-manual-count-inline"),
+  invoiceBatchModal: document.getElementById("invoice-batch-modal"),
+  invoiceBatchModalCopy: document.getElementById("invoice-batch-modal-copy"),
+  invoiceBatchInput: document.getElementById("invoice-batch-input"),
 };
 
 const stateRef = {
@@ -133,10 +139,13 @@ const stateRef = {
   vesselDateSelectedFilter: [],
   hasT1Filter: "all",
   statusFilter: "",
+  comparisonFilter: "all",
   comparisonSearchTerm: "",
   comparisonStatusFilter: "all",
   comparisonStatusSort: "missing-first",
   comparisonSelectedSheets: [],
+  comparisonHighlightEnabled: false,
+  invoicePreview: null,
   forceUpdateEnabled: false,
   rowHighlights: new Map(),
   stickyVisibleRowIds: new Set(),
@@ -392,6 +401,68 @@ function renderComparisonArea() {
   applyBusyState();
 }
 
+function getVisibleProjectRowsForBatch() {
+  return getFilteredRows(stateRef.state, getProjectFilters());
+}
+
+function getInvoicePreviewEntriesMap() {
+  return new Map(
+    Array.isArray(stateRef.invoicePreview?.entries)
+      ? stateRef.invoicePreview.entries.map((entry) => [asText(entry.rowId), entry])
+      : []
+  );
+}
+
+function renderInvoicePreviewControls() {
+  const preview = stateRef.invoicePreview;
+  const hasPreview = Array.isArray(preview?.entries) && preview.entries.length > 0;
+  const openButton = document.querySelector('[data-action="invoice-batch-open"]');
+  const acceptButton = document.querySelector('[data-action="invoice-preview-accept"]');
+  const cancelButton = document.querySelector('[data-action="invoice-preview-cancel"]');
+
+  if (openButton) {
+    openButton.hidden = hasPreview;
+  }
+
+  if (acceptButton) {
+    acceptButton.hidden = !hasPreview;
+  }
+
+  if (cancelButton) {
+    cancelButton.hidden = !hasPreview;
+  }
+
+  elements.invoicePreviewStatus.hidden = !hasPreview;
+  elements.invoicePreviewStatus.textContent = hasPreview
+    ? `Podglad: ${preview.entries.length} wierszy - ${preview.invoiceValue}`
+    : "";
+  document.body.classList.toggle("has-invoice-preview", hasPreview);
+}
+
+function openInvoiceBatchModal() {
+  const visibleRows = getVisibleProjectRowsForBatch();
+  if (!visibleRows.length) {
+    window.alert("Brak widocznych wierszy do przypisania faktury.");
+    return false;
+  }
+
+  const activeSheet = getActiveSheet(stateRef.state);
+  elements.invoiceBatchModalCopy.textContent = `Podglad obejmie ${visibleRows.length} widocznych wierszy z arkusza ${
+    activeSheet?.name || "-"
+  }. Zmiany zapisza sie dopiero po kliknieciu Akceptuj fakture.`;
+  elements.invoiceBatchInput.value = stateRef.invoicePreview?.invoiceValue || "";
+  elements.invoiceBatchModal.hidden = false;
+  window.requestAnimationFrame(() => {
+    elements.invoiceBatchInput.focus();
+    elements.invoiceBatchInput.select();
+  });
+  return true;
+}
+
+function closeInvoiceBatchModal() {
+  elements.invoiceBatchModal.hidden = true;
+}
+
 async function loadComparisonWorkbookMetadata(filePath, { silent = true } = {}) {
   const normalizedPath = asText(filePath);
   if (!normalizedPath) {
@@ -461,6 +532,8 @@ function getProjectFilters({ includeSticky = false } = {}) {
     vesselDateSelected: stateRef.vesselDateSelectedFilter,
     hasT1: stateRef.hasT1Filter,
     status: stateRef.statusFilter,
+    comparisonStatus: stateRef.comparisonFilter,
+    comparisonContainers: stateRef.state.invoiceComparison?.containers || [],
     includeRowIds: includeSticky ? Array.from(stateRef.stickyVisibleRowIds) : [],
   };
 }
@@ -545,6 +618,8 @@ function syncProjectFilterControls() {
   elements.filterVesselDateTo.value = stateRef.vesselDateToFilter;
   elements.filterHasT1.value = stateRef.hasT1Filter;
   elements.filterStatus.value = stateRef.statusFilter;
+  elements.filterComparison.value = stateRef.comparisonFilter;
+  elements.comparisonHighlight.checked = stateRef.comparisonHighlightEnabled;
   elements.forceUpdate.checked = stateRef.forceUpdateEnabled;
 }
 
@@ -556,6 +631,7 @@ function renderProjectSummaryArea() {
 function renderProjectFiltersArea() {
   renderFilters(elements, stateRef);
   syncProjectFilterControls();
+  renderInvoicePreviewControls();
   queueVesselDatePopoverPositionSync();
 }
 
@@ -990,6 +1066,7 @@ function renderAllApp({ preserveProjectTableViewport = false } = {}) {
   withProjectTableViewportPreserved(() => {
     renderAll(elements, stateRef, bridge, getActiveProjectTitle);
     syncProjectFilterControls();
+    renderInvoicePreviewControls();
     applyBusyState({ force: true });
   }, preserveProjectTableViewport);
 }
@@ -1028,6 +1105,10 @@ function setState(nextState, options = {}) {
   stateRef.comparisonStatusFilter = "all";
   stateRef.comparisonStatusSort = "missing-first";
   stateRef.comparisonSelectedSheets = [];
+  stateRef.comparisonFilter = "all";
+  stateRef.comparisonHighlightEnabled = false;
+  stateRef.invoicePreview = null;
+  closeInvoiceBatchModal();
   if (options.currentProject !== undefined) {
     setCurrentProject(options.currentProject);
   }
@@ -1775,6 +1856,87 @@ async function exportComparisonRows() {
   return result;
 }
 
+function startInvoicePreview() {
+  const invoiceValue = asText(elements.invoiceBatchInput.value);
+  if (!invoiceValue) {
+    window.alert("Wpisz numer faktury.");
+    elements.invoiceBatchInput.focus();
+    return null;
+  }
+
+  const visibleRows = getVisibleProjectRowsForBatch().filter((row) => asText(row.id));
+  if (!visibleRows.length) {
+    window.alert("Brak widocznych wierszy do podgladu faktury.");
+    return null;
+  }
+
+  stateRef.invoicePreview = {
+    invoiceValue,
+    entries: visibleRows.map((row) => ({
+      rowId: asText(row.id),
+      previousValue: asText(row.invoiceInfo),
+      nextValue: invoiceValue,
+    })),
+  };
+  closeInvoiceBatchModal();
+  renderAllApp({ preserveProjectTableViewport: true });
+  setStatus(
+    `Przygotowano podglad faktury ${invoiceValue} dla ${visibleRows.length} widocznych wierszy.`
+  );
+  return stateRef.invoicePreview;
+}
+
+function cancelInvoicePreview() {
+  if (!stateRef.invoicePreview) {
+    closeInvoiceBatchModal();
+    return false;
+  }
+
+  stateRef.invoicePreview = null;
+  closeInvoiceBatchModal();
+  renderAllApp({ preserveProjectTableViewport: true });
+  setStatus("Cofnieto podglad faktury.");
+  return true;
+}
+
+function acceptInvoicePreview() {
+  const preview = stateRef.invoicePreview;
+  if (!Array.isArray(preview?.entries) || preview.entries.length === 0) {
+    return null;
+  }
+
+  const previewMap = new Map(preview.entries.map((entry) => [entry.rowId, entry.nextValue]));
+  let updatedCount = 0;
+
+  stateRef.state.sheets = stateRef.state.sheets.map((sheet) =>
+    normalizeSheet({
+      ...sheet,
+      rows: sheet.rows.map((row) => {
+        const nextInvoiceValue = previewMap.get(asText(row.id));
+        if (nextInvoiceValue === undefined) {
+          return row;
+        }
+
+        updatedCount += 1;
+        return normalizeRow({
+          ...row,
+          invoiceInfo: nextInvoiceValue,
+        });
+      }),
+    })
+  );
+
+  stateRef.invoicePreview = null;
+  registerProjectMutation({
+    rerender: "all",
+    preserveProjectTableViewport: true,
+  });
+  setStatus(
+    `Zatwierdzono fakture ${preview.invoiceValue} dla ${updatedCount} wierszy.`
+  );
+  return updatedCount;
+}
+
 function switchMonth(sheetId) {
   resetRowFeedback();
   stateRef.state.activeSheetId = asText(sheetId);
@@ -1790,6 +1952,7 @@ function resetProjectFilters() {
   stateRef.vesselDateSelectedFilter = [];
   stateRef.hasT1Filter = "all";
   stateRef.statusFilter = "";
+  stateRef.comparisonFilter = "all";
   elements.filterVesselDateList.open = false;
   commitViewMutation({ clearFeedback: true });
   setStatus("Wyczyszczono aktywne filtry.");
@@ -1864,7 +2027,12 @@ function shouldRerenderProjectRowsAfterRowEdit(rowId, field) {
 
   if (
     normalizedField === "containerNumber" &&
-    (stateRef.projectSearchTerm || stateRef.stickyVisibleRowIds.has(asText(rowId)))
+    (
+      stateRef.projectSearchTerm ||
+      stateRef.stickyVisibleRowIds.has(asText(rowId)) ||
+      stateRef.comparisonFilter !== "all" ||
+      stateRef.comparisonHighlightEnabled
+    )
   ) {
     return true;
   }
@@ -2113,6 +2281,16 @@ function handleAction(action, payload = {}) {
       return exportComparisonRows();
     case "comparison-clear":
       return clearComparisonWorkbook();
+    case "invoice-batch-open":
+      return openInvoiceBatchModal();
+    case "invoice-modal-close":
+      return closeInvoiceBatchModal();
+    case "invoice-preview-apply":
+      return startInvoicePreview();
+    case "invoice-preview-accept":
+      return acceptInvoicePreview();
+    case "invoice-preview-cancel":
+      return cancelInvoicePreview();
     case "clear-filters":
       return resetProjectFilters();
     case "export-visible":
@@ -2548,6 +2726,24 @@ elements.filterStatus.addEventListener("change", (event) => {
   commitViewMutation({ clearFeedback: true });
 });
 
+elements.filterComparison.addEventListener("change", (event) => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  stateRef.comparisonFilter = normalizeComparisonStatusFilterValue(event.target.value);
+  commitViewMutation({ clearFeedback: true });
+});
+
+elements.comparisonHighlight.addEventListener("change", (event) => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  stateRef.comparisonHighlightEnabled = Boolean(event.target.checked);
+  renderProjectData({ preserveProjectTableViewport: true });
+});
+
 window.addEventListener("resize", () => {
   if (elements.filterVesselDateList.open) {
     queueVesselDatePopoverPositionSync();
@@ -2630,7 +2826,22 @@ elements.lookupSearch.addEventListener("change", async () => {
   }
 });
 
+elements.invoiceBatchInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") {
+    return;
+  }
+
+  event.preventDefault();
+  startInvoicePreview();
+});
+
 window.addEventListener("keydown", async (event) => {
+  if (event.key === "Escape" && !elements.invoiceBatchModal.hidden) {
+    event.preventDefault();
+    closeInvoiceBatchModal();
+    return;
+  }
+
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
     if (stateRef.busyAction) {
       return;

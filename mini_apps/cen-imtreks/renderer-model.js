@@ -79,6 +79,11 @@ function normalizeHasT1FilterValue(value) {
   return ["all", "with", "without"].includes(normalized) ? normalized : "all";
 }
 
+function normalizeComparisonRowFilterValue(value) {
+  const normalized = asText(value).toLowerCase();
+  return ["all", "matched", "missing"].includes(normalized) ? normalized : "all";
+}
+
 function normalizeVesselDateSelection(values = []) {
   return Array.from(
     new Set(
@@ -601,8 +606,16 @@ export function matchesRowFilters(row = {}, filters = {}) {
   const status = normalizeStatusFilterValue(filters.status);
   const rowVesselDateKey = toDateKey(row.vesselDate);
   const rowVesselDateIso = dateStringToIsoDate(row.vesselDate);
+  const comparisonStatus = normalizeComparisonRowFilterValue(filters.comparisonStatus);
+  const comparisonContainerSet = new Set(
+    normalizeComparisonContainers(filters.comparisonContainers)
+  );
+  const rowContainerNumber = normalizeContainerNumber(row.containerNumber);
+  const hasComparisonMatch = rowContainerNumber
+    ? comparisonContainerSet.has(rowContainerNumber)
+    : false;
 
-  if (searchTerm && !normalizeContainerNumber(row.containerNumber).includes(searchTerm)) {
+  if (searchTerm && !rowContainerNumber.includes(searchTerm)) {
     return false;
   }
 
@@ -633,6 +646,14 @@ export function matchesRowFilters(row = {}, filters = {}) {
   }
 
   if (status && normalizeStatusFilterValue(row.status) !== status) {
+    return false;
+  }
+
+  if (comparisonStatus === "matched" && !hasComparisonMatch) {
+    return false;
+  }
+
+  if (comparisonStatus === "missing" && (!rowContainerNumber || hasComparisonMatch)) {
     return false;
   }
 
