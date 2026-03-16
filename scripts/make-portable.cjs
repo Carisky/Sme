@@ -21,6 +21,13 @@ function toSingleQuotedPowerShellPath(targetPath) {
   return escapePowerShellSingleQuoted(targetPath);
 }
 
+function buildExecutableName(productName) {
+  const normalized = String(productName || "App")
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "")
+    .replace(/\s+/g, "");
+  return normalized || "App";
+}
+
 async function runProcess(command, args, cwd, extraEnv = {}) {
   await new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -131,7 +138,13 @@ function buildIExpressSedContents({
   ].join("\r\n");
 }
 
-function buildInstallerScript({ productName, productVersion, publisherName }) {
+function buildInstallerScript({
+  productName,
+  productVersion,
+  publisherName,
+  productExecutableName,
+  bundledUninstallerName,
+}) {
   return [
     "$ErrorActionPreference = 'Stop'",
     "Add-Type -AssemblyName System.Windows.Forms",
@@ -141,14 +154,16 @@ function buildInstallerScript({ productName, productVersion, publisherName }) {
     `$productName = '${escapePowerShellSingleQuoted(productName)}'`,
     `$productVersion = '${escapePowerShellSingleQuoted(productVersion)}'`,
     `$publisherName = '${escapePowerShellSingleQuoted(publisherName)}'`,
+    `$productExecutableName = '${escapePowerShellSingleQuoted(productExecutableName)}'`,
+    `$bundledUninstallerName = '${escapePowerShellSingleQuoted(bundledUninstallerName)}'`,
     "$payloadZip = Join-Path $PSScriptRoot 'payload.zip'",
-    "$bundledUninstaller = Join-Path $PSScriptRoot 'Uninstall SME.exe'",
-    "$defaultTargetDir = Join-Path $env:LOCALAPPDATA 'Programs\\SME'",
-    "$desktopLink = Join-Path ([Environment]::GetFolderPath('Desktop')) 'SME.lnk'",
-    "$startMenuDir = Join-Path $env:APPDATA 'Microsoft\\Windows\\Start Menu\\Programs\\SME'",
-    "$startMenuLink = Join-Path $startMenuDir 'SME.lnk'",
-    "$startMenuUninstallLink = Join-Path $startMenuDir 'Uninstall SME.lnk'",
-    "$uninstallRegPath = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SME'",
+    "$bundledUninstaller = Join-Path $PSScriptRoot $bundledUninstallerName",
+    "$defaultTargetDir = Join-Path $env:LOCALAPPDATA ('Programs\\' + $productName)",
+    "$desktopLink = Join-Path ([Environment]::GetFolderPath('Desktop')) ($productName + '.lnk')",
+    "$startMenuDir = Join-Path $env:APPDATA ('Microsoft\\Windows\\Start Menu\\Programs\\' + $productName)",
+    "$startMenuLink = Join-Path $startMenuDir ($productName + '.lnk')",
+    "$startMenuUninstallLink = Join-Path $startMenuDir ('Uninstall ' + $productName + '.lnk')",
+    "$uninstallRegPath = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\' + $productExecutableName",
     "",
     "function Show-Message([string]$message, [System.Windows.Forms.MessageBoxIcon]$icon) {",
     "  [void][System.Windows.Forms.MessageBox]::Show($message, \"$productName installer\", [System.Windows.Forms.MessageBoxButtons]::OK, $icon)",
@@ -266,7 +281,7 @@ function buildInstallerScript({ productName, productVersion, publisherName }) {
     "    $progressBar.Style = 'Marquee'",
     "    [System.Windows.Forms.Application]::DoEvents()",
     "",
-    "    Get-Process -Name SME -ErrorAction SilentlyContinue | Stop-Process -Force",
+    "    Get-Process -Name $productExecutableName -ErrorAction SilentlyContinue | Stop-Process -Force",
     "",
     "    if (Test-Path $targetDir) {",
     "      Remove-Item -LiteralPath $targetDir -Recurse -Force",
@@ -277,8 +292,8 @@ function buildInstallerScript({ productName, productVersion, publisherName }) {
     "    [System.Windows.Forms.Application]::DoEvents()",
     "    Expand-Archive -LiteralPath $payloadZip -DestinationPath $targetDir -Force",
     "",
-    "    $mainExe = Join-Path $targetDir 'SME.exe'",
-    "    $targetUninstaller = Join-Path $targetDir 'Uninstall SME.exe'",
+    "    $mainExe = Join-Path $targetDir ($productExecutableName + '.exe')",
+    "    $targetUninstaller = Join-Path $targetDir $bundledUninstallerName",
     "    Copy-Item -LiteralPath $bundledUninstaller -Destination $targetUninstaller -Force",
     "",
     "    $statusLabel.Text = 'Creating shortcuts...'",
@@ -328,7 +343,7 @@ function buildInstallerScript({ productName, productVersion, publisherName }) {
   ].join("\r\n");
 }
 
-function buildUninstallerScript({ productName }) {
+function buildUninstallerScript({ productName, productExecutableName }) {
   return [
     "$ErrorActionPreference = 'Stop'",
     "Add-Type -AssemblyName System.Windows.Forms",
@@ -336,12 +351,13 @@ function buildUninstallerScript({ productName }) {
     "[System.Windows.Forms.Application]::EnableVisualStyles()",
     "",
     `$productName = '${escapePowerShellSingleQuoted(productName)}'`,
-    "$desktopLink = Join-Path ([Environment]::GetFolderPath('Desktop')) 'SME.lnk'",
-    "$startMenuDir = Join-Path $env:APPDATA 'Microsoft\\Windows\\Start Menu\\Programs\\SME'",
-    "$startMenuLink = Join-Path $startMenuDir 'SME.lnk'",
-    "$startMenuUninstallLink = Join-Path $startMenuDir 'Uninstall SME.lnk'",
-    "$uninstallRegPath = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SME'",
-    "$defaultTargetDir = Join-Path $env:LOCALAPPDATA 'Programs\\SME'",
+    `$productExecutableName = '${escapePowerShellSingleQuoted(productExecutableName)}'`,
+    "$desktopLink = Join-Path ([Environment]::GetFolderPath('Desktop')) ($productName + '.lnk')",
+    "$startMenuDir = Join-Path $env:APPDATA ('Microsoft\\Windows\\Start Menu\\Programs\\' + $productName)",
+    "$startMenuLink = Join-Path $startMenuDir ($productName + '.lnk')",
+    "$startMenuUninstallLink = Join-Path $startMenuDir ('Uninstall ' + $productName + '.lnk')",
+    "$uninstallRegPath = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\' + $productExecutableName",
+    "$defaultTargetDir = Join-Path $env:LOCALAPPDATA ('Programs\\' + $productName)",
     "",
     "$installRecord = Get-ItemProperty -Path $uninstallRegPath -ErrorAction SilentlyContinue",
     "$targetDir = if ($installRecord -and $installRecord.InstallLocation) { $installRecord.InstallLocation } else { $defaultTargetDir }",
@@ -380,7 +396,7 @@ function buildUninstallerScript({ productName }) {
     "",
     "$progressForm.Add_Shown({",
     "  try {",
-    "    Get-Process -Name SME -ErrorAction SilentlyContinue | Stop-Process -Force",
+    "    Get-Process -Name $productExecutableName -ErrorAction SilentlyContinue | Stop-Process -Force",
     "    $statusLabel.Text = 'Finalizing uninstall...'",
     "    [System.Windows.Forms.Application]::DoEvents()",
     "",
@@ -515,8 +531,12 @@ async function writeUninstallerPackage({
   stageDir,
   uninstallerPath,
   productName,
+  productExecutableName,
 }) {
-  const scriptPath = buildUninstallerScript({ productName });
+  const scriptPath = buildUninstallerScript({
+    productName,
+    productExecutableName,
+  });
   const sedPath = await writeIExpressPackage({
     stageDir,
     packagePath: uninstallerPath,
@@ -541,13 +561,17 @@ async function writeInstallerPackage({
   productName,
   productVersion,
   publisherName,
+  productExecutableName,
   payloadZipPath,
   bundledUninstallerPath,
+  bundledUninstallerName,
 }) {
   const scriptPath = buildInstallerScript({
     productName,
     productVersion,
     publisherName,
+    productExecutableName,
+    bundledUninstallerName,
   });
   const sedPath = await writeIExpressPackage({
     stageDir,
@@ -566,7 +590,7 @@ async function writeInstallerPackage({
         copyFrom: payloadZipPath,
       },
       {
-        name: "Uninstall SME.exe",
+        name: bundledUninstallerName,
         copyFrom: bundledUninstallerPath,
       },
     ],
@@ -619,11 +643,12 @@ async function main() {
   const installerStageDir = path.join(iexpressDir, "installer");
   const uninstallerStageDir = path.join(iexpressDir, "uninstaller");
   const productName = normalizeProductName(packageJson);
+  const productExecutableName = buildExecutableName(productName);
   const publisherName = String(packageJson.author || productName).trim() || productName;
   const installerName = buildInstallerFileName(productName, packageJson.version);
   const installerPath = path.join(distDir, installerName);
   const manifestPath = path.join(distDir, RELEASE_MANIFEST_NAME);
-  const bundledUninstallerName = "Uninstall SME.exe";
+  const bundledUninstallerName = `Uninstall ${productExecutableName}.exe`;
   const bundledUninstallerPath = path.join(installerStageDir, bundledUninstallerName);
 
   await cleanDistDirectory(distDir);
@@ -639,9 +664,9 @@ async function main() {
       overwrite: true,
       platform: "win32",
       arch: "x64",
-      name: "SME",
-      executableName: "SME",
-      icon: path.join(rootDir, "assets", "sme-icon"),
+      name: productName,
+      executableName: productExecutableName,
+      icon: path.join(rootDir, "assets", "silesdoc-icon"),
       asar: false,
       prune: true,
       ignore: [
@@ -669,6 +694,7 @@ async function main() {
     stageDir: uninstallerStageDir,
     uninstallerPath: bundledUninstallerPath,
     productName,
+    productExecutableName,
   });
   await runIExpress(uninstallerSedPath, uninstallerLogPath, rootDir);
   await fs.access(bundledUninstallerPath);
@@ -679,8 +705,10 @@ async function main() {
     productName,
     productVersion: packageJson.version,
     publisherName,
+    productExecutableName,
     payloadZipPath,
     bundledUninstallerPath,
+    bundledUninstallerName,
   });
   await runIExpress(installerSedPath, installerLogPath, rootDir);
   await fs.access(installerPath);

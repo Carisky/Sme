@@ -7,7 +7,7 @@ function getWindowIconPath() {
     "..",
     "..",
     "assets",
-    process.platform === "win32" ? "sme-icon.ico" : "sme-mark.png"
+    process.platform === "win32" ? "silesdoc-icon.ico" : "silesdoc-mark.png"
   );
 }
 

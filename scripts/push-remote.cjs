@@ -20,6 +20,8 @@ const {
   sortMiniApps,
 } = require("../src/mini-app-common");
 
+const MINI_APP_RELEASE_TITLE = `${normalizeProductName(packageJson)} Mini Apps`;
+
 function resolveCommand(command) {
   if (process.platform === "win32" && command === "npm") {
     return "npm.cmd";
@@ -276,7 +278,7 @@ async function writeMiniAppReleaseNotes(rootDir, miniAppRegistry, currentCommit)
   const notesPath = path.join(notesDir, "mini-apps-notes.md");
   const miniApps = Array.isArray(miniAppRegistry?.miniApps) ? miniAppRegistry.miniApps : [];
   const lines = [
-    "# SME Mini Apps",
+    `# ${MINI_APP_RELEASE_TITLE}`,
     "",
     `- Registry tag: ${MINI_APP_REGISTRY_RELEASE_TAG}`,
     `- Entries: ${miniApps.length}`,
@@ -369,7 +371,7 @@ async function publishMiniAppRegistryRelease({
         "edit",
         MINI_APP_REGISTRY_RELEASE_TAG,
         "--title",
-        "SME Mini Apps",
+        MINI_APP_RELEASE_TITLE,
         "--notes-file",
         notesPath,
       ],
@@ -397,7 +399,7 @@ async function publishMiniAppRegistryRelease({
       MINI_APP_REGISTRY_RELEASE_TAG,
       ...miniAppRelease.assetPaths,
       "--title",
-      "SME Mini Apps",
+      MINI_APP_RELEASE_TITLE,
       "--notes-file",
       notesPath,
       "--prerelease",

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">SilesDoc mark</title>
+  <desc id="desc">Document mark for SilesDoc with a warm sand background and an orange review ribbon.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f7ecd9" />
+      <stop offset="1" stop-color="#d6bc97" />
+    </linearGradient>
+    <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff8ec" />
+      <stop offset="1" stop-color="#f0dcc0" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f39831" />
+      <stop offset="1" stop-color="#9d4f1b" />
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#4e3115" flood-opacity="0.2" />
+    </filter>
+  </defs>
+
+  <rect x="28" y="28" width="456" height="456" rx="108" fill="url(#bg)" />
+
+  <g filter="url(#shadow)">
+    <path
+      d="M160 102h150l66 66v204c0 21-17 38-38 38H160c-21 0-38-17-38-38V140c0-21 17-38 38-38Z"
+      fill="url(#paper)"
+    />
+    <path d="M310 102v66h66" fill="#f3dfc2" />
+    <path d="M310 102v56c0 6 4 10 10 10h56" fill="none" stroke="#c9ab82" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+    <path
+      d="M309 176
+         C281 149 233 148 204 168
+         C179 186 180 218 214 229
+         L272 247
+         C307 258 314 286 296 307
+         C272 336 219 337 188 310"
+      fill="none"
+      stroke="url(#accent)"
+      stroke-width="34"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M194 312l28 28 96-96"
+      fill="none"
+      stroke="#3c2512"
+      stroke-width="18"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path d="M182 356h132" fill="none" stroke="#d0b28a" stroke-width="14" stroke-linecap="round" />
+    <path d="M182 388h106" fill="none" stroke="#dcc19b" stroke-width="14" stroke-linecap="round" />
+  </g>
+</svg>

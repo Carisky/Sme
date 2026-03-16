@@ -7,12 +7,12 @@ const RELEASE_MANIFEST_NAME = "sme-update.json";
 const VERIFIED_RELEASE_KEY = "release.verified";
 
 function normalizeProductName(packageJson = {}) {
-  const candidate = String(packageJson.productName || packageJson.name || "SME").trim();
-  return candidate || "SME";
+  const candidate = String(packageJson.productName || packageJson.name || "SilesDoc").trim();
+  return candidate || "SilesDoc";
 }
 
 function buildInstallerFileName(productName, version) {
-  const safeProductName = String(productName || "SME").replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-");
+  const safeProductName = String(productName || "SilesDoc").replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-");
   return `${safeProductName}-Setup-${String(version || "0.0.0").trim()}.exe`;
 }
 

@@ -231,7 +231,7 @@ function renderMiniApps(result = {}) {
           </div>
           <div class="launcher-tile__copy">
             <strong>${escapeHtml(miniApp.name)}</strong>
-            <span>${escapeHtml(miniApp.description || "Moduł aplikacji SME")}</span>
+            <span>${escapeHtml(miniApp.description || "Modul aplikacji SilesDoc")}</span>
           </div>
           <div class="launcher-tile__actions">
             ${
@@ -349,7 +349,7 @@ function renderVisibilityDialog() {
           />
           <span class="launcher-visibility-item__copy">
             <strong>${escapeHtml(miniApp.name || miniApp.id)}</strong>
-            <span>${escapeHtml(miniApp.description || "Moduł aplikacji SME")}</span>
+            <span>${escapeHtml(miniApp.description || "Modul aplikacji SilesDoc")}</span>
           </span>
           <span class="launcher-visibility-item__meta">
             <span class="launcher-tile__badge">${escapeHtml(miniApp.statusLabel || "Moduł")}</span>
@@ -618,7 +618,7 @@ async function startAppUpdateInstall() {
 }
 
 async function bootstrapLauncher() {
-  window.bridge.setWindowTitle("SME - Moduły");
+  window.bridge.setWindowTitle("SilesDoc - Moduly");
   window.bridge.onUpdateStatus(handleUpdateStatusEvent);
   setStatus("Sprawdzanie aplikacji i synchronizacja modułów.");
 

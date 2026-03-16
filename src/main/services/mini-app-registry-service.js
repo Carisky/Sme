@@ -15,6 +15,7 @@ const {
 const {
   buildLatestReleaseApiUrl,
   buildReleaseByTagApiUrl,
+  normalizeProductName,
   normalizeSha256,
   parseGitHubRepository,
 } = require("../../update-common");
@@ -97,7 +98,8 @@ function createMiniAppRegistryService({ packageJson, miniAppDiscoveryService }) 
   }
 
   function getUserAgent() {
-    return `SME-MiniApps/${String(app.getVersion() || packageJson.version || "0.0.0").trim()}`;
+    const productName = normalizeProductName(packageJson).replace(/\s+/g, "") || "SilesDoc";
+    return `${productName}-MiniApps/${String(app.getVersion() || packageJson.version || "0.0.0").trim()}`;
   }
 
   function buildRequestHeaders(extraHeaders = {}) {

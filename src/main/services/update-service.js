@@ -10,6 +10,7 @@ const {
   buildLatestReleaseApiUrl,
   compareVersions,
   hashDirectory,
+  normalizeProductName,
   normalizeSha256,
   parseGitHubRepository,
 } = require("../../update-common");
@@ -24,13 +25,17 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
     return parseGitHubRepository(packageJson);
   }
 
+  function getProductName() {
+    return normalizeProductName(packageJson).replace(/\s+/g, "") || "SilesDoc";
+  }
+
   function getAppVersion() {
     return String(app.getVersion() || packageJson.version || "0.0.0").trim();
   }
 
   function buildRequestHeaders(extraHeaders = {}) {
     return {
-      "User-Agent": `SME-Updater/${getAppVersion()}`,
+      "User-Agent": `${getProductName()}-Updater/${getAppVersion()}`,
       ...extraHeaders,
     };
   }
@@ -457,7 +462,7 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
       throw new Error("Manifest wydania nie zawiera kompletnego opisu instalatora.");
     }
 
-    const downloadDir = path.join(app.getPath("temp"), "SME-updates");
+    const downloadDir = path.join(app.getPath("temp"), `${getProductName()}-updates`);
     const destinationPath = path.join(downloadDir, installer.name);
     await fs.rm(destinationPath, { force: true });
 
