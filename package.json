@@ -21,8 +21,9 @@
     "url": "https://github.com/Carisky/Sme.git"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Yehor Korsun",
+  "contact":"egorkorsun7@gmail.com",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "commonjs",
   "dependencies": {
     "@libsql/client": "^0.17.0",
