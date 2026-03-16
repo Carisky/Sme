@@ -11,6 +11,7 @@ import {
   createProjectView,
   createRow,
   deriveProjectName,
+  buildNextSheetName,
   extractContainerNumbers,
   flattenRows,
   getActiveSheetFilterOptions,
@@ -119,6 +120,13 @@ const elements = {
   invoiceBatchModal: document.getElementById("invoice-batch-modal"),
   invoiceBatchModalCopy: document.getElementById("invoice-batch-modal-copy"),
   invoiceBatchInput: document.getElementById("invoice-batch-input"),
+  textEntryModal: document.getElementById("text-entry-modal"),
+  textEntryEyebrow: document.getElementById("text-entry-eyebrow"),
+  textEntryTitle: document.getElementById("text-entry-title"),
+  textEntryCopy: document.getElementById("text-entry-copy"),
+  textEntryLabel: document.getElementById("text-entry-label"),
+  textEntryInput: document.getElementById("text-entry-input"),
+  textEntryConfirm: document.getElementById("text-entry-confirm"),
 };
 
 const stateRef = {
@@ -160,6 +168,8 @@ const stateRef = {
   stickyVisibleRowIds: new Set(),
   activeSheetShadow: null,
   updateSession: null,
+  textEntryRequest: null,
+  textEntryRestoreFocus: null,
   pendingProjectRender: 0,
   pendingProjectRenderPreserveViewport: false,
   projectStats: collectProjectStats(createEmptyState()),
@@ -622,6 +632,112 @@ function openInvoiceBatchModal() {
 
 function closeInvoiceBatchModal() {
   elements.invoiceBatchModal.hidden = true;
+}
+
+function focusTextEntryInput({ select = true } = {}) {
+  window.requestAnimationFrame(() => {
+    if (!(elements.textEntryInput instanceof HTMLInputElement)) {
+      return;
+    }
+
+    elements.textEntryInput.focus();
+    if (select) {
+      elements.textEntryInput.select();
+    }
+  });
+}
+
+function restoreTextEntryFocus() {
+  const restoreNode = stateRef.textEntryRestoreFocus;
+  stateRef.textEntryRestoreFocus = null;
+
+  if (
+    !(restoreNode instanceof HTMLElement) ||
+    !restoreNode.isConnected ||
+    restoreNode.hasAttribute("disabled")
+  ) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    restoreNode.focus({ preventScroll: true });
+  });
+}
+
+function finalizeTextEntryModal(result, { canceled = false } = {}) {
+  const request = stateRef.textEntryRequest;
+  if (!request) {
+    return null;
+  }
+
+  stateRef.textEntryRequest = null;
+  elements.textEntryModal.hidden = true;
+  restoreTextEntryFocus();
+
+  if (canceled && request.cancelStatus) {
+    setStatus(request.cancelStatus);
+  }
+
+  request.resolve(result);
+  return result;
+}
+
+function openTextEntryModal(options = {}) {
+  if (stateRef.textEntryRequest) {
+    finalizeTextEntryModal(null);
+  }
+
+  const request = {
+    eyebrow: asText(options.eyebrow) || "Nowa nazwa",
+    title: asText(options.title) || "Wpisz nazwe",
+    copy: asText(options.copy),
+    label: asText(options.label) || "Nazwa",
+    confirmLabel: asText(options.confirmLabel) || "Zapisz",
+    placeholder: asText(options.placeholder),
+    initialValue: asText(options.initialValue),
+    emptyMessage: asText(options.emptyMessage) || "Wpisz nazwe.",
+    cancelStatus: asText(options.cancelStatus),
+  };
+
+  stateRef.textEntryRestoreFocus =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  elements.textEntryEyebrow.textContent = request.eyebrow;
+  elements.textEntryTitle.textContent = request.title;
+  elements.textEntryCopy.textContent = request.copy;
+  elements.textEntryCopy.hidden = !request.copy;
+  elements.textEntryLabel.textContent = request.label;
+  elements.textEntryInput.placeholder = request.placeholder || "";
+  elements.textEntryInput.value = request.initialValue;
+  elements.textEntryConfirm.textContent = request.confirmLabel;
+  elements.textEntryModal.hidden = false;
+
+  return new Promise((resolve) => {
+    stateRef.textEntryRequest = {
+      ...request,
+      resolve,
+    };
+    focusTextEntryInput();
+  });
+}
+
+function submitTextEntryModal() {
+  const request = stateRef.textEntryRequest;
+  if (!request) {
+    return null;
+  }
+
+  const value = asText(elements.textEntryInput.value);
+  if (!value) {
+    setStatus(request.emptyMessage);
+    focusTextEntryInput({ select: false });
+    return null;
+  }
+
+  return finalizeTextEntryModal(value);
+}
+
+function cancelTextEntryModal() {
+  return finalizeTextEntryModal(null, { canceled: true });
 }
 
 async function loadComparisonWorkbookMetadata(filePath, { silent = true } = {}) {
@@ -1110,6 +1226,8 @@ function applyProjectRowPatches(changes = []) {
 
 function applyBusyState({ force = false } = {}) {
   const isBusy = Boolean(stateRef.busyAction);
+  const isUpdateBusy =
+    isBusy && stateRef.busyAction === "update" && Boolean(stateRef.updateSession?.id);
   const normalizedProgress = Math.max(0, Math.min(Number(stateRef.busyProgress) || 0, 100));
   const signature = `${Number(isBusy)}|${stateRef.busyAction}|${normalizedProgress}|${stateRef.busyMessage}`;
 
@@ -1132,15 +1250,16 @@ function applyBusyState({ force = false } = {}) {
         : UPDATE_BUTTON_LABEL;
   }
 
-  elements.inlineUpdateStatus.hidden = !isBusy;
+  elements.inlineUpdateStatus.hidden = !isUpdateBusy;
 
-  if (isBusy) {
+  if (isUpdateBusy) {
     elements.inlineUpdateText.textContent = stateRef.busyMessage || "Trwa operacja.";
     elements.inlineUpdateFill.style.width = `${Math.max(6, normalizedProgress)}%`;
     elements.inlineUpdateValue.textContent = `${normalizedProgress}%`;
     return;
   }
 
+  elements.inlineUpdateText.textContent = "Trwa aktualizacja.";
   elements.inlineUpdateFill.style.width = "0%";
   elements.inlineUpdateValue.textContent = "";
 }
@@ -1966,17 +2085,17 @@ async function saveProject() {
 }
 
 async function saveProjectAs() {
-  const proposedName = window.prompt(
-    "Nowa nazwa projektu:",
-    stateRef.projectNameDraft || getActiveProjectTitle()
-  );
-  if (proposedName === null) {
-    return null;
-  }
-
-  const requestedName = asText(proposedName);
-  if (!requestedName) {
-    window.alert("Nazwa projektu jest wymagana.");
+  const requestedName = await openTextEntryModal({
+    eyebrow: "Projekt",
+    title: "Zapisz projekt jako",
+    copy: "Utworzy nowy zapis projektu w bazie, bez nadpisywania aktualnego rekordu.",
+    label: "Nazwa projektu",
+    placeholder: "Wpisz nowa nazwe projektu",
+    confirmLabel: "Zapisz",
+    initialValue: stateRef.projectNameDraft || getActiveProjectTitle(),
+    emptyMessage: "Nazwa projektu jest wymagana.",
+  });
+  if (requestedName === null) {
     return null;
   }
 
@@ -2118,6 +2237,41 @@ function switchMonth(sheetId) {
   rebuildActiveSheetShadow();
   syncActiveSheetFilters();
   renderProjectData();
+}
+
+async function addSheet() {
+  resetRowFeedback();
+  const suggestedSheetName = buildNextSheetName(stateRef.state.sheets);
+  const requestedSheetName = await openTextEntryModal({
+    eyebrow: "Arkusze projektu",
+    title: "Dodaj zakladke",
+    copy: "Nowa zakladka zostanie dodana do biezacego projektu i od razu stanie sie aktywna.",
+    label: "Nazwa zakladki",
+    placeholder: "Wpisz nazwe zakladki",
+    confirmLabel: "Dodaj",
+    initialValue: suggestedSheetName,
+    emptyMessage: "Nazwa zakladki jest wymagana.",
+    cancelStatus: "Anulowano dodawanie zakladki.",
+  });
+  if (requestedSheetName === null) {
+    return null;
+  }
+
+  const nextSheetName = buildNextSheetName(stateRef.state.sheets, requestedSheetName);
+  const sheet = normalizeSheet({
+    name: nextSheetName,
+  });
+
+  stateRef.state.sheets = [...stateRef.state.sheets, sheet];
+  stateRef.state.activeSheetId = sheet.id;
+  rebuildActiveSheetShadow();
+  syncActiveSheetFilters();
+  registerProjectMutation({
+    rerender: "all",
+    preserveProjectTableViewport: false,
+  });
+  setStatus(`Dodano zakladke ${nextSheetName}.`);
+  return sheet;
 }
 
 function resetProjectFilters() {
@@ -2582,12 +2736,18 @@ function handleAction(action, payload = {}) {
       return acceptInvoicePreview();
     case "invoice-preview-cancel":
       return cancelInvoicePreview();
+    case "text-entry-confirm":
+      return submitTextEntryModal();
+    case "text-entry-cancel":
+      return cancelTextEntryModal();
     case "clear-filters":
       return resetProjectFilters();
     case "export-visible":
       return exportVisibleRows();
     case "add-row":
       return addRow();
+    case "add-sheet":
+      return addSheet();
     case "add-draft-row":
       return addRowsFromManualDraft();
     case "delete-row":
@@ -3225,7 +3385,22 @@ elements.invoiceBatchInput.addEventListener("keydown", (event) => {
   startInvoicePreview();
 });
 
+elements.textEntryInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") {
+    return;
+  }
+
+  event.preventDefault();
+  submitTextEntryModal();
+});
+
 window.addEventListener("keydown", async (event) => {
+  if (event.key === "Escape" && !elements.textEntryModal.hidden) {
+    event.preventDefault();
+    cancelTextEntryModal();
+    return;
+  }
+
   if (event.key === "Escape" && !elements.invoiceBatchModal.hidden) {
     event.preventDefault();
     closeInvoiceBatchModal();

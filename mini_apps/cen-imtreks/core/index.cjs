@@ -12,6 +12,17 @@ function asText(value) {
   return String(value).trim();
 }
 
+function buildProjectNameKey(value) {
+  return asText(value)
+    .toLocaleLowerCase("pl")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function normalizeContainerNumber(value) {
   return asText(value).replace(/[\s\u00a0]+/g, "").toUpperCase();
 }
@@ -181,6 +192,51 @@ function normalizeProjectSheet(sheet = {}) {
   });
 }
 
+function buildNextSheetName(existingSheets = [], preferredName = "") {
+  const sheetNames = (Array.isArray(existingSheets) ? existingSheets : [existingSheets])
+    .map((sheet) => (typeof sheet === "string" ? sheet : sheet?.name))
+    .map((value) => asText(value))
+    .filter(Boolean);
+  const sheetNameKeys = new Set(sheetNames.map((name) => buildProjectNameKey(name)));
+  const requestedName = asText(preferredName);
+
+  if (requestedName) {
+    if (!sheetNameKeys.has(buildProjectNameKey(requestedName))) {
+      return requestedName;
+    }
+
+    let suffix = 2;
+    let candidate = `${requestedName} ${suffix}`;
+    while (sheetNameKeys.has(buildProjectNameKey(candidate))) {
+      suffix += 1;
+      candidate = `${requestedName} ${suffix}`;
+    }
+    return candidate;
+  }
+
+  const defaultPrefix = asText(DEFAULT_SHEET_NAME).replace(/\s+\d+\s*$/, "") || "Arkusz";
+  const defaultPattern = new RegExp(`^${escapeRegExp(defaultPrefix)}(?:\\s+(\\d+))?$`, "i");
+  let maxDefaultIndex = 0;
+
+  sheetNames.forEach((sheetName) => {
+    const match = sheetName.match(defaultPattern);
+    if (!match) {
+      return;
+    }
+
+    const parsedIndex = Number(match[1] || 1);
+    if (Number.isFinite(parsedIndex)) {
+      maxDefaultIndex = Math.max(maxDefaultIndex, parsedIndex);
+    }
+  });
+
+  if (!maxDefaultIndex) {
+    return DEFAULT_SHEET_NAME;
+  }
+
+  return `${defaultPrefix} ${maxDefaultIndex + 1}`;
+}
+
 function createLookupRecord(overrides = {}) {
   return {
     containerNumber: "",
@@ -323,6 +379,7 @@ module.exports = {
   DEFAULT_SHEET_NAME,
   asText,
   buildSheetId,
+  buildNextSheetName,
   countProjectRows,
   createEmptyState,
   createLookupRecord,

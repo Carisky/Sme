@@ -72,6 +72,10 @@ export function buildProjectNameKey(value) {
     .trim();
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const DEFAULT_VESSEL_DATE_FILTER_MODE = "range";
 
 function normalizeVesselDateFilterMode(value) {
@@ -262,6 +266,51 @@ export function normalizeSheet(sheet = {}) {
     name: asText(sheet.name) || DEFAULT_SHEET_NAME,
     rows: Array.isArray(sheet.rows) ? sheet.rows.map(normalizeRow) : [],
   };
+}
+
+export function buildNextSheetName(existingSheets = [], preferredName = "") {
+  const sheetNames = (Array.isArray(existingSheets) ? existingSheets : [existingSheets])
+    .map((sheet) => (typeof sheet === "string" ? sheet : sheet?.name))
+    .map((value) => asText(value))
+    .filter(Boolean);
+  const sheetNameKeys = new Set(sheetNames.map((name) => buildProjectNameKey(name)));
+  const requestedName = asText(preferredName);
+
+  if (requestedName) {
+    if (!sheetNameKeys.has(buildProjectNameKey(requestedName))) {
+      return requestedName;
+    }
+
+    let suffix = 2;
+    let candidate = `${requestedName} ${suffix}`;
+    while (sheetNameKeys.has(buildProjectNameKey(candidate))) {
+      suffix += 1;
+      candidate = `${requestedName} ${suffix}`;
+    }
+    return candidate;
+  }
+
+  const defaultPrefix = asText(DEFAULT_SHEET_NAME).replace(/\s+\d+\s*$/, "") || "Arkusz";
+  const defaultPattern = new RegExp(`^${escapeRegExp(defaultPrefix)}(?:\\s+(\\d+))?$`, "i");
+  let maxDefaultIndex = 0;
+
+  sheetNames.forEach((sheetName) => {
+    const match = sheetName.match(defaultPattern);
+    if (!match) {
+      return;
+    }
+
+    const parsedIndex = Number(match[1] || 1);
+    if (Number.isFinite(parsedIndex)) {
+      maxDefaultIndex = Math.max(maxDefaultIndex, parsedIndex);
+    }
+  });
+
+  if (!maxDefaultIndex) {
+    return DEFAULT_SHEET_NAME;
+  }
+
+  return `${defaultPrefix} ${maxDefaultIndex + 1}`;
 }
 
 export function normalizeState(input = {}) {

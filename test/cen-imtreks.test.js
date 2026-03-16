@@ -11,7 +11,10 @@ const {
   importCenImtreksWorkbook,
   inspectCenImtreksComparisonWorkbook,
 } = require("../mini_apps/cen-imtreks/core/excel.cjs");
-const { normalizeProjectView } = require("../mini_apps/cen-imtreks/core/index.cjs");
+const {
+  buildNextSheetName,
+  normalizeProjectView,
+} = require("../mini_apps/cen-imtreks/core/index.cjs");
 const { lookupContainers } = require("../src/wct-cen-lookup");
 const {
   getProjectByName,
@@ -89,6 +92,17 @@ async function main() {
   assert.equal(normalizedView.status, "YARD");
   assert.deepEqual(normalizedView.statuses, ["RELEASE", "YARD"]);
   assert.deepEqual(normalizedView.remarks, ["CHECK DOCS", "WIORIN"]);
+  assert.equal(buildNextSheetName([]), "Arkusz 1");
+  assert.equal(buildNextSheetName([{ name: "Styczen" }, { name: "Luty" }]), "Arkusz 1");
+  assert.equal(
+    buildNextSheetName([{ name: "Arkusz 1" }, { name: "Arkusz 3" }, { name: "Marzec" }]),
+    "Arkusz 4"
+  );
+  assert.equal(buildNextSheetName([{ name: "Styczen" }], "Marzec"), "Marzec");
+  assert.equal(
+    buildNextSheetName([{ name: "Styczen" }, { name: "Styczen 2" }], "Styczen"),
+    "Styczen 3"
+  );
 
   const workbookPath = resolveSampleWorkbookPath();
   const importedState = importCenImtreksWorkbook(workbookPath);

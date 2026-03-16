@@ -291,7 +291,7 @@ export function renderSummary(elements, stateRef, getActiveProjectTitle) {
 
 export function renderMonthTabs(elements, stateRef) {
   if (!stateRef.state.sheets.length) {
-    elements.monthTabs.innerHTML = `<div class="month-tabs__empty">Zaimportuj Excel, aby utworzyc miesiace projektu.</div>`;
+    elements.monthTabs.innerHTML = `<div class="month-tabs__empty">Zaimportuj Excel lub dodaj zakladke projektu.</div>`;
     return;
   }
 

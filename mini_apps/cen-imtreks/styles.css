@@ -334,6 +334,10 @@ h2 {
   border: 1px solid rgba(31, 107, 103, 0.18);
 }
 
+.inline-status[hidden] {
+  display: none;
+}
+
 .inline-status__copy {
   display: flex;
   align-items: center;
@@ -703,7 +707,16 @@ select {
   min-width: 0;
 }
 
+.month-tabs-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .month-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
@@ -725,8 +738,27 @@ select {
 }
 
 .month-tabs__empty {
+  flex: 1 1 220px;
   color: var(--muted);
   padding: 0.35rem 0;
+}
+
+.month-tabs__add {
+  flex: 0 0 auto;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0.45rem;
+  border-radius: 14px;
+  border: 1px dashed rgba(31, 107, 103, 0.28);
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--accent-strong);
+  font-size: 1.18rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.month-tabs__add:hover {
+  border-color: rgba(200, 107, 53, 0.34);
 }
 
 .table-wrapper {

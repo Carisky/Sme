@@ -154,7 +154,18 @@
               </div>
             </div>
 
-            <div id="month-tabs" class="month-tabs"></div>
+            <div class="month-tabs-bar">
+              <div id="month-tabs" class="month-tabs"></div>
+              <button
+                type="button"
+                class="month-tabs__add"
+                data-action="add-sheet"
+                title="Dodaj zakladke"
+                aria-label="Dodaj zakladke"
+              >
+                +
+              </button>
+            </div>
           </section>
 
           <section class="card card--table">
@@ -577,6 +588,39 @@
             Podglad
           </button>
           <button type="button" data-action="invoice-modal-close" class="button--minimal">
+            Anuluj
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="text-entry-modal" class="modal" hidden>
+      <div class="modal__backdrop" data-action="text-entry-cancel"></div>
+      <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="text-entry-title">
+        <div class="card__header card__header--spread">
+          <div>
+            <p id="text-entry-eyebrow" class="card__eyebrow">Nowa nazwa</p>
+            <h2 id="text-entry-title">Wpisz nazwe</h2>
+          </div>
+        </div>
+
+        <p id="text-entry-copy" class="muted-copy" hidden></p>
+
+        <label class="field field--wide">
+          <span id="text-entry-label">Nazwa</span>
+          <input
+            type="text"
+            id="text-entry-input"
+            placeholder="Wpisz nazwe"
+            autocomplete="off"
+          />
+        </label>
+
+        <div class="toolbar">
+          <button type="button" id="text-entry-confirm" data-action="text-entry-confirm" class="button--strong">
+            Zapisz
+          </button>
+          <button type="button" data-action="text-entry-cancel" class="button--minimal">
             Anuluj
           </button>
         </div>
