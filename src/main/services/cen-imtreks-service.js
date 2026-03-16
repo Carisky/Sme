@@ -1,6 +1,12 @@
 const { app, dialog } = require("electron");
 const path = require("path");
 const {
+  DEFAULT_MAX_DATABASE_BACKUPS,
+  createDatabaseBackup,
+  listDatabaseBackups,
+  restoreDatabaseBackup,
+} = require("../../database-backup");
+const {
   asText,
   flattenProjectRows,
   normalizeContainerNumber,
@@ -33,6 +39,8 @@ const {
 } = require("../../cen-imtreks-db");
 
 const LOOKUP_BCT_URL = "http://85.11.79.242:3400/lookup-bct";
+const MODULE_STORAGE_KEY = "cen-imtreks.settings";
+const BACKUP_NAMESPACE = "cen-imtreks";
 const LOOKUP_ENDPOINTS = [
   {
     label: "GDANSK_DCT",
@@ -316,7 +324,7 @@ function countNotFoundRows(initialRows = [], finalState, options = {}) {
   }).length;
 }
 
-function createCenImtreksService({ windowController }) {
+function createCenImtreksService({ windowController, catalogService }) {
   const activeUpdates = new Map();
 
   function publishStatus(payload = {}) {
@@ -370,6 +378,21 @@ function createCenImtreksService({ windowController }) {
 
   function resolveDbPath(dbPath) {
     return resolveCenImtreksDbPath(dbPath, app.getPath("appData"));
+  }
+
+  async function resolveConfiguredDbPath() {
+    let storedDbPath = "";
+
+    if (catalogService?.loadModuleStorage) {
+      try {
+        const settings = (await catalogService.loadModuleStorage(MODULE_STORAGE_KEY)) || {};
+        storedDbPath = asText(settings?.dbPath);
+      } catch {
+        storedDbPath = "";
+      }
+    }
+
+    return resolveDbPath(storedDbPath);
   }
 
   async function chooseDatabasePath(currentPath) {
@@ -562,6 +585,44 @@ function createCenImtreksService({ windowController }) {
       dbPath: resolvedDbPath,
       projects: await listProjectSummaries(resolvedDbPath, options),
     };
+  }
+
+  async function listDbBackups(dbPath) {
+    const resolvedDbPath = resolveDbPath(dbPath);
+    return {
+      dbPath: resolvedDbPath,
+      backups: await listDatabaseBackups(resolvedDbPath, {
+        appDataPath: app.getPath("appData"),
+        namespace: BACKUP_NAMESPACE,
+        limit: DEFAULT_MAX_DATABASE_BACKUPS,
+      }),
+      maxBackups: DEFAULT_MAX_DATABASE_BACKUPS,
+    };
+  }
+
+  async function restoreDbBackup(dbPath, backupId) {
+    const resolvedDbPath = resolveDbPath(dbPath);
+    const result = await restoreDatabaseBackup(resolvedDbPath, backupId, {
+      appDataPath: app.getPath("appData"),
+      namespace: BACKUP_NAMESPACE,
+      maxBackups: DEFAULT_MAX_DATABASE_BACKUPS,
+    });
+
+    return {
+      dbPath: resolvedDbPath,
+      backup: result.backup,
+      backups: result.backups,
+      maxBackups: DEFAULT_MAX_DATABASE_BACKUPS,
+    };
+  }
+
+  async function backupConfiguredDatabase() {
+    const resolvedDbPath = await resolveConfiguredDbPath();
+    return createDatabaseBackup(resolvedDbPath, {
+      appDataPath: app.getPath("appData"),
+      namespace: BACKUP_NAMESPACE,
+      maxBackups: DEFAULT_MAX_DATABASE_BACKUPS,
+    });
   }
 
   async function openProject(dbPath, selector = {}) {
@@ -926,13 +987,16 @@ function createCenImtreksService({ windowController }) {
     importFromDialog,
     inspectComparisonWorkbook,
     listDbRecords,
+    listDbBackups,
     listProjects,
     openProject,
     repairDbT1Records,
+    restoreDbBackup,
     saveDbRecord,
     saveProject,
     selectComparisonWorkbook,
     updateProjectState,
+    backupConfiguredDatabase,
   };
 }
 

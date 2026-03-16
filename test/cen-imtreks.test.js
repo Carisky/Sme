@@ -23,6 +23,11 @@ const {
   saveLookupRecords,
   saveProjectState,
 } = require("../src/cen-imtreks-db");
+const {
+  createDatabaseBackup,
+  listDatabaseBackups,
+  restoreDatabaseBackup,
+} = require("../src/database-backup");
 
 function resolveSampleWorkbookPath() {
   const samplesDir = path.join(__dirname, "..", "samples", "files");
@@ -121,8 +126,49 @@ async function main() {
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "sme-cen-imtreks-"));
   const dbPath = path.join(tempDir, "cen-imtreks.sqlite");
+  const backupDbPath = path.join(tempDir, "cen-imtreks-backup.sqlite");
 
   try {
+    const backupAppDataPath = path.join(tempDir, "appdata");
+    const backupContentById = new Map();
+
+    for (let index = 1; index <= 6; index += 1) {
+      const content = `backup-state-${index}`;
+      await fs.writeFile(backupDbPath, content, "utf8");
+      const backupResult = await createDatabaseBackup(backupDbPath, {
+        appDataPath: backupAppDataPath,
+        namespace: "cen-imtreks-test",
+        maxBackups: 5,
+        now: new Date(2026, 0, 1, 0, 0, index),
+      });
+      assert.equal(backupResult.created, true);
+      assert.ok(backupResult.backup?.id);
+      backupContentById.set(backupResult.backup.id, content);
+    }
+
+    const retainedBackups = await listDatabaseBackups(backupDbPath, {
+      appDataPath: backupAppDataPath,
+      namespace: "cen-imtreks-test",
+      limit: 10,
+    });
+    assert.equal(retainedBackups.length, 5);
+    assert.equal(
+      retainedBackups.some((backup) => backupContentById.get(backup.id) === "backup-state-1"),
+      false
+    );
+
+    const restoreTarget = retainedBackups[retainedBackups.length - 1];
+    await fs.writeFile(backupDbPath, "mutated-current-state", "utf8");
+    const restoreResult = await restoreDatabaseBackup(backupDbPath, restoreTarget.id, {
+      appDataPath: backupAppDataPath,
+      namespace: "cen-imtreks-test",
+    });
+    assert.equal(restoreResult.backup.id, restoreTarget.id);
+    assert.equal(
+      await fs.readFile(backupDbPath, "utf8"),
+      backupContentById.get(restoreTarget.id)
+    );
+
     const exportFilePath = path.join(tempDir, "widoczne-wiersze.xlsx");
     const exportSummary = exportCenImtreksRowsWorkbook(
       exportFilePath,

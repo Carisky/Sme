@@ -302,6 +302,7 @@ export function renderMonthTabs(elements, stateRef) {
           type="button"
           class="month-tab${sheet.id === stateRef.state.activeSheetId ? " is-active" : ""}"
           data-month-id="${escapeHtml(sheet.id)}"
+          title="Kliknij prawym przyciskiem, aby otworzyc menu zakladki"
         >
           ${escapeHtml(sheet.name)} (${sheet.rows.length})
         </button>

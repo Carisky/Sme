@@ -244,6 +244,14 @@ function registerIpcHandlers({
     return cenImtreksService.repairDbT1Records(dbPath);
   });
 
+  ipcMain.handle("cen-imtreks:db:backups:list", async (_event, dbPath) => {
+    return cenImtreksService.listDbBackups(dbPath);
+  });
+
+  ipcMain.handle("cen-imtreks:db:backups:restore", async (_event, dbPath, backupId) => {
+    return cenImtreksService.restoreDbBackup(dbPath, backupId);
+  });
+
   ipcMain.handle("wct-cen:project:list", async (_event, dbPath, options) => {
     return wctCenService.listProjects(dbPath, options);
   });

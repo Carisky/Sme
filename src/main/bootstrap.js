@@ -16,6 +16,7 @@ const { createWctCenService } = require("./services/wct-cen-service");
 const { registerIpcHandlers } = require("./ipc/register-ipc-handlers");
 
 function bootstrapMainApp() {
+  let shutdownInProgress = false;
   const windowController = createWindowController();
   const catalogService = createCatalogService();
   const projectService = createProjectService({ windowController });
@@ -31,7 +32,10 @@ function bootstrapMainApp() {
   });
   const printService = createPrintService({ windowController });
   const moduleDiscoveryService = createModuleDiscoveryService();
-  const cenImtreksService = createCenImtreksService({ windowController });
+  const cenImtreksService = createCenImtreksService({
+    windowController,
+    catalogService,
+  });
   const wctCenService = createWctCenService({ windowController });
   const updateService = createUpdateService({
     windowController,
@@ -68,8 +72,29 @@ function bootstrapMainApp() {
     }
   });
 
-  app.on("before-quit", () => {
-    disconnectOreCatalog().catch(() => {});
+  app.on("before-quit", (event) => {
+    if (shutdownInProgress) {
+      return;
+    }
+
+    shutdownInProgress = true;
+    event.preventDefault();
+
+    (async () => {
+      try {
+        await cenImtreksService.backupConfiguredDatabase();
+      } catch {
+        // Ignore backup errors on shutdown to avoid blocking quit.
+      }
+
+      try {
+        await disconnectOreCatalog();
+      } catch {
+        // Ignore catalog disconnect errors on shutdown.
+      }
+
+      app.exit(0);
+    })();
   });
 }
 

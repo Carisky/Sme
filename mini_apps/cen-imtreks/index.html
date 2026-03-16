@@ -515,6 +515,35 @@
                 </label>
               </div>
             </article>
+
+            <article class="card">
+              <div class="card__header card__header--spread">
+                <div>
+                  <p class="card__eyebrow">Bezpieczenstwo</p>
+                  <h2>Kopie zapasowe</h2>
+                </div>
+                <div class="toolbar">
+                  <button type="button" data-action="backup-refresh" class="button--minimal">
+                    Odswiez
+                  </button>
+                  <button type="button" data-action="backup-restore" id="backup-restore-button" class="button--strong">
+                    Przywroc
+                  </button>
+                </div>
+              </div>
+
+              <label class="field field--wide">
+                <span>Dostepne backupy</span>
+                <select id="backup-list"></select>
+              </label>
+
+              <p id="backup-summary" class="muted-copy">
+                Przy zamykaniu programu baza CEN IMTREKS jest kopiowana automatycznie.
+              </p>
+              <p class="muted-copy">
+                Dla jednej bazy przechowywanych jest maksymalnie 5 kopii zapasowych.
+              </p>
+            </article>
           </section>
 
           <section class="card card--table">
@@ -625,6 +654,16 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <div id="sheet-context-menu" class="context-menu" hidden>
+      <div id="sheet-context-menu-label" class="context-menu__label">Zakladka</div>
+      <button type="button" data-action="rename-sheet" class="context-menu__item">
+        Zmien nazwe
+      </button>
+      <button type="button" data-action="delete-sheet" class="context-menu__item context-menu__item--danger">
+        Usun
+      </button>
     </div>
 
     <script type="module" src="./renderer.js"></script>

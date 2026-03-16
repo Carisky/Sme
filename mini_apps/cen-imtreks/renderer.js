@@ -96,6 +96,9 @@ const elements = {
   comparisonRows: document.getElementById("comparison-rows"),
   lookupRows: document.getElementById("lookup-rows"),
   dbPath: document.getElementById("db-path"),
+  backupList: document.getElementById("backup-list"),
+  backupSummary: document.getElementById("backup-summary"),
+  backupRestoreButton: document.getElementById("backup-restore-button"),
   lookupSearch: document.getElementById("lookup-search"),
   recordContainer: document.getElementById("record-container"),
   recordCen: document.getElementById("record-cen"),
@@ -127,6 +130,8 @@ const elements = {
   textEntryLabel: document.getElementById("text-entry-label"),
   textEntryInput: document.getElementById("text-entry-input"),
   textEntryConfirm: document.getElementById("text-entry-confirm"),
+  sheetContextMenu: document.getElementById("sheet-context-menu"),
+  sheetContextMenuLabel: document.getElementById("sheet-context-menu-label"),
 };
 
 const stateRef = {
@@ -139,6 +144,8 @@ const stateRef = {
   lookupRecords: [],
   comparisonWorkbook: null,
   projectOptions: [],
+  databaseBackups: [],
+  backupMaxCount: 5,
   recordDraft: createLookupRecord(),
   manualRowDraft: createManualRowDraft(),
   autosaveTimer: null,
@@ -174,6 +181,7 @@ const stateRef = {
   pendingProjectRenderPreserveViewport: false,
   projectStats: collectProjectStats(createEmptyState()),
   lastBusyStateSignature: "",
+  contextSheetId: "",
 };
 
 const UPDATE_BUTTON_LABEL = "Zaktualizuj";
@@ -529,6 +537,97 @@ function clamp(value, min, max) {
 
 function setStatus(message) {
   elements.statusText.textContent = message;
+}
+
+function formatBackupTimestamp(value) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) {
+    return "Nieznany czas";
+  }
+
+  return new Intl.DateTimeFormat("pl-PL", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}
+
+function formatBackupSize(size) {
+  const normalizedSize = Math.max(0, Number(size) || 0);
+  if (normalizedSize < 1024) {
+    return `${normalizedSize} B`;
+  }
+
+  if (normalizedSize < 1024 * 1024) {
+    return `${(normalizedSize / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(normalizedSize / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function renderDatabaseBackupOptions() {
+  const selectedBackupId = asText(elements.backupList.value);
+  const backups = Array.isArray(stateRef.databaseBackups) ? stateRef.databaseBackups : [];
+
+  if (!backups.length) {
+    elements.backupList.innerHTML = '<option value="">Brak dostepnych backupow</option>';
+    elements.backupList.disabled = true;
+    elements.backupRestoreButton.disabled = true;
+    elements.backupSummary.textContent =
+      "Brak kopii zapasowych dla aktywnej bazy. Pierwsza kopia pojawi sie po zamknieciu programu.";
+    return;
+  }
+
+  elements.backupList.innerHTML = backups
+    .map((backup) => {
+      const label = `${formatBackupTimestamp(backup.createdAt)} | ${formatBackupSize(backup.size)}`;
+      return `<option value="${backup.id}">${label}</option>`;
+    })
+    .join("");
+
+  const resolvedBackupId =
+    backups.some((backup) => backup.id === selectedBackupId) ? selectedBackupId : backups[0].id;
+  elements.backupList.value = resolvedBackupId;
+  elements.backupList.disabled = false;
+  elements.backupRestoreButton.disabled = false;
+
+  const activeBackup =
+    backups.find((backup) => backup.id === resolvedBackupId) || backups[0] || null;
+  elements.backupSummary.textContent = activeBackup
+    ? `Wybrano backup z ${formatBackupTimestamp(activeBackup.createdAt)}. Przechowywanych: ${
+        backups.length
+      } z ${stateRef.backupMaxCount}.`
+    : `Przechowywanych backupow: ${backups.length} z ${stateRef.backupMaxCount}.`;
+}
+
+function closeSheetContextMenu() {
+  stateRef.contextSheetId = "";
+  elements.sheetContextMenu.hidden = true;
+  elements.sheetContextMenu.style.removeProperty("left");
+  elements.sheetContextMenu.style.removeProperty("top");
+}
+
+function openSheetContextMenu(sheetId, x, y) {
+  const targetSheet = stateRef.state.sheets.find((sheet) => sheet.id === asText(sheetId));
+  if (!targetSheet || stateRef.busyAction) {
+    closeSheetContextMenu();
+    return;
+  }
+
+  stateRef.contextSheetId = targetSheet.id;
+  elements.sheetContextMenuLabel.textContent = targetSheet.name || "Zakladka";
+  elements.sheetContextMenu.hidden = false;
+
+  const menuWidth = elements.sheetContextMenu.offsetWidth || 190;
+  const menuHeight = elements.sheetContextMenu.offsetHeight || 120;
+  const left = Math.min(x, Math.max(12, window.innerWidth - menuWidth - 12));
+  const top = Math.min(y, Math.max(12, window.innerHeight - menuHeight - 12));
+
+  elements.sheetContextMenu.style.left = `${Math.max(12, left)}px`;
+  elements.sheetContextMenu.style.top = `${Math.max(12, top)}px`;
 }
 
 function normalizeComparisonStatusFilterValue(value) {
@@ -1352,6 +1451,7 @@ async function finalizeFailedUpdate(error) {
 }
 
 function renderAllApp({ preserveProjectTableViewport = false } = {}) {
+  closeSheetContextMenu();
   syncActiveSheetFilters();
   syncProjectViewToState();
 
@@ -1559,6 +1659,25 @@ async function refreshLookupRecords() {
   renderLookupRows(elements, stateRef);
 }
 
+async function refreshDatabaseBackups() {
+  const dbPath = await ensureDbPath();
+  const result = await bridge.listCenImtreksDatabaseBackups(dbPath);
+  stateRef.state.dbPath = asText(result.dbPath) || dbPath;
+  stateRef.databaseBackups = Array.isArray(result.backups)
+    ? result.backups.map((backup) => ({
+        id: asText(backup.id),
+        fileName: asText(backup.fileName),
+        filePath: asText(backup.filePath),
+        size: Number(backup.size) || 0,
+        createdAt: asText(backup.createdAt),
+        updatedAt: asText(backup.updatedAt),
+      }))
+    : [];
+  stateRef.backupMaxCount = Math.max(1, Number(result.maxBackups) || stateRef.backupMaxCount || 5);
+  renderSummary(elements, stateRef, getActiveProjectTitle);
+  renderDatabaseBackupOptions();
+}
+
 function clearInvalidProjectT1Values() {
   if (!Array.isArray(stateRef.state.sheets) || stateRef.state.sheets.length === 0) {
     return 0;
@@ -1752,6 +1871,7 @@ async function flushAutosave(options = {}) {
 
 async function chooseDbPath() {
   await flushAutosave({ silent: true });
+  closeSheetContextMenu();
 
   const currentPath = stateRef.state.dbPath || (await ensureDbPath());
   const result = await bridge.chooseCenImtreksDatabasePath(currentPath);
@@ -1764,12 +1884,61 @@ async function chooseDbPath() {
   await persistSettings();
   stateRef.dirty = hasProjectContent();
   renderAllApp();
-  await Promise.all([refreshLookupRecords(), refreshProjectOptions()]);
+  await Promise.all([refreshLookupRecords(), refreshProjectOptions(), refreshDatabaseBackups()]);
   if (hasProjectContent()) {
     await persistCurrentProject({ silent: true });
   }
   setStatus(`Wybrano baze ${basename(result.filePath)}.`);
   return result.filePath;
+}
+
+async function restoreDatabaseBackup() {
+  await flushAutosave({ silent: true });
+  closeSheetContextMenu();
+
+  const dbPath = await ensureDbPath();
+  const backupId = asText(elements.backupList.value);
+  if (!backupId) {
+    window.alert("Wybierz backup do przywrocenia.");
+    return null;
+  }
+
+  const selectedBackup = stateRef.databaseBackups.find((backup) => backup.id === backupId) || null;
+  if (!selectedBackup) {
+    await refreshDatabaseBackups();
+    window.alert("Wybrany backup nie jest juz dostepny.");
+    return null;
+  }
+
+  const confirmed = window.confirm(
+    `Przywroc baze ${basename(dbPath)} z backupu z ${formatBackupTimestamp(
+      selectedBackup.createdAt
+    )}?\n\nAktualna baza zostanie nadpisana.`
+  );
+  if (!confirmed) {
+    setStatus("Anulowano przywracanie backupu.");
+    return null;
+  }
+
+  const result = await bridge.restoreCenImtreksDatabaseBackup(dbPath, backupId);
+  stateRef.state.dbPath = asText(result.dbPath) || dbPath;
+  clearCurrentProject();
+  resetRowFeedback();
+  resetRecordDraft();
+  setState(
+    createEmptyState({
+      dbPath: stateRef.state.dbPath,
+    }),
+    {
+      currentProject: null,
+      projectNameDraft: "",
+      dirty: false,
+    }
+  );
+  await persistSettings();
+  await Promise.all([refreshLookupRecords(), refreshProjectOptions(""), refreshDatabaseBackups()]);
+  setStatus(`Przywrocono baze z backupu z ${formatBackupTimestamp(selectedBackup.createdAt)}.`);
+  return result;
 }
 
 async function saveLookupRecord() {
@@ -1822,6 +1991,7 @@ function resetRecordDraft() {
 
 async function createNewProject() {
   await flushAutosave({ silent: true });
+  closeSheetContextMenu();
 
   const settings = (await bridge.loadModuleStorage(MODULE_STORAGE_KEY)) || {};
   const fallback = await bridge.getDefaultCenImtreksDatabasePath();
@@ -1838,7 +2008,7 @@ async function createNewProject() {
     }
   );
   resetRecordDraft();
-  await Promise.all([refreshLookupRecords(), refreshProjectOptions("")]);
+  await Promise.all([refreshLookupRecords(), refreshProjectOptions(""), refreshDatabaseBackups()]);
   setStatus("Utworzono nowy projekt CEN IMTREKS.");
   return true;
 }
@@ -2232,6 +2402,7 @@ function acceptInvoicePreview() {
 }
 
 function switchMonth(sheetId) {
+  closeSheetContextMenu();
   resetRowFeedback();
   stateRef.state.activeSheetId = asText(sheetId);
   rebuildActiveSheetShadow();
@@ -2240,6 +2411,7 @@ function switchMonth(sheetId) {
 }
 
 async function addSheet() {
+  closeSheetContextMenu();
   resetRowFeedback();
   const suggestedSheetName = buildNextSheetName(stateRef.state.sheets);
   const requestedSheetName = await openTextEntryModal({
@@ -2272,6 +2444,119 @@ async function addSheet() {
   });
   setStatus(`Dodano zakladke ${nextSheetName}.`);
   return sheet;
+}
+
+function resolveRemainingActiveSheetId(remainingSheets = [], removedSheetId = "") {
+  if (!remainingSheets.length) {
+    return "";
+  }
+
+  const currentActiveSheetId = asText(stateRef.state.activeSheetId);
+  if (currentActiveSheetId && currentActiveSheetId !== asText(removedSheetId)) {
+    const existingSheet = remainingSheets.find((sheet) => sheet.id === currentActiveSheetId);
+    if (existingSheet) {
+      return existingSheet.id;
+    }
+  }
+
+  const removedSheetIndex = stateRef.state.sheets.findIndex(
+    (sheet) => sheet.id === asText(removedSheetId)
+  );
+  if (removedSheetIndex >= 0) {
+    return (
+      remainingSheets[Math.min(removedSheetIndex, remainingSheets.length - 1)]?.id ||
+      remainingSheets[0]?.id ||
+      ""
+    );
+  }
+
+  return remainingSheets[0]?.id || "";
+}
+
+async function renameSheet(sheetId = stateRef.contextSheetId) {
+  closeSheetContextMenu();
+
+  const normalizedSheetId = asText(sheetId);
+  const targetSheet = stateRef.state.sheets.find((sheet) => sheet.id === normalizedSheetId);
+  if (!targetSheet) {
+    return null;
+  }
+
+  const requestedSheetName = await openTextEntryModal({
+    eyebrow: "Arkusze projektu",
+    title: "Zmien nazwe zakladki",
+    copy: "Nowa nazwa zostanie zapisana w projekcie od razu po zatwierdzeniu.",
+    label: "Nowa nazwa",
+    placeholder: "Wpisz nowa nazwe zakladki",
+    confirmLabel: "Zmien",
+    initialValue: targetSheet.name,
+    emptyMessage: "Nazwa zakladki jest wymagana.",
+    cancelStatus: "Anulowano zmiane nazwy zakladki.",
+  });
+  if (requestedSheetName === null) {
+    return null;
+  }
+
+  const nextSheetName = buildNextSheetName(
+    stateRef.state.sheets.filter((sheet) => sheet.id !== normalizedSheetId),
+    requestedSheetName
+  );
+  if (nextSheetName === targetSheet.name) {
+    setStatus(`Zakladka ${targetSheet.name} pozostala bez zmian.`);
+    return targetSheet;
+  }
+
+  stateRef.state.sheets = stateRef.state.sheets.map((sheet) =>
+    sheet.id === normalizedSheetId
+      ? normalizeSheet({
+          ...sheet,
+          name: nextSheetName,
+        })
+      : sheet
+  );
+  rebuildActiveSheetShadow();
+  syncActiveSheetFilters();
+  registerProjectMutation({
+    rerender: "all",
+    preserveProjectTableViewport: true,
+  });
+  setStatus(`Zmieniono nazwe zakladki na ${nextSheetName}.`);
+  return nextSheetName;
+}
+
+function deleteSheet(sheetId = stateRef.contextSheetId) {
+  closeSheetContextMenu();
+
+  const normalizedSheetId = asText(sheetId);
+  const targetSheet = stateRef.state.sheets.find((sheet) => sheet.id === normalizedSheetId);
+  if (!targetSheet) {
+    return null;
+  }
+
+  const confirmed = window.confirm(
+    `Usunac zakladke "${targetSheet.name}"?\n\nTa operacja usunie wszystkie wiersze z tej zakladki.`
+  );
+  if (!confirmed) {
+    setStatus("Anulowano usuwanie zakladki.");
+    return null;
+  }
+
+  const remainingSheets = stateRef.state.sheets.filter((sheet) => sheet.id !== normalizedSheetId);
+  stateRef.state = normalizeState({
+    ...stateRef.state,
+    sheets: remainingSheets,
+    activeSheetId: resolveRemainingActiveSheetId(remainingSheets, normalizedSheetId),
+  });
+  resetRowFeedback();
+  recalculateProjectStats();
+  rebuildActiveSheetShadow();
+  syncActiveSheetFilters();
+  registerProjectMutation({
+    rerender: "all",
+    preserveProjectTableViewport: false,
+  });
+  setStatus(`Usunieto zakladke ${targetSheet.name}.`);
+  return targetSheet;
 }
 
 function resetProjectFilters() {
@@ -2701,6 +2986,7 @@ function deleteRow(rowId) {
 
 async function handleHome() {
   await flushAutosave({ silent: true });
+  closeSheetContextMenu();
   return bridge.openHome();
 }
 
@@ -2748,12 +3034,20 @@ function handleAction(action, payload = {}) {
       return addRow();
     case "add-sheet":
       return addSheet();
+    case "rename-sheet":
+      return renameSheet();
+    case "delete-sheet":
+      return deleteSheet();
     case "add-draft-row":
       return addRowsFromManualDraft();
     case "delete-row":
       return deleteRow(payload.rowId);
     case "choose-db":
       return chooseDbPath();
+    case "backup-refresh":
+      return refreshDatabaseBackups();
+    case "backup-restore":
+      return restoreDatabaseBackup();
     case "lookup-repair-t1":
       return repairLookupT1();
     case "lookup-refresh":
@@ -2868,6 +3162,12 @@ function isClickInsideProjectFilter(target) {
 }
 
 document.addEventListener("click", async (event) => {
+  const isSheetContextMenuClick =
+    event.target instanceof Element && Boolean(event.target.closest("#sheet-context-menu"));
+  if (!isSheetContextMenuClick) {
+    closeSheetContextMenu();
+  }
+
   const isProjectFilterClick = isClickInsideProjectFilter(event.target);
   if (elements.filterVesselDateList.open && !isProjectFilterClick) {
     elements.filterVesselDateList.open = false;
@@ -3000,6 +3300,22 @@ document.addEventListener("click", async (event) => {
     renderRecordDraft(elements, stateRef);
     setStatus(`Wybrano rekord ${selected.containerNumber}.`);
   }
+});
+
+document.addEventListener("contextmenu", (event) => {
+  const monthNode =
+    event.target instanceof Element ? event.target.closest("[data-month-id]") : null;
+  if (!monthNode) {
+    closeSheetContextMenu();
+    return;
+  }
+
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  event.preventDefault();
+  openSheetContextMenu(monthNode.dataset.monthId, event.clientX, event.clientY);
 });
 
 elements.projectRows.addEventListener("input", (event) => {
@@ -3295,6 +3611,7 @@ elements.duplicateHighlight.addEventListener("change", (event) => {
 });
 
 window.addEventListener("resize", () => {
+  closeSheetContextMenu();
   if (elements.filterVesselDateList.open) {
     queueVesselDatePopoverPositionSync();
   }
@@ -3303,6 +3620,7 @@ window.addEventListener("resize", () => {
 document.addEventListener(
   "scroll",
   () => {
+    closeSheetContextMenu();
     if (elements.filterVesselDateList.open) {
       queueVesselDatePopoverPositionSync();
     }
@@ -3351,15 +3669,30 @@ elements.dbPath.addEventListener("change", async (event) => {
     return;
   }
 
+  closeSheetContextMenu();
   stateRef.state.dbPath = asText(event.target.value);
   clearCurrentProject();
   await persistSettings();
   stateRef.dirty = hasProjectContent();
   renderAllApp();
-  await Promise.all([refreshLookupRecords(), refreshProjectOptions()]);
+  await Promise.all([refreshLookupRecords(), refreshProjectOptions(), refreshDatabaseBackups()]);
   if (hasProjectContent()) {
     await persistCurrentProject({ silent: true });
   }
+});
+
+elements.backupList.addEventListener("change", () => {
+  const selectedBackup = stateRef.databaseBackups.find(
+    (backup) => backup.id === asText(elements.backupList.value)
+  );
+  if (!selectedBackup) {
+    renderDatabaseBackupOptions();
+    return;
+  }
+
+  elements.backupSummary.textContent = `Wybrano backup z ${formatBackupTimestamp(
+    selectedBackup.createdAt
+  )}. Rozmiar: ${formatBackupSize(selectedBackup.size)}.`;
 });
 
 elements.lookupSearch.addEventListener("change", async () => {
@@ -3395,6 +3728,12 @@ elements.textEntryInput.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("keydown", async (event) => {
+  if (event.key === "Escape" && !elements.sheetContextMenu.hidden) {
+    event.preventDefault();
+    closeSheetContextMenu();
+    return;
+  }
+
   if (event.key === "Escape" && !elements.textEntryModal.hidden) {
     event.preventDefault();
     cancelTextEntryModal();
@@ -3464,7 +3803,7 @@ async function bootstrap() {
       dirty: false,
     }
   );
-  await Promise.all([refreshLookupRecords(), refreshProjectOptions("")]);
+  await Promise.all([refreshLookupRecords(), refreshProjectOptions(""), refreshDatabaseBackups()]);
   setStatus("CEN IMTREKS jest gotowy.");
 }
 
