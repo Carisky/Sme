@@ -61,6 +61,10 @@ export function createId(prefix = "row") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+export function shouldUseCompactStopValue(value) {
+  return asText(value).length > 20;
+}
+
 export function buildProjectNameKey(value) {
   return asText(value)
     .toLocaleLowerCase("pl")
@@ -77,6 +81,16 @@ function normalizeVesselDateFilterMode(value) {
 function normalizeHasT1FilterValue(value) {
   const normalized = asText(value).toLowerCase();
   return ["all", "with", "without"].includes(normalized) ? normalized : "all";
+}
+
+function normalizeMultiSelectFilterValues(values = [], normalizeValue = asText) {
+  return Array.from(
+    new Set(
+      (Array.isArray(values) ? values : [values])
+        .map((value) => normalizeValue(value))
+        .filter(Boolean)
+    )
+  ).sort((left, right) => left.localeCompare(right, "pl", { sensitivity: "base" }));
 }
 
 function normalizeComparisonRowFilterValue(value) {
@@ -126,6 +140,28 @@ function normalizeComparisonStatusSort(value) {
     : "missing-first";
 }
 
+function normalizeStatusFilterValue(value) {
+  return asText(value).toLocaleUpperCase("pl");
+}
+
+function normalizeStatusFilterSelection(values = [], fallbackValue = "") {
+  const sourceValues =
+    Array.isArray(values) && values.length > 0
+      ? values
+      : asText(fallbackValue)
+        ? [fallbackValue]
+        : [];
+  return normalizeMultiSelectFilterValues(sourceValues, normalizeStatusFilterValue);
+}
+
+function normalizeRemarkFilterValue(value) {
+  return asText(value).toLocaleUpperCase("pl");
+}
+
+function normalizeRemarkFilterSelection(values = []) {
+  return normalizeMultiSelectFilterValues(values, normalizeRemarkFilterValue);
+}
+
 export function createProjectView(overrides = {}) {
   return {
     searchTerm: "",
@@ -135,12 +171,16 @@ export function createProjectView(overrides = {}) {
     vesselDateSelected: [],
     hasT1: "all",
     status: "",
+    statuses: [],
+    remarks: [],
     forceUpdate: false,
     ...overrides,
   };
 }
 
 export function normalizeProjectView(view = {}) {
+  const statuses = normalizeStatusFilterSelection(view.statuses, view.status);
+  const legacyStatus = normalizeStatusFilterValue(view.status);
   return createProjectView({
     searchTerm: asText(view.searchTerm),
     vesselDateMode: normalizeVesselDateFilterMode(view.vesselDateMode),
@@ -148,7 +188,9 @@ export function normalizeProjectView(view = {}) {
     vesselDateTo: asText(view.vesselDateTo),
     vesselDateSelected: normalizeVesselDateSelection(view.vesselDateSelected),
     hasT1: normalizeHasT1FilterValue(view.hasT1),
-    status: asText(view.status),
+    status: legacyStatus || statuses[0] || "",
+    statuses,
+    remarks: normalizeRemarkFilterSelection(view.remarks),
     forceUpdate: Boolean(view.forceUpdate),
   });
 }
@@ -564,10 +606,6 @@ export function isoDateToDateString(value) {
   return `${match[3]}.${match[2]}.${match[1]}`;
 }
 
-function normalizeStatusFilterValue(value) {
-  return asText(value).toLocaleUpperCase("pl");
-}
-
 export function getActiveSheetFilterOptions(state = {}) {
   const activeSheet = getActiveSheet(state);
   const rows = Array.isArray(activeSheet?.rows) ? activeSheet.rows : [];
@@ -580,9 +618,29 @@ export function getActiveSheetFilterOptions(state = {}) {
       value: dateStringToIsoDate(label),
     }))
     .filter((option) => option.value);
-  const statuses = Array.from(
-    new Set(rows.map((row) => normalizeStatusFilterValue(row.status)).filter(Boolean))
-  ).sort((left, right) => left.localeCompare(right, "pl", { sensitivity: "base" }));
+  const statuses = normalizeMultiSelectFilterValues(
+    rows.map((row) => row.status),
+    normalizeStatusFilterValue
+  ).map((value) => ({
+    value,
+    label: value,
+  }));
+  const remarksByValue = new Map();
+  rows.forEach((row) => {
+    const label = asText(row.remarks);
+    const value = normalizeRemarkFilterValue(label);
+    if (!value || remarksByValue.has(value)) {
+      return;
+    }
+
+    remarksByValue.set(value, label);
+  });
+  const remarks = Array.from(remarksByValue.entries())
+    .map(([value, label]) => ({
+      value,
+      label,
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label, "pl", { sensitivity: "base" }));
   const vesselDateFrom = vesselDateOptions[0]?.value || "";
   const vesselDateTo = vesselDateOptions[vesselDateOptions.length - 1]?.value || "";
 
@@ -592,7 +650,29 @@ export function getActiveSheetFilterOptions(state = {}) {
     vesselDateFrom,
     vesselDateTo,
     statuses,
+    remarks,
   };
+}
+
+export function getActiveSheetDuplicateContainers(state = {}) {
+  const activeSheet = getActiveSheet(state);
+  const rows = Array.isArray(activeSheet?.rows) ? activeSheet.rows : [];
+  const counts = new Map();
+
+  rows.forEach((row) => {
+    const containerNumber = normalizeContainerNumber(row.containerNumber);
+    if (!containerNumber) {
+      return;
+    }
+
+    counts.set(containerNumber, (counts.get(containerNumber) || 0) + 1);
+  });
+
+  return new Set(
+    Array.from(counts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([containerNumber]) => containerNumber)
+  );
 }
 
 export function matchesRowFilters(row = {}, filters = {}) {
@@ -603,7 +683,10 @@ export function matchesRowFilters(row = {}, filters = {}) {
   const vesselDateFromKey = toDateKey(isoDateToDateString(filters.vesselDateFrom));
   const vesselDateToKey = toDateKey(isoDateToDateString(filters.vesselDateTo));
   const hasT1 = normalizeHasT1FilterValue(filters.hasT1);
-  const status = normalizeStatusFilterValue(filters.status);
+  const statusSet = new Set(
+    normalizeStatusFilterSelection(filters.statuses, filters.status)
+  );
+  const remarkSet = new Set(normalizeRemarkFilterSelection(filters.remarks));
   const rowVesselDateKey = toDateKey(row.vesselDate);
   const rowVesselDateIso = dateStringToIsoDate(row.vesselDate);
   const comparisonStatus = normalizeComparisonRowFilterValue(filters.comparisonStatus);
@@ -645,7 +728,11 @@ export function matchesRowFilters(row = {}, filters = {}) {
     return false;
   }
 
-  if (status && normalizeStatusFilterValue(row.status) !== status) {
+  if (statusSet.size > 0 && !statusSet.has(normalizeStatusFilterValue(row.status))) {
+    return false;
+  }
+
+  if (remarkSet.size > 0 && !remarkSet.has(normalizeRemarkFilterValue(row.remarks))) {
     return false;
   }
 

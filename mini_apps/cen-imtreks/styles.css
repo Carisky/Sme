@@ -808,6 +808,36 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
+.row-index__content {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.row-index__content .row-input {
+  min-width: 0;
+}
+
+.row-flag {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  color: transparent;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+}
+
+.row-flag--duplicate {
+  background: rgba(155, 63, 47, 0.92);
+  color: #fff;
+  box-shadow: 0 0 0 2px rgba(155, 63, 47, 0.12);
+}
+
 .data-table--project input[data-field="stop"] {
   min-width: 210px;
 }
@@ -876,7 +906,7 @@ select {
 }
 
 .row-input--compact {
-  font-size: 0.75rem;
+  font-size: 0.63rem;
   letter-spacing: -0.01em;
 }
 
@@ -894,6 +924,15 @@ select {
 
 .row--invoice-preview {
   background: rgba(247, 242, 255, 0.96);
+}
+
+.row--duplicate-highlight td {
+  background: rgba(255, 239, 239, 0.94);
+}
+
+.row--duplicate-highlight .row-input {
+  background: rgba(255, 248, 248, 0.98);
+  border-color: rgba(155, 63, 47, 0.24);
 }
 
 .comparison-row--matched td {

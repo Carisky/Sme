@@ -11,6 +11,7 @@ const {
   importCenImtreksWorkbook,
   inspectCenImtreksComparisonWorkbook,
 } = require("../mini_apps/cen-imtreks/core/excel.cjs");
+const { normalizeProjectView } = require("../mini_apps/cen-imtreks/core/index.cjs");
 const { lookupContainers } = require("../src/wct-cen-lookup");
 const {
   getProjectByName,
@@ -79,6 +80,15 @@ async function main() {
   assert.equal(chunkResults.length, 2);
   assert.deepEqual(chunkResults[0].containers, ["ABCU1234567", "MSKU1234567"]);
   assert.equal(chunkResults[1].size, 1);
+
+  const normalizedView = normalizeProjectView({
+    status: "yard",
+    statuses: [" release ", "YARD", "release"],
+    remarks: [" wiorin ", "Check docs", "WIORIN"],
+  });
+  assert.equal(normalizedView.status, "YARD");
+  assert.deepEqual(normalizedView.statuses, ["RELEASE", "YARD"]);
+  assert.deepEqual(normalizedView.remarks, ["CHECK DOCS", "WIORIN"]);
 
   const workbookPath = resolveSampleWorkbookPath();
   const importedState = importCenImtreksWorkbook(workbookPath);
@@ -239,6 +249,8 @@ async function main() {
         vesselDateSelected: ["2026-02-02", "2026-02-04"],
         hasT1: "without",
         status: "YARD",
+        statuses: ["YARD"],
+        remarks: ["wiorin", "check docs"],
         forceUpdate: true,
       },
       invoiceComparison: {
@@ -281,6 +293,8 @@ async function main() {
     assert.equal(created.state.view.vesselDateMode, "list");
     assert.deepEqual(created.state.view.vesselDateSelected, ["2026-02-02", "2026-02-04"]);
     assert.equal(created.state.invoiceComparison.sheetName, "Baza");
+    assert.deepEqual(created.state.view.statuses, ["YARD"]);
+    assert.deepEqual(created.state.view.remarks, ["CHECK DOCS", "WIORIN"]);
     assert.deepEqual(created.state.invoiceComparison.containers, [
       "MSKU1234567",
       "TRHU9692566",
@@ -297,6 +311,8 @@ async function main() {
     assert.deepEqual(reopened.state.view.vesselDateSelected, ["2026-02-02", "2026-02-04"]);
     assert.equal(reopened.state.view.hasT1, "without");
     assert.equal(reopened.state.view.status, "YARD");
+    assert.deepEqual(reopened.state.view.statuses, ["YARD"]);
+    assert.deepEqual(reopened.state.view.remarks, ["CHECK DOCS", "WIORIN"]);
     assert.equal(reopened.state.view.forceUpdate, true);
     assert.equal(reopened.state.invoiceComparison.fileName, "comparison-source.xlsx");
     assert.deepEqual(reopened.state.invoiceComparison.containers, [

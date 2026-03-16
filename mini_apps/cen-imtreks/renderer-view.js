@@ -5,11 +5,13 @@ import {
   escapeHtml,
   formatTimestamp,
   getActiveSheet,
+  getActiveSheetDuplicateContainers,
   getActiveSheetFilterOptions,
   getInvoiceComparisonSheetOptions,
   getFilteredRows,
   matchesRowFilters,
   normalizeComparisonContainers,
+  shouldUseCompactStopValue,
 } from "./renderer-model.js";
 
 function renderSelectedDateSummary(filterOptions, selectedValues = [], stateRef) {
@@ -71,6 +73,28 @@ function renderComparisonSheetSummary(sheetOptions = [], selectedSheets = []) {
   return `Arkusze: ${selected.length} z ${sheetOptions.length}`;
 }
 
+function renderSelectedOptionSummary(label, options = [], selectedValues = []) {
+  if (!options.length) {
+    return `${label}: brak`;
+  }
+
+  const selectedSet = new Set(selectedValues);
+  const selectedOptions = options.filter((option) => selectedSet.has(option.value));
+  if (!selectedOptions.length || selectedOptions.length === options.length) {
+    return `${label}: wszystkie (${options.length})`;
+  }
+
+  if (selectedOptions.length === 1) {
+    return `${label}: ${selectedOptions[0].label}`;
+  }
+
+  if (selectedOptions.length <= 3) {
+    return `${label}: ${selectedOptions.map((option) => option.label).join(", ")}`;
+  }
+
+  return `${label}: ${selectedOptions.length} z ${options.length}`;
+}
+
 function renderEditableCell(field, value, updatedFields, extraClass = "", extraAttributes = "") {
   const isUpdated = updatedFields.has(field);
   const classes = ["row-input"];
@@ -86,13 +110,43 @@ function renderEditableCell(field, value, updatedFields, extraClass = "", extraA
   )}" class="${classes.join(" ")}"${isUpdated ? ' title="Uzupelnione podczas ostatniej aktualizacji"' : ""}${extraAttributes ? ` ${extraAttributes}` : ""} />`;
 }
 
-function shouldUseCompactStopInput(value) {
-  const normalized = String(value ?? "").trim();
-  if (!normalized) {
-    return false;
+function renderMultiSelectOptions(
+  options = [],
+  selectedValues = [],
+  valueAttribute,
+  selectionAttribute,
+  emptyMessage
+) {
+  if (!options.length) {
+    return `<div class="filter-multiselect__empty">${escapeHtml(emptyMessage)}</div>`;
   }
 
-  return normalized.length >= 26 || /permission/i.test(normalized);
+  return `
+    <div class="filter-multiselect__actions">
+      <button type="button" class="button--minimal filter-multiselect__button" ${selectionAttribute}="all">
+        Wszystkie
+      </button>
+      <button type="button" class="button--minimal filter-multiselect__button" ${selectionAttribute}="clear">
+        Wyczysc
+      </button>
+    </div>
+    <div class="filter-multiselect__list">
+      ${options
+        .map(
+          (option) => `
+            <label class="filter-checkbox">
+              <input
+                type="checkbox"
+                ${valueAttribute}="${escapeHtml(option.value)}"
+                ${selectedValues.includes(option.value) ? "checked" : ""}
+              />
+              <span>${escapeHtml(option.label)}</span>
+            </label>
+          `
+        )
+        .join("")}
+    </div>
+  `;
 }
 
 const MANUAL_DRAFT_PLACEHOLDERS = {
@@ -141,7 +195,7 @@ function renderManualDraftCell(field, value, extraClass = "") {
 }
 
 function renderManualDraftRow(draft = {}) {
-  const stopExtraClass = shouldUseCompactStopInput(draft.stop) ? "row-input--compact" : "";
+  const stopExtraClass = shouldUseCompactStopValue(draft.stop) ? "row-input--compact" : "";
 
   return `
     <tr data-manual-draft="true" class="row--draft">
@@ -164,6 +218,17 @@ function renderManualDraftRow(draft = {}) {
         </button>
       </td>
     </tr>
+  `;
+}
+
+function renderDuplicateMarker(hasDuplicate) {
+  return `
+    <span
+      class="row-flag${hasDuplicate ? " row-flag--duplicate" : ""}"
+      ${hasDuplicate ? 'title="Duplikat kontenera w aktywnej zakladce"' : 'aria-hidden="true"'}
+    >
+      !
+    </span>
   `;
 }
 
@@ -246,35 +311,18 @@ export function renderMonthTabs(elements, stateRef) {
 }
 
 export function renderFilters(elements, stateRef) {
-  const filterOptions = getActiveSheetFilterOptions(stateRef.state);
+  const filterOptions =
+    stateRef.activeSheetShadow?.filterOptions || getActiveSheetFilterOptions(stateRef.state);
   const vesselDateOptionValues = new Set(
     filterOptions.vesselDateOptions.map((option) => option.value)
   );
   const selectedVesselDates = stateRef.vesselDateSelectedFilter.filter((value) =>
     vesselDateOptionValues.has(value)
   );
-  const statusOptions = filterOptions.statuses
-    .map(
-      (value) =>
-        `<option value="${escapeHtml(value)}"${value === stateRef.statusFilter ? " selected" : ""}>${escapeHtml(value)}</option>`
-    )
-    .join("");
-  const vesselDateCheckboxes = filterOptions.vesselDateOptions.length
-    ? filterOptions.vesselDateOptions
-        .map(
-          (option) => `
-            <label class="filter-checkbox">
-              <input
-                type="checkbox"
-                data-vessel-date-value="${escapeHtml(option.value)}"
-                ${selectedVesselDates.includes(option.value) ? "checked" : ""}
-              />
-              <span>${escapeHtml(option.label)}</span>
-            </label>
-          `
-        )
-        .join("")
-    : `<div class="filter-multiselect__empty">Brak dat statku na aktywnej zakladce.</div>`;
+  const statusOptionValues = new Set(filterOptions.statuses.map((option) => option.value));
+  const selectedStatuses = stateRef.statusFilters.filter((value) => statusOptionValues.has(value));
+  const remarkOptionValues = new Set(filterOptions.remarks.map((option) => option.value));
+  const selectedRemarks = stateRef.remarksFilters.filter((value) => remarkOptionValues.has(value));
 
   elements.filterVesselDateMode.value = stateRef.vesselDateModeFilter;
   elements.filterVesselDateRange.hidden = stateRef.vesselDateModeFilter !== "range";
@@ -298,26 +346,42 @@ export function renderFilters(elements, stateRef) {
     selectedVesselDates,
     stateRef
   );
-  elements.filterVesselDateOptions.innerHTML = `
-    <div class="filter-multiselect__actions">
-      <button type="button" class="button--minimal filter-multiselect__button" data-date-selection="all">
-        Wszystkie
-      </button>
-      <button type="button" class="button--minimal filter-multiselect__button" data-date-selection="clear">
-        Wyczysc
-      </button>
-    </div>
-    <div class="filter-multiselect__list">${vesselDateCheckboxes}</div>
-  `;
+  elements.filterVesselDateOptions.innerHTML = renderMultiSelectOptions(
+    filterOptions.vesselDateOptions,
+    selectedVesselDates,
+    "data-vessel-date-value",
+    "data-date-selection",
+    "Brak dat statku na aktywnej zakladce."
+  );
   elements.filterHasT1.innerHTML = `
     <option value="all">T1: wszystko</option>
     <option value="with"${stateRef.hasT1Filter === "with" ? " selected" : ""}>Tylko z T1</option>
     <option value="without"${stateRef.hasT1Filter === "without" ? " selected" : ""}>Tylko bez T1</option>
   `;
-  elements.filterStatus.innerHTML = `
-    <option value="">Status: wszystkie</option>
-    ${statusOptions}
-  `;
+  elements.filterStatusSummary.textContent = renderSelectedOptionSummary(
+    "Status",
+    filterOptions.statuses,
+    selectedStatuses
+  );
+  elements.filterStatusOptions.innerHTML = renderMultiSelectOptions(
+    filterOptions.statuses,
+    selectedStatuses,
+    "data-status-value",
+    "data-status-selection",
+    "Brak statusow na aktywnej zakladce."
+  );
+  elements.filterRemarksSummary.textContent = renderSelectedOptionSummary(
+    "Uwagi",
+    filterOptions.remarks,
+    selectedRemarks
+  );
+  elements.filterRemarksOptions.innerHTML = renderMultiSelectOptions(
+    filterOptions.remarks,
+    selectedRemarks,
+    "data-remark-value",
+    "data-remark-selection",
+    "Brak uwag na aktywnej zakladce."
+  );
   elements.filterComparison.innerHTML = `
     <option value="all">Porownanie: wszystko</option>
     <option value="matched"${stateRef.comparisonFilter === "matched" ? " selected" : ""}>Tylko w bazie</option>
@@ -330,6 +394,9 @@ export function renderRows(elements, stateRef) {
   const comparisonSet = new Set(
     normalizeComparisonContainers(stateRef.state.invoiceComparison?.containers)
   );
+  const duplicateContainerSet =
+    stateRef.activeSheetShadow?.duplicateContainers ||
+    getActiveSheetDuplicateContainers(stateRef.state);
   const invoicePreviewMap = new Map(
     Array.isArray(stateRef.invoicePreview?.entries)
       ? stateRef.invoicePreview.entries.map((entry) => [entry.rowId, entry.nextValue])
@@ -343,7 +410,8 @@ export function renderRows(elements, stateRef) {
         vesselDateTo: stateRef.vesselDateToFilter,
         vesselDateSelected: stateRef.vesselDateSelectedFilter,
         hasT1: stateRef.hasT1Filter,
-        status: stateRef.statusFilter,
+        statuses: stateRef.statusFilters,
+        remarks: stateRef.remarksFilters,
         comparisonStatus: stateRef.comparisonFilter,
         comparisonContainers: stateRef.state.invoiceComparison?.containers || [],
         includeRowIds: Array.from(stateRef.stickyVisibleRowIds || []),
@@ -356,7 +424,8 @@ export function renderRows(elements, stateRef) {
     vesselDateTo: stateRef.vesselDateToFilter,
     vesselDateSelected: stateRef.vesselDateSelectedFilter,
     hasT1: stateRef.hasT1Filter,
-    status: stateRef.statusFilter,
+    statuses: stateRef.statusFilters,
+    remarks: stateRef.remarksFilters,
     comparisonStatus: stateRef.comparisonFilter,
     comparisonContainers: stateRef.state.invoiceComparison?.containers || [],
   };
@@ -366,20 +435,24 @@ export function renderRows(elements, stateRef) {
       const isStickyRow =
         stateRef.stickyVisibleRowIds?.has(row.id) && !matchesRowFilters(row, baseFilters);
       const hasComparisonMatch = comparisonSet.has(row.containerNumber);
+      const hasDuplicateContainer = duplicateContainerSet.has(row.containerNumber);
       const shouldHighlightComparison =
         stateRef.comparisonHighlightEnabled && hasComparisonMatch;
+      const shouldHighlightDuplicate =
+        stateRef.duplicateHighlightEnabled && hasDuplicateContainer;
       const previewInvoiceValue = invoicePreviewMap.get(row.id);
       const hasInvoicePreview = previewInvoiceValue !== undefined;
       const rowClasses = [
         updatedFields.size ? "row--updated" : "",
         isStickyRow ? "row--sticky-visible" : "",
         shouldHighlightComparison ? "row--comparison-highlight" : "",
+        shouldHighlightDuplicate ? "row--duplicate-highlight" : "",
         hasInvoicePreview ? "row--invoice-preview" : "",
       ]
         .filter(Boolean)
         .join(" ");
       const sourceText = row.sourceRowNumber || row.origin || "-";
-      const stopExtraClass = shouldUseCompactStopInput(row.stop) ? "row-input--compact" : "";
+      const stopExtraClass = shouldUseCompactStopValue(row.stop) ? "row-input--compact" : "";
       const containerExtraClass = shouldHighlightComparison ? "row-input--comparison-match" : "";
       const invoiceExtraClass = hasInvoicePreview ? "row-input--invoice-preview" : "";
       const invoiceAttributes = hasInvoicePreview
@@ -388,7 +461,12 @@ export function renderRows(elements, stateRef) {
 
       return `
         <tr data-row-id="${escapeHtml(row.id)}" class="${escapeHtml(rowClasses)}">
-          <td class="row-index">${renderEditableCell("sequenceNumber", row.sequenceNumber, updatedFields)}</td>
+          <td class="row-index">
+            <div class="row-index__content">
+              ${renderDuplicateMarker(hasDuplicateContainer)}
+              ${renderEditableCell("sequenceNumber", row.sequenceNumber, updatedFields)}
+            </div>
+          </td>
           <td>${renderEditableCell("orderDate", row.orderDate, updatedFields)}</td>
           <td>${renderEditableCell("vesselDate", row.vesselDate, updatedFields)}</td>
           <td>${renderEditableCell("folderName", row.folderName, updatedFields)}</td>

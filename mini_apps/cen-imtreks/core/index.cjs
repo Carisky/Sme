@@ -35,6 +35,16 @@ function normalizeHasT1FilterValue(value) {
   return ["all", "with", "without"].includes(normalized) ? normalized : "all";
 }
 
+function normalizeMultiSelectFilterValues(values = [], normalizeValue = asText) {
+  return Array.from(
+    new Set(
+      (Array.isArray(values) ? values : [values])
+        .map((value) => normalizeValue(value))
+        .filter(Boolean)
+    )
+  ).sort((left, right) => left.localeCompare(right, "pl", { sensitivity: "base" }));
+}
+
 function normalizeVesselDateSelection(values = []) {
   return Array.from(
     new Set(
@@ -43,6 +53,28 @@ function normalizeVesselDateSelection(values = []) {
         .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value))
     )
   ).sort((left, right) => left.localeCompare(right, "pl"));
+}
+
+function normalizeStatusFilterValue(value) {
+  return asText(value).toLocaleUpperCase("pl");
+}
+
+function normalizeStatusFilterSelection(values = [], fallbackValue = "") {
+  const sourceValues =
+    Array.isArray(values) && values.length > 0
+      ? values
+      : asText(fallbackValue)
+        ? [fallbackValue]
+        : [];
+  return normalizeMultiSelectFilterValues(sourceValues, normalizeStatusFilterValue);
+}
+
+function normalizeRemarkFilterValue(value) {
+  return asText(value).toLocaleUpperCase("pl");
+}
+
+function normalizeRemarkFilterSelection(values = []) {
+  return normalizeMultiSelectFilterValues(values, normalizeRemarkFilterValue);
 }
 
 function createProjectView(overrides = {}) {
@@ -54,12 +86,16 @@ function createProjectView(overrides = {}) {
     vesselDateSelected: [],
     hasT1: "all",
     status: "",
+    statuses: [],
+    remarks: [],
     forceUpdate: false,
     ...overrides,
   };
 }
 
 function normalizeProjectView(view = {}) {
+  const statuses = normalizeStatusFilterSelection(view.statuses, view.status);
+  const legacyStatus = normalizeStatusFilterValue(view.status);
   return createProjectView({
     searchTerm: asText(view.searchTerm),
     vesselDateMode: normalizeVesselDateFilterMode(view.vesselDateMode),
@@ -67,7 +103,9 @@ function normalizeProjectView(view = {}) {
     vesselDateTo: asText(view.vesselDateTo),
     vesselDateSelected: normalizeVesselDateSelection(view.vesselDateSelected),
     hasT1: normalizeHasT1FilterValue(view.hasT1),
-    status: asText(view.status),
+    status: legacyStatus || statuses[0] || "",
+    statuses,
+    remarks: normalizeRemarkFilterSelection(view.remarks),
     forceUpdate: Boolean(view.forceUpdate),
   });
 }

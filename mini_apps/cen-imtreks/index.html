@@ -226,9 +226,18 @@
                   <option value="with">Tylko z T1</option>
                   <option value="without">Tylko bez T1</option>
                 </select>
-                <select id="filter-status" class="filter-select" aria-label="Filtr statusu">
-                  <option value="">Status: wszystkie</option>
-                </select>
+                <details id="filter-status-list" class="filter-multiselect filter-multiselect--popover">
+                  <summary id="filter-status-summary">Status: wszystkie</summary>
+                  <div class="filter-multiselect__panel">
+                    <div id="filter-status-options"></div>
+                  </div>
+                </details>
+                <details id="filter-remarks-list" class="filter-multiselect filter-multiselect--popover">
+                  <summary id="filter-remarks-summary">Uwagi: wszystkie</summary>
+                  <div class="filter-multiselect__panel">
+                    <div id="filter-remarks-options"></div>
+                  </div>
+                </details>
                 <select id="filter-comparison" class="filter-select" aria-label="Filtr porownania">
                   <option value="all">Porownanie: wszystko</option>
                   <option value="matched">Tylko w bazie</option>
@@ -239,7 +248,11 @@
                 </button>
                 <label class="toggle toggle--compact">
                   <input type="checkbox" id="comparison-highlight" />
-                  <span>Podswietli</span>
+                  <span>W bazie</span>
+                </label>
+                <label class="toggle toggle--compact">
+                  <input type="checkbox" id="duplicate-highlight" />
+                  <span>Duplikaty</span>
                 </label>
                 <button type="button" data-action="invoice-batch-open" class="button--accent">
                   Przypisz fakture

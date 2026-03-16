@@ -25,6 +25,7 @@ import {
   normalizeRow,
   normalizeSheet,
   normalizeState,
+  shouldUseCompactStopValue,
 } from "./renderer-model.js";
 import {
   renderAll,
@@ -66,10 +67,16 @@ const elements = {
   filterVesselDateFrom: document.getElementById("filter-vessel-date-from"),
   filterVesselDateTo: document.getElementById("filter-vessel-date-to"),
   filterHasT1: document.getElementById("filter-has-t1"),
-  filterStatus: document.getElementById("filter-status"),
+  filterStatusList: document.getElementById("filter-status-list"),
+  filterStatusSummary: document.getElementById("filter-status-summary"),
+  filterStatusOptions: document.getElementById("filter-status-options"),
+  filterRemarksList: document.getElementById("filter-remarks-list"),
+  filterRemarksSummary: document.getElementById("filter-remarks-summary"),
+  filterRemarksOptions: document.getElementById("filter-remarks-options"),
   filterComparison: document.getElementById("filter-comparison"),
   forceUpdate: document.getElementById("force-update"),
   comparisonHighlight: document.getElementById("comparison-highlight"),
+  duplicateHighlight: document.getElementById("duplicate-highlight"),
   invoicePreviewStatus: document.getElementById("invoice-preview-status"),
   comparisonProjectCount: document.getElementById("comparison-project-count"),
   comparisonMatchedCount: document.getElementById("comparison-matched-count"),
@@ -138,17 +145,20 @@ const stateRef = {
   vesselDateToFilter: "",
   vesselDateSelectedFilter: [],
   hasT1Filter: "all",
-  statusFilter: "",
+  statusFilters: [],
+  remarksFilters: [],
   comparisonFilter: "all",
   comparisonSearchTerm: "",
   comparisonStatusFilter: "all",
   comparisonStatusSort: "missing-first",
   comparisonSelectedSheets: [],
   comparisonHighlightEnabled: false,
+  duplicateHighlightEnabled: false,
   invoicePreview: null,
   forceUpdateEnabled: false,
   rowHighlights: new Map(),
   stickyVisibleRowIds: new Set(),
+  activeSheetShadow: null,
   updateSession: null,
   pendingProjectRender: 0,
   pendingProjectRenderPreserveViewport: false,
@@ -352,6 +362,157 @@ function getActiveProjectTitle() {
   return deriveProjectName(stateRef.state);
 }
 
+function createEmptyFilterOptions() {
+  return {
+    vesselDates: [],
+    vesselDateOptions: [],
+    vesselDateFrom: "",
+    vesselDateTo: "",
+    statuses: [],
+    remarks: [],
+  };
+}
+
+function createEmptyActiveSheetShadow() {
+  return {
+    sheetId: "",
+    filterOptions: createEmptyFilterOptions(),
+    rowIndexById: new Map(),
+    containerCounts: new Map(),
+    rowIdsByContainer: new Map(),
+    duplicateContainers: new Set(),
+  };
+}
+
+function buildDuplicateContainerSet(containerCounts = new Map()) {
+  return new Set(
+    Array.from(containerCounts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([containerNumber]) => containerNumber)
+  );
+}
+
+function buildActiveSheetShadow() {
+  const activeSheet = getActiveSheet(stateRef.state);
+  if (!activeSheet) {
+    return createEmptyActiveSheetShadow();
+  }
+
+  const rowIndexById = new Map();
+  const containerCounts = new Map();
+  const rowIdsByContainer = new Map();
+
+  activeSheet.rows.forEach((row, index) => {
+    const rowId = asText(row?.id);
+    if (rowId) {
+      rowIndexById.set(rowId, index);
+    }
+
+    const containerNumber = normalizeContainerNumber(row?.containerNumber);
+    if (!containerNumber) {
+      return;
+    }
+
+    containerCounts.set(containerNumber, (containerCounts.get(containerNumber) || 0) + 1);
+    const currentRowIds = rowIdsByContainer.get(containerNumber) || new Set();
+    if (rowId) {
+      currentRowIds.add(rowId);
+    }
+    rowIdsByContainer.set(containerNumber, currentRowIds);
+  });
+
+  return {
+    sheetId: activeSheet.id,
+    filterOptions: getActiveSheetFilterOptions(stateRef.state),
+    rowIndexById,
+    containerCounts,
+    rowIdsByContainer,
+    duplicateContainers: buildDuplicateContainerSet(containerCounts),
+  };
+}
+
+function ensureActiveSheetShadow({ force = false } = {}) {
+  if (
+    force ||
+    !stateRef.activeSheetShadow ||
+    stateRef.activeSheetShadow.sheetId !== asText(stateRef.state.activeSheetId)
+  ) {
+    stateRef.activeSheetShadow = buildActiveSheetShadow();
+  }
+
+  return stateRef.activeSheetShadow;
+}
+
+function rebuildActiveSheetShadow() {
+  return ensureActiveSheetShadow({ force: true });
+}
+
+function updateContainerShadowCount(containerCounts, containerNumber, delta) {
+  const normalizedContainer = normalizeContainerNumber(containerNumber);
+  if (!normalizedContainer || !delta) {
+    return;
+  }
+
+  const nextCount = (containerCounts.get(normalizedContainer) || 0) + delta;
+  if (nextCount <= 0) {
+    containerCounts.delete(normalizedContainer);
+    return;
+  }
+
+  containerCounts.set(normalizedContainer, nextCount);
+}
+
+function addRowIdToContainerShadow(rowIdsByContainer, containerNumber, rowId) {
+  const normalizedContainer = normalizeContainerNumber(containerNumber);
+  const normalizedRowId = asText(rowId);
+  if (!normalizedContainer || !normalizedRowId) {
+    return;
+  }
+
+  const rowIds = rowIdsByContainer.get(normalizedContainer) || new Set();
+  rowIds.add(normalizedRowId);
+  rowIdsByContainer.set(normalizedContainer, rowIds);
+}
+
+function removeRowIdFromContainerShadow(rowIdsByContainer, containerNumber, rowId) {
+  const normalizedContainer = normalizeContainerNumber(containerNumber);
+  const normalizedRowId = asText(rowId);
+  if (!normalizedContainer || !normalizedRowId) {
+    return;
+  }
+
+  const rowIds = rowIdsByContainer.get(normalizedContainer);
+  if (!rowIds) {
+    return;
+  }
+
+  rowIds.delete(normalizedRowId);
+  if (rowIds.size === 0) {
+    rowIdsByContainer.delete(normalizedContainer);
+    return;
+  }
+
+  rowIdsByContainer.set(normalizedContainer, rowIds);
+}
+
+function syncActiveSheetShadowContainerChange(previousRow, nextRow) {
+  const shadow = ensureActiveSheetShadow();
+  const previousContainer = normalizeContainerNumber(previousRow?.containerNumber);
+  const nextContainer = normalizeContainerNumber(nextRow?.containerNumber);
+  const rowId = asText(nextRow?.id || previousRow?.id);
+
+  if (!rowId || previousContainer === nextContainer) {
+    return shadow;
+  }
+
+  updateContainerShadowCount(shadow.containerCounts, previousContainer, -1);
+  updateContainerShadowCount(shadow.containerCounts, nextContainer, 1);
+  removeRowIdFromContainerShadow(shadow.rowIdsByContainer, previousContainer, rowId);
+  addRowIdToContainerShadow(shadow.rowIdsByContainer, nextContainer, rowId);
+  shadow.duplicateContainers = buildDuplicateContainerSet(shadow.containerCounts);
+  return shadow;
+}
+
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
@@ -531,7 +692,8 @@ function getProjectFilters({ includeSticky = false } = {}) {
     vesselDateTo: stateRef.vesselDateToFilter,
     vesselDateSelected: stateRef.vesselDateSelectedFilter,
     hasT1: stateRef.hasT1Filter,
-    status: stateRef.statusFilter,
+    statuses: stateRef.statusFilters,
+    remarks: stateRef.remarksFilters,
     comparisonStatus: stateRef.comparisonFilter,
     comparisonContainers: stateRef.state.invoiceComparison?.containers || [],
     includeRowIds: includeSticky ? Array.from(stateRef.stickyVisibleRowIds) : [],
@@ -546,7 +708,9 @@ function createProjectViewSnapshot() {
     vesselDateTo: stateRef.vesselDateToFilter,
     vesselDateSelected: stateRef.vesselDateSelectedFilter,
     hasT1: stateRef.hasT1Filter,
-    status: stateRef.statusFilter,
+    status: stateRef.statusFilters[0] || "",
+    statuses: stateRef.statusFilters,
+    remarks: stateRef.remarksFilters,
     forceUpdate: stateRef.forceUpdateEnabled,
   });
 }
@@ -561,7 +725,12 @@ function restoreProjectViewFromState() {
     ? [...view.vesselDateSelected]
     : [];
   stateRef.hasT1Filter = view.hasT1;
-  stateRef.statusFilter = view.status;
+  stateRef.statusFilters = Array.isArray(view.statuses)
+    ? [...view.statuses]
+    : view.status
+      ? [view.status]
+      : [];
+  stateRef.remarksFilters = Array.isArray(view.remarks) ? [...view.remarks] : [];
   stateRef.forceUpdateEnabled = Boolean(view.forceUpdate);
 }
 
@@ -617,9 +786,9 @@ function syncProjectFilterControls() {
   elements.filterVesselDateFrom.value = stateRef.vesselDateFromFilter;
   elements.filterVesselDateTo.value = stateRef.vesselDateToFilter;
   elements.filterHasT1.value = stateRef.hasT1Filter;
-  elements.filterStatus.value = stateRef.statusFilter;
   elements.filterComparison.value = stateRef.comparisonFilter;
   elements.comparisonHighlight.checked = stateRef.comparisonHighlightEnabled;
+  elements.duplicateHighlight.checked = stateRef.duplicateHighlightEnabled;
   elements.forceUpdate.checked = stateRef.forceUpdateEnabled;
 }
 
@@ -745,10 +914,12 @@ function commitViewMutation({ rerender = "project", clearFeedback = false } = {}
 }
 
 function syncActiveSheetFilters() {
-  const options = getActiveSheetFilterOptions(stateRef.state);
+  const options = ensureActiveSheetShadow().filterOptions;
   const vesselDateValues = new Set(
     options.vesselDateOptions.map((option) => option.value).filter(Boolean)
   );
+  const statusValues = new Set(options.statuses.map((option) => option.value));
+  const remarkValues = new Set(options.remarks.map((option) => option.value));
 
   stateRef.vesselDateModeFilter =
     asText(stateRef.vesselDateModeFilter).toLowerCase() === "list" ? "list" : "range";
@@ -787,9 +958,10 @@ function syncActiveSheetFilters() {
     stateRef.vesselDateToFilter = stateRef.vesselDateFromFilter;
   }
 
-  if (stateRef.statusFilter && !options.statuses.includes(stateRef.statusFilter)) {
-    stateRef.statusFilter = "";
-  }
+  stateRef.statusFilters = stateRef.statusFilters.filter((value) => statusValues.has(asText(value)));
+  stateRef.remarksFilters = stateRef.remarksFilters.filter((value) =>
+    remarkValues.has(asText(value))
+  );
 
   const normalizedHasT1 = asText(stateRef.hasT1Filter).toLowerCase();
   stateRef.hasT1Filter = ["all", "with", "without"].includes(normalizedHasT1)
@@ -932,6 +1104,7 @@ function applyProjectRowPatches(changes = []) {
   );
   stateRef.dirty = true;
   recalculateProjectStats();
+  rebuildActiveSheetShadow();
   queueProjectDataRender({ preserveProjectTableViewport: true });
 }
 
@@ -1097,6 +1270,7 @@ function clearCurrentProject() {
 
 function setState(nextState, options = {}) {
   stateRef.state = normalizeState(nextState);
+  rebuildActiveSheetShadow();
   stateRef.manualRowDraft = createManualRowDraft();
   recalculateProjectStats();
   restoreProjectViewFromState();
@@ -1107,6 +1281,7 @@ function setState(nextState, options = {}) {
   stateRef.comparisonSelectedSheets = [];
   stateRef.comparisonFilter = "all";
   stateRef.comparisonHighlightEnabled = false;
+  stateRef.duplicateHighlightEnabled = false;
   stateRef.invoicePreview = null;
   closeInvoiceBatchModal();
   if (options.currentProject !== undefined) {
@@ -1940,6 +2115,7 @@ function acceptInvoicePreview() {
 function switchMonth(sheetId) {
   resetRowFeedback();
   stateRef.state.activeSheetId = asText(sheetId);
+  rebuildActiveSheetShadow();
   syncActiveSheetFilters();
   renderProjectData();
 }
@@ -1951,9 +2127,12 @@ function resetProjectFilters() {
   stateRef.vesselDateToFilter = "";
   stateRef.vesselDateSelectedFilter = [];
   stateRef.hasT1Filter = "all";
-  stateRef.statusFilter = "";
+  stateRef.statusFilters = [];
+  stateRef.remarksFilters = [];
   stateRef.comparisonFilter = "all";
   elements.filterVesselDateList.open = false;
+  elements.filterStatusList.open = false;
+  elements.filterRemarksList.open = false;
   commitViewMutation({ clearFeedback: true });
   setStatus("Wyczyszczono aktywne filtry.");
 }
@@ -1962,6 +2141,15 @@ function findActiveSheetRowIndex(rowId) {
   const activeSheet = getActiveSheet(stateRef.state);
   if (!activeSheet) {
     return { activeSheet: null, rowIndex: -1 };
+  }
+
+  const shadow = ensureActiveSheetShadow();
+  const cachedRowIndex = shadow.rowIndexById.get(asText(rowId));
+  if (typeof cachedRowIndex === "number" && cachedRowIndex >= 0) {
+    return {
+      activeSheet,
+      rowIndex: cachedRowIndex,
+    };
   }
 
   return {
@@ -1987,12 +2175,96 @@ function syncEditedRowUi(rowId, field) {
 
   const isUpdated = updatedFields.has(asText(field));
   input.classList.toggle("row-input--updated", isUpdated);
+  if (asText(field) === "stop") {
+    input.classList.toggle("row-input--compact", shouldUseCompactStopValue(input.value));
+  }
   if (isUpdated) {
     input.title = "Uzupelnione podczas ostatniej aktualizacji";
     return;
   }
 
   input.removeAttribute("title");
+}
+
+function syncContainerRowDecorations(rowId) {
+  const normalizedRowId = asText(rowId);
+  if (!normalizedRowId) {
+    return;
+  }
+
+  const rowNode = elements.projectRows.querySelector(`[data-row-id="${normalizedRowId}"]`);
+  if (!(rowNode instanceof HTMLTableRowElement)) {
+    return;
+  }
+
+  const { activeSheet, rowIndex } = findActiveSheetRowIndex(normalizedRowId);
+  if (!activeSheet || rowIndex < 0) {
+    return;
+  }
+
+  const row = activeSheet.rows[rowIndex];
+  const shadow = ensureActiveSheetShadow();
+  const comparisonSet = new Set(
+    normalizeComparisonContainers(stateRef.state.invoiceComparison?.containers)
+  );
+  const hasComparisonMatch = comparisonSet.has(row.containerNumber);
+  const hasDuplicateContainer = shadow.duplicateContainers.has(row.containerNumber);
+  const containerInput = rowNode.querySelector('[data-field="containerNumber"]');
+  const duplicateFlag = rowNode.querySelector(".row-flag");
+
+  rowNode.classList.toggle(
+    "row--comparison-highlight",
+    stateRef.comparisonHighlightEnabled && hasComparisonMatch
+  );
+  rowNode.classList.toggle(
+    "row--duplicate-highlight",
+    stateRef.duplicateHighlightEnabled && hasDuplicateContainer
+  );
+
+  if (containerInput instanceof HTMLInputElement) {
+    containerInput.classList.toggle(
+      "row-input--comparison-match",
+      stateRef.comparisonHighlightEnabled && hasComparisonMatch
+    );
+  }
+
+  if (duplicateFlag instanceof HTMLElement) {
+    duplicateFlag.classList.toggle("row-flag--duplicate", hasDuplicateContainer);
+    if (hasDuplicateContainer) {
+      duplicateFlag.title = "Duplikat kontenera w aktywnej zakladce";
+      duplicateFlag.removeAttribute("aria-hidden");
+    } else {
+      duplicateFlag.removeAttribute("title");
+      duplicateFlag.setAttribute("aria-hidden", "true");
+    }
+  }
+}
+
+function syncAffectedContainerRowsUi(previousRow, nextRow) {
+  const shadow = ensureActiveSheetShadow();
+  const affectedRowIds = new Set();
+  const previousContainer = normalizeContainerNumber(previousRow?.containerNumber);
+  const nextContainer = normalizeContainerNumber(nextRow?.containerNumber);
+  const currentRowId = asText(nextRow?.id || previousRow?.id);
+
+  [previousContainer, nextContainer].forEach((containerNumber) => {
+    if (!containerNumber) {
+      return;
+    }
+
+    const rowIds = shadow.rowIdsByContainer.get(containerNumber);
+    if (!rowIds) {
+      return;
+    }
+
+    rowIds.forEach((rowId) => affectedRowIds.add(asText(rowId)));
+  });
+
+  if (currentRowId) {
+    affectedRowIds.add(currentRowId);
+  }
+
+  affectedRowIds.forEach((rowId) => syncContainerRowDecorations(rowId));
 }
 
 function hasActiveVesselDateFilter() {
@@ -2027,12 +2299,9 @@ function shouldRerenderProjectRowsAfterRowEdit(rowId, field) {
 
   if (
     normalizedField === "containerNumber" &&
-    (
-      stateRef.projectSearchTerm ||
+    (stateRef.projectSearchTerm ||
       stateRef.stickyVisibleRowIds.has(asText(rowId)) ||
-      stateRef.comparisonFilter !== "all" ||
-      stateRef.comparisonHighlightEnabled
-    )
+      stateRef.comparisonFilter !== "all")
   ) {
     return true;
   }
@@ -2050,7 +2319,14 @@ function shouldRerenderProjectRowsAfterRowEdit(rowId, field) {
 
   if (
     normalizedField === "status" &&
-    (stateRef.statusFilter || stateRef.stickyVisibleRowIds.has(asText(rowId)))
+    (stateRef.statusFilters.length > 0 || stateRef.stickyVisibleRowIds.has(asText(rowId)))
+  ) {
+    return true;
+  }
+
+  if (
+    normalizedField === "remarks" &&
+    (stateRef.remarksFilters.length > 0 || stateRef.stickyVisibleRowIds.has(asText(rowId)))
   ) {
     return true;
   }
@@ -2062,6 +2338,10 @@ function shouldRefreshProjectFiltersAfterRowEdit(field, previousRow, nextRow) {
   const normalizedField = asText(field);
   if (normalizedField === "status") {
     return asText(previousRow?.status) !== asText(nextRow?.status);
+  }
+
+  if (normalizedField === "remarks") {
+    return asText(previousRow?.remarks) !== asText(nextRow?.remarks);
   }
 
   if (normalizedField === "vesselDate") {
@@ -2100,6 +2380,12 @@ function updateRow(rowId, field, value) {
   });
   activeSheet.rows[rowIndex] = nextRow;
 
+  if (asText(field) === "containerNumber") {
+    syncActiveSheetShadowContainerChange(previousRow, nextRow);
+  } else if (["status", "remarks", "vesselDate"].includes(asText(field))) {
+    rebuildActiveSheetShadow();
+  }
+
   clearRowHighlightForField(rowId, field);
   applyProjectStatsDelta(previousRow, nextRow);
   syncStickyVisibilityForRow(nextRow);
@@ -2118,6 +2404,9 @@ function updateRow(rowId, field, value) {
   }
 
   syncEditedRowUi(rowId, field);
+  if (shouldRefreshComparison) {
+    syncAffectedContainerRowsUi(previousRow, nextRow);
+  }
 
   if (shouldRefreshProjectSummaryAfterRowEdit(field, previousRow, nextRow)) {
     renderProjectSummaryArea();
@@ -2175,6 +2464,7 @@ function appendRowsToActiveSheet(
     }
   });
 
+  rebuildActiveSheetShadow();
   registerProjectMutation({ rerender: "all", preserveProjectTableViewport });
   return normalizedRows.length;
 }
@@ -2251,6 +2541,7 @@ function deleteRow(rowId) {
   stateRef.rowHighlights.delete(asText(rowId));
   stateRef.stickyVisibleRowIds.delete(asText(rowId));
   applyProjectStatsDelta(removedRow, null);
+  rebuildActiveSheetShadow();
   registerProjectMutation({ rerender: "all", preserveProjectTableViewport: true });
 }
 
@@ -2406,17 +2697,26 @@ function queueVesselDatePopoverPositionSync() {
   });
 }
 
-function isClickInsideVesselDateFilter(target) {
+function isClickInsideProjectFilter(target) {
   return (
     target instanceof Element &&
     (Boolean(target.closest("#filter-vessel-date-list")) ||
+      Boolean(target.closest("#filter-status-list")) ||
+      Boolean(target.closest("#filter-remarks-list")) ||
       Boolean(target.closest(".filter-multiselect__panel--floating")))
   );
 }
 
 document.addEventListener("click", async (event) => {
-  if (elements.filterVesselDateList.open && !isClickInsideVesselDateFilter(event.target)) {
+  const isProjectFilterClick = isClickInsideProjectFilter(event.target);
+  if (elements.filterVesselDateList.open && !isProjectFilterClick) {
     elements.filterVesselDateList.open = false;
+  }
+  if (elements.filterStatusList.open && !isProjectFilterClick) {
+    elements.filterStatusList.open = false;
+  }
+  if (elements.filterRemarksList.open && !isProjectFilterClick) {
+    elements.filterRemarksList.open = false;
   }
 
   const actionNode = event.target.closest("[data-action]");
@@ -2465,11 +2765,45 @@ document.addEventListener("click", async (event) => {
       return;
     }
 
-    const options = getActiveSheetFilterOptions(stateRef.state);
+    const options = ensureActiveSheetShadow().filterOptions;
     stateRef.vesselDateSelectedFilter =
       vesselDateSelectionNode.dataset.dateSelection === "all"
         ? options.vesselDateOptions.map((option) => option.value)
         : [];
+    commitViewMutation({ clearFeedback: true });
+    return;
+  }
+
+  const statusSelectionNode = event.target.closest("[data-status-selection]");
+  if (statusSelectionNode) {
+    if (stateRef.busyAction) {
+      return;
+    }
+
+    const availableStatuses = Array.from(
+      elements.filterStatusOptions.querySelectorAll("[data-status-value]")
+    )
+      .map((input) => asText(input.dataset.statusValue))
+      .filter(Boolean);
+    stateRef.statusFilters =
+      statusSelectionNode.dataset.statusSelection === "all" ? availableStatuses : [];
+    commitViewMutation({ clearFeedback: true });
+    return;
+  }
+
+  const remarkSelectionNode = event.target.closest("[data-remark-selection]");
+  if (remarkSelectionNode) {
+    if (stateRef.busyAction) {
+      return;
+    }
+
+    const availableRemarks = Array.from(
+      elements.filterRemarksOptions.querySelectorAll("[data-remark-value]")
+    )
+      .map((input) => asText(input.dataset.remarkValue))
+      .filter(Boolean);
+    stateRef.remarksFilters =
+      remarkSelectionNode.dataset.remarkSelection === "all" ? availableRemarks : [];
     commitViewMutation({ clearFeedback: true });
     return;
   }
@@ -2717,12 +3051,59 @@ elements.filterHasT1.addEventListener("change", (event) => {
   commitViewMutation({ clearFeedback: true });
 });
 
-elements.filterStatus.addEventListener("change", (event) => {
+elements.filterStatusOptions.addEventListener("change", (event) => {
   if (stateRef.busyAction) {
     return;
   }
 
-  stateRef.statusFilter = asText(event.target.value);
+  const checkbox = event.target.closest("[data-status-value]");
+  if (!checkbox) {
+    return;
+  }
+
+  const selectedStatuses = new Set(stateRef.statusFilters.map((value) => asText(value)));
+  const statusValue = asText(checkbox.dataset.statusValue);
+  if (!statusValue) {
+    return;
+  }
+
+  if (checkbox.checked) {
+    selectedStatuses.add(statusValue);
+  } else {
+    selectedStatuses.delete(statusValue);
+  }
+
+  stateRef.statusFilters = Array.from(selectedStatuses).sort((left, right) =>
+    left.localeCompare(right, "pl", { sensitivity: "base" })
+  );
+  commitViewMutation({ clearFeedback: true });
+});
+
+elements.filterRemarksOptions.addEventListener("change", (event) => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  const checkbox = event.target.closest("[data-remark-value]");
+  if (!checkbox) {
+    return;
+  }
+
+  const selectedRemarks = new Set(stateRef.remarksFilters.map((value) => asText(value)));
+  const remarkValue = asText(checkbox.dataset.remarkValue);
+  if (!remarkValue) {
+    return;
+  }
+
+  if (checkbox.checked) {
+    selectedRemarks.add(remarkValue);
+  } else {
+    selectedRemarks.delete(remarkValue);
+  }
+
+  stateRef.remarksFilters = Array.from(selectedRemarks).sort((left, right) =>
+    left.localeCompare(right, "pl", { sensitivity: "base" })
+  );
   commitViewMutation({ clearFeedback: true });
 });
 
@@ -2741,6 +3122,15 @@ elements.comparisonHighlight.addEventListener("change", (event) => {
   }
 
   stateRef.comparisonHighlightEnabled = Boolean(event.target.checked);
+  renderProjectData({ preserveProjectTableViewport: true });
+});
+
+elements.duplicateHighlight.addEventListener("change", (event) => {
+  if (stateRef.busyAction) {
+    return;
+  }
+
+  stateRef.duplicateHighlightEnabled = Boolean(event.target.checked);
   renderProjectData({ preserveProjectTableViewport: true });
 });
 
