@@ -1,55 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-  <title id="title">SilesDoc mark</title>
-  <desc id="desc">Document mark for SilesDoc with a warm sand background and an orange review ribbon.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">SilesDoc</title>
+  <desc id="desc">Launcher icon for SilesDoc with a reviewed document mark.</desc>
   <defs>
-    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#f7ecd9" />
-      <stop offset="1" stop-color="#d6bc97" />
+    <linearGradient id="sd-bg" x1="14" y1="12" x2="112" y2="116" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f7edda" />
+      <stop offset="0.58" stop-color="#ead4b1" />
+      <stop offset="1" stop-color="#cfb18b" />
     </linearGradient>
-    <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#fff8ec" />
-      <stop offset="1" stop-color="#f0dcc0" />
+    <linearGradient id="sd-paper" x1="33" y1="23" x2="94" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fffaf1" />
+      <stop offset="1" stop-color="#edd9bb" />
     </linearGradient>
-    <linearGradient id="accent" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#f39831" />
-      <stop offset="1" stop-color="#9d4f1b" />
+    <linearGradient id="sd-fold" x1="68" y1="23" x2="88" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f8e8cd" />
+      <stop offset="1" stop-color="#dcc4a2" />
     </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#4e3115" flood-opacity="0.2" />
+    <linearGradient id="sd-accent" x1="37" y1="34" x2="87" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f4a242" />
+      <stop offset="0.58" stop-color="#d1721e" />
+      <stop offset="1" stop-color="#9c4a1a" />
+    </linearGradient>
+    <filter id="sd-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#5a3915" flood-opacity="0.2" />
     </filter>
   </defs>
 
-  <rect x="28" y="28" width="456" height="456" rx="108" fill="url(#bg)" />
+  <rect width="128" height="128" rx="30" fill="url(#sd-bg)" />
+  <circle cx="29" cy="28" r="18" fill="#fff8ee" opacity="0.34" />
+  <circle cx="104" cy="100" r="20" fill="#e4c499" opacity="0.24" />
 
-  <g filter="url(#shadow)">
+  <g filter="url(#sd-shadow)">
     <path
-      d="M160 102h150l66 66v204c0 21-17 38-38 38H160c-21 0-38-17-38-38V140c0-21 17-38 38-38Z"
-      fill="url(#paper)"
+      d="M34 22h32l21 21v50c0 7.18-5.82 13-13 13H34c-7.18 0-13-5.82-13-13V35c0-7.18 5.82-13 13-13Z"
+      fill="url(#sd-paper)"
     />
-    <path d="M310 102v66h66" fill="#f3dfc2" />
-    <path d="M310 102v56c0 6 4 10 10 10h56" fill="none" stroke="#c9ab82" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
-    <path
-      d="M309 176
-         C281 149 233 148 204 168
-         C179 186 180 218 214 229
-         L272 247
-         C307 258 314 286 296 307
-         C272 336 219 337 188 310"
-      fill="none"
-      stroke="url(#accent)"
-      stroke-width="34"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-    <path
-      d="M194 312l28 28 96-96"
-      fill="none"
-      stroke="#3c2512"
-      stroke-width="18"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    />
-    <path d="M182 356h132" fill="none" stroke="#d0b28a" stroke-width="14" stroke-linecap="round" />
-    <path d="M182 388h106" fill="none" stroke="#dcc19b" stroke-width="14" stroke-linecap="round" />
+    <path d="M66 22v16c0 4.42 3.58 8 8 8h13" fill="url(#sd-fold)" />
   </g>
+
+  <path
+    d="M74 43
+       C67 36 55 36 48 41
+       C42 45 42 53 50 56
+       L64 61
+       C73 64 75 71 71 76
+       C65 83 52 83 45 77"
+    fill="none"
+    stroke="url(#sd-accent)"
+    stroke-width="8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path d="M47 80 54 87 80 61" fill="none" stroke="#3b2412" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M40 95h30" fill="none" stroke="#d5bb98" stroke-width="4.5" stroke-linecap="round" />
+  <path d="M40 103h24" fill="none" stroke="#ddc6a6" stroke-width="4.5" stroke-linecap="round" />
 </svg>

@@ -1,6 +1,43 @@
-<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="256" height="256" rx="56" fill="#163B39"/>
-  <path d="M52 176V80H92C106.667 80 118 83.2 126 89.6C134 96 138 105.2 138 117.2C138 129.2 134 138.533 126 145.2C118.133 151.733 106.8 155 92 155H78V176H52ZM78 133H90.4C97.7333 133 103.333 131.667 107.2 129C111.067 126.333 113 122.267 113 116.8C113 111.2 111.067 107 107.2 104.2C103.467 101.267 97.8667 99.8 90.4 99.8H78V133Z" fill="#F5ECDD"/>
-  <path d="M154 176V80H180V176H154ZM178 99.4V80H222V99.4H178Z" fill="#C86B35"/>
-  <title>CEN IMTREKS</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">CEN IMTREKS</title>
+  <desc id="desc">Container registry icon with a lookup lens for CEN IMTREKS.</desc>
+  <defs>
+    <linearGradient id="ci-bg" x1="18" y1="16" x2="110" y2="114" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#123534" />
+      <stop offset="0.58" stop-color="#1d5751" />
+      <stop offset="1" stop-color="#2e766d" />
+    </linearGradient>
+    <linearGradient id="ci-card" x1="28" y1="33" x2="82" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fffaf0" />
+      <stop offset="1" stop-color="#ecdfc9" />
+    </linearGradient>
+    <linearGradient id="ci-lens" x1="75" y1="68" x2="108" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f0a25a" />
+      <stop offset="0.62" stop-color="#d16d33" />
+      <stop offset="1" stop-color="#9d4e24" />
+    </linearGradient>
+    <filter id="ci-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#09211f" flood-opacity="0.24" />
+    </filter>
+  </defs>
+
+  <rect width="128" height="128" rx="30" fill="url(#ci-bg)" />
+  <circle cx="28" cy="26" r="16" fill="#f4d5a6" opacity="0.1" />
+  <circle cx="106" cy="100" r="22" fill="#f4d5a6" opacity="0.08" />
+
+  <g filter="url(#ci-shadow)">
+    <rect x="24" y="32" width="58" height="48" rx="14" fill="url(#ci-card)" />
+    <rect x="34" y="42" width="38" height="5.5" rx="2.75" fill="#1d5751" opacity="0.92" />
+    <rect x="34" y="54" width="38" height="5.5" rx="2.75" fill="#1d5751" opacity="0.76" />
+    <rect x="34" y="66" width="23" height="5.5" rx="2.75" fill="#c86b35" opacity="0.96" />
+    <path d="M45 34V80" stroke="#d8c7ae" stroke-width="2.6" opacity="0.78" />
+    <path d="M61 34V80" stroke="#d8c7ae" stroke-width="2.6" opacity="0.78" />
+  </g>
+
+  <circle cx="84" cy="84" r="16" fill="#f6ecdd" />
+  <circle cx="84" cy="84" r="13" fill="none" stroke="url(#ci-lens)" stroke-width="6" />
+  <path d="M95 95 107 107" stroke="url(#ci-lens)" stroke-width="7" stroke-linecap="round" />
+  <path d="M79 84h10" stroke="#1d5751" stroke-width="4" stroke-linecap="round" />
+  <path d="M84 79v10" stroke="#1d5751" stroke-width="4" stroke-linecap="round" />
+  <path d="M81 18c5.27 1.53 10.03 4.48 13.85 8.5" fill="none" stroke="#f3d3a5" stroke-width="4" stroke-linecap="round" opacity="0.46" />
 </svg>

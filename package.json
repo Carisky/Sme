@@ -1,11 +1,12 @@
 {
   "name": "silesdoc",
   "productName": "SilesDoc",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "Aplikacja do korekt dokumentow SilesDoc",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "icons:generate": "node scripts/generate-icons.cjs",
     "seed": "node prisma/seed.js",
     "test": "node test/core.test.js && node test/mini-app-catalog.test.js && node test/launcher-preferences.test.js && node test/wct-cen-db.test.js && node test/cen-imtreks.test.js",
     "make:portable": "node scripts/make-portable.cjs",

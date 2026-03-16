@@ -120,14 +120,10 @@ button:disabled {
 .brand__mark {
   width: 52px;
   height: 52px;
-  display: grid;
-  place-items: center;
+  display: block;
+  flex: 0 0 auto;
   border-radius: 18px;
-  background: linear-gradient(145deg, #163b39, #2c716a);
-  color: #f9f3e8;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  font-size: 0.95rem;
+  filter: drop-shadow(0 10px 16px rgba(18, 53, 52, 0.18));
 }
 
 .eyebrow,

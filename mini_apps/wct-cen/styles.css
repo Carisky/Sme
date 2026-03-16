@@ -98,18 +98,20 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 1rem;
+  min-width: 0;
 }
 
 .brand__mark {
   width: 64px;
   height: 64px;
-  display: grid;
-  place-items: center;
+  display: block;
+  flex: 0 0 auto;
   border-radius: 20px;
-  background: linear-gradient(145deg, #17352f, #2e6c60);
-  color: #f8f4ed;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  filter: drop-shadow(0 12px 18px rgba(18, 53, 49, 0.2));
+}
+
+.brand > div {
+  min-width: 0;
 }
 
 .eyebrow,
