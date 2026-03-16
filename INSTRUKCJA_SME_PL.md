@@ -1,478 +1,565 @@
-# Instrukcja pracy z SME
+# Instrukcja pracy z SilesDoc
 
-## Do czego jest ten program
+## Czym jest ten program
 
-Po uruchomieniu widzisz ekran startowy z modułami. To nie jest błąd i to nie jest "dodatkowe okno". Program działa właśnie tak: najpierw wybierasz moduł, potem zaczynasz pracę.
+`SilesDoc` to nazwa calej aplikacji. Po uruchomieniu najpierw widzisz ekran startowy z modulami. To nie jest blad i to nie jest dodatkowe okno. Tak ma dzialac program: najpierw wybierasz modul, potem zaczynasz prace.
 
-Jeżeli potrzebujesz:
+W praktyce:
 
-- robić korekty dokumentów i drukować gotowy dokument -> otwórz `SME`;
-- pracować z kontenerami i uzupełniać `CEN`, `T-State`, `Stop` -> otwórz `WCT CEN`;
-- pracować z rejestrami `IMTREKS` i uzupełniać `T1`, `Status`, `Stop` -> otwórz `CEN IMTREKS`.
+- `SilesDoc` -> program startowy, instalator, aktualizacje i ekran modulow;
+- `SME` -> modul do korekt dokumentow, wydruku i PDF;
+- `WCT CEN` -> modul do kontenerow i lookup `CEN` / `T-State` / `Stop`;
+- `CEN IMTREKS` -> modul do rejestrow `IMTREKS`, lookup `T1` / `Status` / `Stop` oraz list `Do faktur`.
+
+Wazne: `SME` nie jest juz nazwa calej aplikacji. `SME` jest teraz jednym z modulow uruchamianych z `SilesDoc`.
 
 ## Instalacja programu
 
-1. Otwórz instalator `SME` (SME-Setup).
-2. Kliknij Install.
-3. Poczekaj do końca.
-4. Po instalacji program zazwyczaj uruchamia się sam.
+1. Otworz instalator `SilesDoc Setup`.
+2. W razie potrzeby wybierz folder instalacji.
+3. Kliknij `Install`.
+4. Poczekaj do konca. Instalator pokazuje rzeczywisty postep rozpakowywania.
+5. Po instalacji program zazwyczaj uruchamia sie sam.
 
-Jeżeli program nie uruchomił się sam:
+Jezeli program nie uruchomil sie sam:
 
-- otwórz skrót `SME` na pulpicie;
-- albo znajdź `SME` w menu `Start`.
+- otworz skrot `SilesDoc` na pulpicie;
+- albo znajdz `SilesDoc` w menu `Start`.
 
-Najczęściej program instaluje się tutaj:
+Najczesciej program instaluje sie tutaj:
 
-- `C:\Users\Twoja_nazwa\AppData\Local\Programs\SME`
+- `C:\Users\Twoja_nazwa\AppData\Local\Programs\SilesDoc`
 
-To jest zwykły folder instalacyjny. Zwykle nie trzeba tam nic robić ręcznie.
+Dodatkowe okna `cmd` albo `PowerShell` zwykle nie powinny sie juz pojawiac przy instalacji i aktualizacji. Jezeli zobaczysz pojedyncze migniecie systemowe, nie jest to problem z programem.
 
-## Co widać po uruchomieniu
+## Co widac po uruchomieniu
 
-Po starcie otwiera się ekran główny z kafelkami modułów.
+Po starcie otwiera sie ekran glowny `SilesDoc` z kafelkami modulow.
 
-Na kafelku najczęściej jest przycisk:
+Na kafelku modulu mozesz zobaczyc:
 
-- `Otwórz` -> moduł jest już gotowy do pracy, po prostu go otwórz;
-- `Zainstaluj` -> moduł nie jest jeszcze zainstalowany, najpierw kliknij ten przycisk;
-- `Aktualizuj` -> moduł już jest, ale dostępna jest nowsza wersja.
+- `Otworz` -> modul jest gotowy do pracy;
+- `Zainstaluj` -> modul trzeba najpierw pobrac i zainstalowac;
+- `Aktualizuj` -> dla modulu jest nowsza wersja;
+- `Otworz obecna` -> mozesz otworzyc juz zainstalowana wersje, nawet gdy czeka aktualizacja.
 
-Jeżeli chcesz po prostu otworzyć moduł:
+Na ekranie glownym sa tez:
 
-1. Znajdź jego kafelek.
-2. Kliknij `Otwórz`.
+- przycisk `Widocznosc modulow`, z ktorego ustawiasz, jakie kafelki maja byc widoczne;
+- blok z wersja aplikacji i aktualizacja `SilesDoc`;
+- pasek postepu aktualizacji aplikacji, kiedy trwa pobieranie nowej wersji;
+- przycisk `Sprawdz ponownie`, gdy chcesz jeszcze raz sprawdzic wersje.
 
-Jeżeli moduł nie jest jeszcze zainstalowany:
+Jezeli nie widac potrzebnego modulu:
 
-1. Kliknij `Zainstaluj`.
-2. Poczekaj do końca.
-3. Potem kliknij `Otwórz`.
-
-Jeżeli dla modułu jest aktualizacja:
-
-1. Kliknij `Aktualizuj`.
-2. Poczekaj do końca.
-3. Potem otwórz moduł normalnie.
-
-Jeżeli nie widać potrzebnego modułu:
-
-1. Kliknij `Widoczność modułów`.
-2. Sprawdź, czy moduł nie jest ukryty.
-3. Włącz go z powrotem.
+1. Kliknij `Widocznosc modulow`.
+2. Sprawdz, czy modul nie jest ukryty.
+3. Wlacz go z powrotem.
 4. Zapisz widok.
 
-## Jeżeli trzeba zaktualizować cały program
+## Jak aktualizowac cala aplikacje
 
-Na ekranie głównym jest osobny blok z informacją o wersji programu.
+Na ekranie glownym jest osobny blok dotyczacy samego `SilesDoc`.
 
-Jeżeli pojawił się tam przycisk `Zaktualizuj aplikację`, to znaczy:
+Jezeli pojawi sie przycisk `Zaktualizuj aplikacje`, to znaczy, ze:
 
-- wyszła nowa wersja;
-- albo program prosi o ponowną instalację bieżącej wersji.
+- jest nowsza wersja programu;
+- albo biezaca kopia wymaga ponownej instalacji.
 
-Co zrobić:
+Co zrobic:
 
-1. Kliknij `Zaktualizuj aplikację`.
-2. Poczekaj, aż program pobierze aktualizację.
-3. Poczekaj, aż otworzy się instalator.
-4. Zainstaluj aktualizację.
+1. Kliknij `Zaktualizuj aplikacje`.
+2. Poczekaj, az program pobierze instalator.
+3. W czasie pobierania zobaczysz rzeczywisty procent postepu.
+4. Po pobraniu otworzy sie instalator aktualizacji.
+5. Zainstaluj aktualizacje.
 
-W trakcie tego procesu program może sam się zamknąć. To normalne.
+W trakcie sprawdzania albo weryfikacji program moze pokazywac status bez procentu. To normalne. W czasie samego pobierania powinien byc widoczny procent.
+
+W trakcie aktualizacji:
+
+- `SilesDoc` moze sam sie zamknac;
+- instalator pokazuje rzeczywisty postep rozpakowywania;
+- po zakonczeniu program zwykle uruchamia sie sam;
+- dodatkowe okna terminala zwykle nie powinny sie otwierac.
 
 ## Najprostszy schemat pracy
 
-W skrócie najczęściej wygląda to tak:
+Najczesciej wyglada to tak:
 
-1. Otwierasz program.
-2. Wybierasz potrzebny moduł.
+1. Otwierasz `SilesDoc`.
+2. Wybierasz potrzebny modul.
 3. Importujesz plik albo otwierasz stary projekt.
 4. Sprawdzasz dane.
-5. W razie potrzeby dopisujesz coś ręcznie.
+5. W razie potrzeby dopisujesz cos recznie.
 6. Zapisujesz.
-7. Jeżeli to `SME` -> przechodzisz do wydruku i drukujesz albo zapisujesz PDF.
+7. Jezeli pracujesz w `SME`, przechodzisz do wydruku albo zapisu PDF.
 
-## Moduł SME
+## Modul SME
 
-### Kiedy go otwierać
+### Kiedy go otwierac
 
-Otwieraj `SME`, jeżeli potrzebujesz głównego modułu do dokumentów, korekt i wydruku.
+Otwieraj `SME`, jezeli potrzebujesz modulu do korekt dokumentow, przygotowania wydruku i zapisu PDF.
 
-### Co w nim jest
+### Jak wejsc do modulu SME
 
-Na górze są główne przyciski:
+1. Otworz `SilesDoc`.
+2. Na ekranie modulow znajdz kafelek `SME`.
+3. Kliknij `Otworz`.
 
-- `Nowy` -> zacznij od pustego projektu;
-- `Otwórz` -> otwórz wcześniej zapisany projekt;
-- `Pobierz dane` -> wczytaj źródłowy Excel;
-- `Zapisz` -> zapisz bieżący projekt;
-- `Zapisz jako` -> zapisz projekt pod nową nazwą;
-- `Wydruk` -> przejdź do wersji do druku.
+[instruction1]
 
-Niżej są zakładki:
+### Co jest w module
 
-- `Dane` -> główna praca z danymi;
-- `Ustawienia` -> ustawienia, słowniki, folder PDF, dane do wydruku;
-- `Wydruk` -> gotowa forma do drukowania.
+Na gorze sa glowne przyciski:
 
-### Jak pracować w SME od zera
+- `Moduly` -> powrot do ekranu startowego `SilesDoc`;
+- `Nowy` -> nowy projekt;
+- `Otworz` -> otwarcie zapisanego projektu;
+- `Pobierz dane` -> import z Excela;
+- `Zapisz` -> zapis biezacego projektu;
+- `Zapisz jako` -> zapis kopii pod nowa nazwa;
+- `Wydruk` -> przejscie do podgladu i druku.
 
-1. Na ekranie głównym kliknij `SME`.
-2. Jeżeli chcesz nowy dokument, kliknij `Nowy`.
+Zakladki:
+
+- `Dane` -> glowna praca z dokumentem;
+- `Ustawienia` -> slowniki, dane naglowka, druk i PDF;
+- `Wydruk` -> koncowa wersja dokumentu.
+
+Na ekranie `Dane` widzisz:
+
+- blok `Plik i import` z nazwa pliku i numerem kontrolnym;
+- blok `Wprowadz dane dodatkowe`, gdzie uzupelniasz pola dokumentu;
+- tabele `JEST` i `WINNO BYC`;
+- przycisk `Pobierz dane` oraz przycisk `Oblicz`;
+- sekcje `Uwagi po pobraniu danych` i `Walidacja`.
+
+Najwazniejsze pola, ktore najczesciej uzupelniasz po prawej stronie:
+
+- `Urzad celny`;
+- `Data zgloszenia`;
+- `Typ dokumentu`;
+- `Numer MRN`;
+- `Rodzaj rudy`;
+- `Typ rudy`;
+- `Kraj pochodzenia`;
+- `Kod CN`.
+
+[instruction2]
+
+### Jak pracowac w SME od zera
+
+1. Na ekranie glownym `SilesDoc` otworz `SME`.
+2. Kliknij `Nowy`, jezeli zaczynasz nowy dokument.
 3. Kliknij `Pobierz dane`.
 4. Wybierz plik Excel.
-5. Po wczytaniu sprawdź zakładkę `Dane`.
-6. Uzupełnij brakujące pola.
-7. Przejdź do zakładki `Ustawienia`, jeżeli trzeba ustawić druk, folder dla PDF, urząd celny, kraj pochodzenia i resztę danych.
-8. Kliknij `Zapisz`, żeby zapisać projekt.
-9. Kliknij `Wydruk`, jeżeli chcesz dostać gotowy dokument.
 
-### Jeżeli trzeba otworzyć stary projekt w SME
+[instruction6]
 
-1. Otwórz moduł `SME`.
-2. Kliknij `Otwórz`.
-3. Wybierz wcześniej zapisany plik projektu.
+5. Po imporcie sprawdz, czy uzupelnily sie `Nazwa pliku`, `Nr kontrolny` i tabela `JEST`.
+6. Uzupelnij dane w bloku `Wprowadz dane dodatkowe`.
+7. W tabeli `WINNO BYC` wpisuj poprawione dane.
+8. Najpierw uzupelnij `Numer noty` i `Data noty`, a dopiero potem zmieniaj cene albo numer faktury.
+9. Kliknij `Oblicz`, jezeli chcesz od razu przeliczyc korekte i podglad.
+10. Kliknij `Zapisz`.
 
-Ważne: w `SME` projekt jest trzymany jako osobny plik. To nie jest baza, tylko zwykły plik zapisany w miejscu, które sam wybierasz.
+Wazne:
 
-### Jeżeli trzeba po prostu zapisać pracę
+- przycisk `Pobierz dane` jest widoczny na gornej belce i dodatkowo nad tabela `JEST`; mozesz uzyc dowolnego z nich;
+- do wydruku przechodza tylko te linie z tabeli `WINNO BYC`, ktore maja komplet danych: `Numer noty` i `Data noty`;
+- sekcja `Walidacja` pokazuje, czy dokument jest gotowy do dalszego kroku.
 
-- kliknij `Zapisz`, jeżeli ten projekt był już wcześniej zapisany;
-- kliknij `Zapisz jako`, jeżeli chcesz zapisać kopię pod inną nazwą albo w innym folderze.
+[instruction5]
 
-### Jeżeli trzeba wydrukować dokument
+### Co mozna ustawic w SME
 
-1. Otwórz projekt w `SME`.
-2. Kliknij `Wydruk`.
-3. Sprawdź końcową formę.
-4. Jeżeli wszystko się zgadza, kliknij `Drukuj`.
+W zakladce `Ustawienia` znajdziesz miedzy innymi:
 
-Druk idzie na drukarkę domyślną w Windows.
+- `Sciezki i projekt` -> lokalizacje pliku projektu;
+- `Urzedy celne` -> slownik urzedow oraz przyciski `Nowy urzad` i `Zapisz urzad`;
+- `Kraje pochodzenia` -> slownik krajow oraz przyciski `Nowy kraj` i `Zapisz kraj`;
+- `Druk i PDF` -> opcje `Zapisuj PDF po wydrukowaniu` i `Folder PDF`;
+- `Naglowek wydruku` -> miejscowosc, data wydruku, nadawca, adres, unikalny numer dokumentu i podpis.
 
-### Jeżeli trzeba nie tylko drukować, ale też zapisać PDF
+[instruction3]
 
-1. Przejdź do zakładki `Ustawienia`.
-2. Znajdź blok dotyczący druku i PDF.
-3. Włącz opcję zapisywania PDF po wydruku.
-4. Wskaż folder, do którego ma trafiać PDF.
-5. Zapisz projekt.
-6. Potem drukuj normalnie.
+To jest miejsce, do ktorego wracasz, gdy trzeba poprawic dane do wydruku albo ustawic zapis PDF.
 
-Wtedy program nie tylko wyśle dokument do drukarki, ale też zapisze PDF we wskazanym folderze.
+[instruction4]
 
-### Co można zmieniać w zakładce Ustawienia
+### Jak otwierac stare projekty SME
 
-Znajdują się tam:
+1. Otworz modul `SME`.
+2. Kliknij `Otworz`.
+3. Wybierz zapisany plik projektu.
 
-- ścieżka do pliku projektu;
-- urzędy celne;
-- kraje pochodzenia;
-- ustawienia druku i folderu PDF;
-- dane do nagłówka i podpisu w dokumencie.
+Wazne: projekt `SME` jest zapisywany jako osobny plik. To nie jest baza danych.
 
-Jeżeli ktoś mówi "sprawdź ustawienia przed wydrukiem", to zwykle chodzi właśnie o tę zakładkę.
+### Jak drukowac i zapisywac PDF
 
-## Moduł WCT CEN
+1. Otworz projekt.
+2. Sprawdz, czy w tabeli `WINNO BYC` wszystkie potrzebne wiersze maja uzupelnione `Numer noty` i `Data noty`.
+3. Kliknij zakladke albo przycisk `Wydruk`.
 
-### Kiedy go otwierać
+[instruction7]
 
-Otwieraj `WCT CEN`, jeżeli pracujesz z kontenerami i potrzebujesz:
+4. Sprawdz podglad gotowego dokumentu.
+5. Jezeli wszystko sie zgadza, kliknij `Drukuj`.
+6. Jezeli chcesz wrocic do edycji, kliknij `Powrot`.
 
-- wczytać listę z Excela;
-- uzupełnić `CEN`;
-- uzupełnić `T-State`;
-- uzupełnić `Stop`;
-- prowadzić lokalną bazę powiązań dla kontenerów.
+Podczas drukowania program pokazuje okno statusu druku:
 
-### Co trzeba od razu zrozumieć
+- etap przygotowania dokumentu;
+- liczbe stron;
+- nazwe drukarki;
+- postep wysylania do druku;
+- status zapisu PDF, jezeli ta opcja jest wlaczona.
 
-W tym module projekt nie jest trzymany jako osobny plik, jak w `SME`, tylko w bazie danych.
+Jezeli chcesz po wydruku automatycznie zapisac PDF:
 
-Czyli działa to tak:
-
-- wybierasz bazę;
-- pracujesz w tej bazie;
-- zapisujesz projekt pod nazwą;
-- potem otwierasz go ponownie po nazwie z tej samej bazy.
-
-### Jakie są główne przyciski
-
-Na górze są:
-
-- `Nowy` -> nowy projekt;
-- `Otwórz` -> otwarcie projektu z bazy;
-- `Importuj Excel` -> wczytanie Excela;
-- `Zaktualizuj` -> uzupełnienie danych po kontenerach;
-- `Zapisz` -> zapis projektu do bazy;
-- `Zapisz jako` -> zapis jako nowy projekt w bazie.
-
-Są też zakładki:
-
-- `Dane`;
-- `Ustawienia`.
-
-### Jak pracować w WCT CEN od zera
-
-1. Otwórz `WCT CEN`.
-2. Jeżeli to pierwszy raz, przejdź do zakładki `Ustawienia`.
-3. Sprawdź ścieżkę do bazy.
-4. Jeżeli baza ma być w innym miejscu, kliknij wybór bazy i wskaż odpowiedni plik.
-5. Wróć do zakładki `Dane`.
-6. Kliknij `Importuj Excel`.
-7. Wybierz plik Excel.
-8. Sprawdź wiersze.
-9. Jeżeli trzeba, dopisz lub popraw dane ręcznie.
-10. Kliknij `Zaktualizuj`, żeby program spróbował uzupełnić puste wartości po kontenerach.
-11. Kliknij `Zapisz`.
-
-### Jeżeli trzeba otworzyć zapisany projekt w WCT CEN
-
-1. Otwórz `WCT CEN`.
-2. W polu nazwy projektu zacznij wpisywać nazwę.
-3. Wybierz właściwy projekt.
-4. Kliknij `Otwórz`.
-
-### Jeżeli trzeba dodać wiersz ręcznie
-
-1. Otwórz zakładkę `Dane`.
-2. Kliknij `Dodaj wiersz`.
-3. Wypełnij wiersz.
+1. Otworz zakladke `Ustawienia`.
+2. Wlacz `Zapisuj PDF po wydrukowaniu`.
+3. Ustaw `Folder PDF`.
 4. Zapisz projekt.
+5. Drukuj normalnie.
 
-### Jeżeli lookup nie znajduje potrzebnych danych
+[instruction8]
 
-Wtedy można dodać wpis ręcznie:
+## Modul WCT CEN
 
-1. Otwórz zakładkę `Ustawienia`.
-2. W bloku ręcznych wpisów wypełnij `Container Number`.
-3. Uzupełnij potrzebne pola `CEN`, `T-State`, `Stop`.
-4. Kliknij `Zapisz rekord`.
+### Kiedy go otwierac
 
-Taki wpis trafi do lokalnej bazy i później będzie mógł być podstawiany do projektu.
+Otwieraj `WCT CEN`, jezeli pracujesz z kontenerami i potrzebujesz:
 
-### Jeżeli trzeba po prostu odświeżyć dane w tabeli
+- zaimportowac liste z Excela;
+- uzupelniac `CEN`;
+- uzupelniac `T-State`;
+- uzupelniac `Stop`;
+- dopisywac reczne rekordy do lokalnej bazy lookup.
 
-1. Otwórz projekt.
-2. Kliknij `Zaktualizuj`.
-3. Poczekaj do końca.
-4. Sprawdź, czy potrzebne pola się uzupełniły.
-5. Kliknij `Zapisz`.
+### Co trzeba od razu zrozumiec
 
-### Gdzie znajduje się baza WCT CEN
+W `WCT CEN` projekt nie zapisuje sie jako osobny plik. Projekt jest trzymany w bazie danych pod nazwa projektu.
 
-Domyślnie najczęściej jest tutaj:
+To znaczy:
 
-- `C:\Users\Twoja_nazwa\AppData\Roaming\SME\wct_cen_db.sqlite`
+- wybierasz baze;
+- pracujesz w tej bazie;
+- zapisujesz projekt pod nazwa;
+- potem otwierasz go ponownie z tej samej bazy.
 
-Jeżeli w trakcie pracy wskażesz inną bazę, moduł będzie używał właśnie tego pliku.
+### Co jest w module
 
-## Moduł CEN IMTREKS
+Przyciski na gorze:
 
-### Kiedy go otwierać
-
-Otwieraj `CEN IMTREKS`, jeżeli trzeba pracować z rejestrami `IMTREKS` i uzupełniać:
-
-- `T1`;
-- `Status`;
-- `Stop`.
-
-### Najważniejsza różnica względem WCT CEN
-
-Ten moduł też działa na bazie, ale projekt może składać się z kilku arkuszy miesięcznych.
-
-Czyli po imporcie możesz zobaczyć nie jedną tabelę, tylko zestaw miesięcy.
-
-### Jakie są główne przyciski
-
-Na górze są:
-
+- `Moduly`;
 - `Nowy`;
-- `Otwórz`;
+- `Otworz`;
 - `Importuj Excel`;
 - `Zaktualizuj`;
 - `Zapisz`;
 - `Zapisz jako`.
 
-Są zakładki:
+Zakladki:
 
 - `Dane`;
 - `Ustawienia`.
 
-### Jak pracować w CEN IMTREKS od zera
+W zakladce `Dane` znajdziesz:
 
-1. Otwórz `CEN IMTREKS`.
-2. Jeżeli to pierwszy start, otwórz zakładkę `Ustawienia`.
-3. Sprawdź ścieżkę do bazy.
-4. Jeżeli trzeba, wybierz inną bazę.
-5. Wróć do zakładki `Dane`.
+- pole nazwy projektu z podpowiedziami;
+- podsumowanie aktywnego pliku Excel i liczby wierszy;
+- tabele robocza;
+- przycisk `Dodaj wiersz`.
+
+W zakladce `Ustawienia` znajdziesz:
+
+- wybor bazy danych;
+- formularz recznych rekordow `Container -> CEN / T-State / Stop`;
+- wyszukiwarke i podglad slownika kontenerow.
+
+### Jak pracowac w WCT CEN od zera
+
+1. Otworz `WCT CEN` z ekranu `SilesDoc`.
+2. Jezeli to pierwszy start, przejdz do `Ustawienia`.
+3. Sprawdz sciezke do bazy.
+4. W razie potrzeby kliknij `Wybierz baze`.
+5. Wroc do `Dane`.
 6. Kliknij `Importuj Excel`.
 7. Wybierz plik.
-8. Po imporcie sprawdź miesiące i wiersze.
-9. Jeżeli trzeba, przełączaj się między miesiącami.
-10. Kliknij `Zaktualizuj`, żeby uzupełnić brakujące wartości.
-11. Po sprawdzeniu kliknij `Zapisz`.
+8. Sprawdz wiersze.
+9. W razie potrzeby dodaj albo popraw dane recznie.
+10. Kliknij `Zaktualizuj`, aby uzupelnic lookup.
+11. Kliknij `Zapisz`.
 
-### Jeżeli trzeba otworzyć stary projekt w CEN IMTREKS
+### Jak otwierac zapisane projekty WCT CEN
 
-1. Otwórz `CEN IMTREKS`.
-2. Zacznij wpisywać nazwę projektu.
-3. Wybierz ją z listy.
-4. Kliknij `Otwórz`.
+1. Otworz `WCT CEN`.
+2. W polu nazwy projektu zacznij wpisywac nazwe.
+3. Wybierz projekt z listy.
+4. Kliknij `Otworz`.
 
-### Jeżeli trzeba znaleźć kontener ręcznie
+### Jak dodawac reczne dane
 
-W zakładce `Dane` jest wyszukiwarka. Wpisz numer kontenera, a tabela się odfiltruje.
+Jezeli chcesz dodac wiersz do projektu:
 
-### Jeżeli aktualizacja trwa długo
+1. Otworz `Dane`.
+2. Kliknij `Dodaj wiersz`.
+3. Uzupelnij wiersz.
+4. Zapisz projekt.
 
-To normalne. W tym module aktualizacja może chwilę potrwać.
+Jezeli lookup nie znajduje rekordu kontenera:
+
+1. Otworz `Ustawienia`.
+2. Kliknij `Nowy rekord`.
+3. Uzupelnij `Container Number`, `CEN`, `T-State`, `Stop`.
+4. Kliknij `Zapisz rekord`.
+
+### Gdzie znajduje sie baza WCT CEN
+
+Domyslnie najczesciej tutaj:
+
+- `C:\Users\Twoja_nazwa\AppData\Roaming\SME\wct_cen_db.sqlite`
+
+Jezeli wskazesz inna baze, modul bedzie pracowal wlasnie na niej.
+
+## Modul CEN IMTREKS
+
+### Kiedy go otwierac
+
+Otwieraj `CEN IMTREKS`, jezeli pracujesz z rejestrami `IMTREKS` i potrzebujesz uzupelniac:
+
+- `T1`;
+- `Status`;
+- `Stop`;
+- liste kontenerow `Do faktur`.
+
+### Co odroznia ten modul
+
+Ten modul pracuje na bazie danych i projekcie podzielonym na miesiace. Po imporcie mozesz miec kilka arkuszy miesiecznych, miedzy ktorymi sie przelaczasz.
+
+### Co jest w module
+
+Przyciski na gorze:
+
+- `Moduly`;
+- `Nowy`;
+- `Otworz`;
+- `Importuj Excel`;
+- `Zaktualizuj`;
+- `Zapisz`;
+- `Zapisz jako`.
+
+Zakladki:
+
+- `Dane`;
+- `Do faktur`;
+- `Ustawienia`.
+
+### Co znajdziesz w zakladce Dane
+
+W `Dane` sa dostepne:
+
+- przelaczanie miesiecy projektu;
+- pasek postepu aktualizacji w samym module;
+- wyszukiwanie po numerze kontenera;
+- filtry po dacie statku, `T1`, `Status` i porownaniu z lista faktur;
+- `Wyczysc filtry`;
+- `Podswietli`, aby latwiej zobaczyc rekordy z porownania;
+- `Przypisz fakture`, podglad faktury, `Akceptuj fakture` i `Cofnij podglad`;
+- `Eksport`, aby zapisac widoczne wiersze;
+- `Napraw T1`, aby wyczyscic niepoprawne wpisy;
+- przelacznik `Force`;
+- `Dodaj pusty`, aby dodac pusty wiersz roboczy.
+
+### Co znajdziesz w zakladce Do faktur
+
+Zakladka `Do faktur` sluzy do porownania kontenerow z projektu z osobna baza Excel.
+
+Mozesz tam:
+
+- zaimportowac baze porownawcza z Excela;
+- wybrac arkusz i kolumne z kontenerami;
+- filtrowac i sortowac porownanie;
+- wyeksportowac liste kontenerow do dalszej pracy;
+- wyczyscic baze porownawcza;
+- zobaczyc, ktore kontenery sa juz w bazie, a ktore trafiaja do listy `Do faktur`.
+
+### Co znajdziesz w zakladce Ustawienia
+
+Tak samo jak w `WCT CEN`, znajdziesz tu:
+
+- wybor bazy danych;
+- reczne rekordy lookup;
+- wyszukiwarke i podglad slownika kontenerow.
+
+### Jak pracowac w CEN IMTREKS od zera
+
+1. Otworz `CEN IMTREKS` z ekranu `SilesDoc`.
+2. Jezeli to pierwszy start, otworz `Ustawienia`.
+3. Sprawdz albo wybierz baze.
+4. Wroc do `Dane`.
+5. Kliknij `Importuj Excel`.
+6. Wybierz plik.
+7. Sprawdz miesiace i wiersze po imporcie.
+8. W razie potrzeby ustaw filtry albo wyszukaj konkretny kontener.
+9. Kliknij `Zaktualizuj`, aby uzupelnic brakujace dane.
+10. Po sprawdzeniu kliknij `Zapisz`.
+
+### Jak otwierac stare projekty CEN IMTREKS
+
+1. Otworz `CEN IMTREKS`.
+2. Zacznij wpisywac nazwe projektu.
+3. Wybierz projekt z listy.
+4. Kliknij `Otworz`.
+
+### Co robic, gdy aktualizacja trwa dlugo
+
+To normalne. W `CEN IMTREKS` aktualizacja moze chwile potrwac.
 
 W czasie aktualizacji:
 
-- program pokazuje status;
-- dane mogą uzupełniać się stopniowo;
-- aktualizację można anulować.
+- widzisz status i procent postepu;
+- dane moga uzupelniac sie stopniowo;
+- przycisk aktualizacji moze przejsc w tryb anulowania;
+- po anulowaniu czesciowe zmiany sa odrzucane.
 
-### Jeżeli trzeba wymusić ponowne uzupełnienie danych
+### Kiedy uzywac Force
 
-Obok tabeli jest przełącznik `Force`.
+Tryb zwykly:
 
-Używaj go tylko wtedy, kiedy naprawdę chcesz nadpisać już uzupełnione wartości.
-
-Tryb zwykły:
-
-- program stara się dopisywać tylko puste pola.
+- modul uzupelnia glownie puste pola.
 
 Tryb `Force`:
 
-- program próbuje ponownie odświeżyć także pola już uzupełnione.
+- modul probuje odswiezyc rowniez pola juz uzupelnione.
 
-### Jeżeli lookup znowu nic nie znalazł
+Uzywaj `Force` tylko wtedy, kiedy chcesz nadpisac to, co juz jest.
 
-Tak samo jak w `WCT CEN`, można dodać wpis ręcznie:
+### Kiedy uzywac Napraw T1
 
-1. Otwórz zakładkę `Ustawienia`.
-2. Wpisz `Container Number`.
-3. Uzupełnij `CEN`, `T-State`, `Stop`.
-4. Kliknij `Zapisz rekord`.
+Uzyj `Napraw T1`, jezeli w bazie albo w projekcie pojawily sie niepoprawne wartosci `T1`. Funkcja czysci wpisy, ktore nie pasuja do oczekiwanego wzorca.
 
-### Gdzie znajduje się baza CEN IMTREKS
+### Jak pracowac z lista Do faktur
 
-Domyślnie najczęściej jest tutaj:
+Najprostszy scenariusz:
+
+1. Zaimportuj projekt.
+2. Przejdz do `Do faktur`.
+3. Kliknij `Importuj baze Excel`.
+4. Wybierz arkusz i kolumne z kontenerami.
+5. Sprawdz statystyki `W bazie porownawczej` i `Do faktur`.
+6. W razie potrzeby kliknij `Eksportuj liste`.
+
+### Gdzie znajduje sie baza CEN IMTREKS
+
+Domyslnie najczesciej tutaj:
 
 - `C:\Users\Twoja_nazwa\AppData\Roaming\SME\cen_imtreks_db.sqlite`
 
-Jeżeli wskażesz inny plik bazy, moduł będzie pracował właśnie z nim.
+Jezeli wskazesz inny plik bazy, modul bedzie pracowal na nim.
 
-## Gdzie co się znajduje
+## Gdzie program i dane sa zapisane
 
-### Gdzie leży sam program
+### Gdzie lezy sama aplikacja
 
-Najczęściej tutaj:
+Najczesciej tutaj:
 
-- `C:\Users\Twoja_nazwa\AppData\Local\Programs\SME`
+- `C:\Users\Twoja_nazwa\AppData\Local\Programs\SilesDoc`
 
-### Gdzie leżą wspólne dane programu
+### Gdzie leza wspolne dane aplikacji
 
-Najczęściej tutaj:
+Najczesciej tutaj:
 
 - `C:\Users\Twoja_nazwa\AppData\Roaming\SME`
 
-Jeżeli ktoś mówi "wejdź do folderu z danymi programu", to zwykle chodzi właśnie o to miejsce.
+Wazne: folder danych nadal nazywa sie `SME`. To jest celowe i zostalo zostawione dla zgodnosci ze starszymi wersjami.
 
-### Co jest w folderze AppData\Roaming\SME
+### Co zwykle jest w AppData\Roaming\SME
 
-Najczęściej znajdują się tam:
+Najczesciej:
 
-- wspólna baza ustawień programu;
+- wspolna baza ustawien;
 - baza `WCT CEN`;
 - baza `CEN IMTREKS`;
-- zainstalowane dodatkowe moduły.
+- zainstalowane dodatkowe moduly.
 
-### Gdzie są projekty SME
+### Gdzie sa projekty SME
 
-Projekty `SME` znajdują się tam, gdzie sam je zapiszesz.
+Projekty `SME` sa tam, gdzie sam je zapiszesz.
 
-Czyli `SME` nie ma jednego stałego folderu dla wszystkich projektów. Miejsce zapisania wybierasz sam.
+### Gdzie sa projekty WCT CEN i CEN IMTREKS
 
-### Gdzie są projekty WCT CEN i CEN IMTREKS
+Sa zapisane wewnatrz swoich baz danych:
 
-Są zapisane wewnątrz swoich baz danych.
+- `WCT CEN` -> w bazie `wct_cen_db.sqlite`;
+- `CEN IMTREKS` -> w bazie `cen_imtreks_db.sqlite`.
 
-Najprościej mówiąc:
+## Co klikac w typowych sytuacjach
 
-- w `WCT CEN` projekt siedzi w pliku bazy `wct_cen_db.sqlite`;
-- w `CEN IMTREKS` projekt siedzi w pliku bazy `cen_imtreks_db.sqlite`.
+### Jezeli chcesz zaczac od zera
 
-Jeżeli nie widzisz "pliku projektu", to normalne. W tych dwóch modułach projekty nie zapisują się jako osobne pliki tak jak w `SME`.
+1. Otworz `SilesDoc`.
+2. Wybierz modul.
+3. Kliknij `Nowy`.
+4. Zaimportuj plik albo wpisz dane recznie.
 
-## Co klikać w typowych sytuacjach
+### Jezeli chcesz wrocic do starej pracy
 
-### Jeżeli trzeba zacząć od zera
+1. Otworz odpowiedni modul.
+2. W `SME` kliknij `Otworz` i wybierz plik.
+3. W `WCT CEN` albo `CEN IMTREKS` wpisz nazwe projektu i kliknij `Otworz`.
 
-1. Otwórz potrzebny moduł.
-2. Kliknij `Nowy`.
-3. Zaimportuj plik albo wpisz dane ręcznie.
+### Jezeli chcesz zapisac wynik
 
-### Jeżeli trzeba wrócić do starej pracy
+- w `SME` zapisujesz osobny plik;
+- w `WCT CEN` zapisujesz projekt do bazy;
+- w `CEN IMTREKS` zapisujesz projekt do bazy.
 
-1. Otwórz potrzebny moduł.
-2. Jeżeli to `SME` -> kliknij `Otwórz` i wybierz plik.
-3. Jeżeli to `WCT CEN` albo `CEN IMTREKS` -> wpisz nazwę projektu i kliknij `Otwórz`.
+### Jezeli chcesz wrocic do ekranu modulow
 
-### Jeżeli trzeba zapisać wynik
+W module kliknij `Moduly`.
 
-- w `SME` -> `Zapisz` albo `Zapisz jako`;
-- w `WCT CEN` -> `Zapisz` albo `Zapisz jako`;
-- w `CEN IMTREKS` -> `Zapisz` albo `Zapisz jako`.
+## Jezeli cos poszlo nie tak
 
-Przyciski nazywają się tak samo, ale znaczenie jest inne:
+### Nie widac modulu
 
-- w `SME` zapisuje się osobny plik;
-- w dwóch pozostałych modułach zapisuje się wpis w bazie.
+- sprawdz `Widocznosc modulow`;
+- jezeli na kafelku jest `Zainstaluj`, najpierw zainstaluj modul;
+- jezeli na kafelku jest `Aktualizuj`, zaktualizuj modul albo otworz obecna wersje przez `Otworz obecna`.
 
-### Jeżeli nie widać potrzebnego modułu na ekranie głównym
+### Nie da sie sprawdzic aktualizacji aplikacji
 
-1. Kliknij `Widoczność modułów`.
-2. Włącz potrzebny moduł.
-3. Zapisz widok.
+- kliknij `Sprawdz ponownie`;
+- sprawdz polaczenie z internetem;
+- jezeli program pokazuje, ze pracuje na ostatniej potwierdzonej wersji lokalnej, mozesz dalej pracowac, ale bez pobrania nowej wersji.
 
-### Jeżeli trzeba wrócić do wyboru modułów
+### W WCT CEN albo CEN IMTREKS nie ma projektu
 
-W modułach jest przycisk powrotu do ekranu głównego. Użyj przycisku przejścia do modułów.
+- upewnij sie, ze wybrana jest wlasciwa baza;
+- sprawdz nazwe projektu;
+- jezeli wybrana byla zla baza, przelacz ja i sproboj ponownie.
 
-## Jeżeli coś poszło nie tak
+### Lookup nic nie znajduje
 
-### Program nie widzi potrzebnego modułu
+- sprawdz internet;
+- sprawdz numer kontenera;
+- dodaj rekord recznie przez `Ustawienia`, jezeli lookup nadal nic nie znajduje.
 
-- sprawdź, czy moduł nie jest ukryty w ustawieniach widoczności;
-- jeżeli na kafelku jest `Zainstaluj`, najpierw go zainstaluj;
-- jeżeli na kafelku jest `Aktualizuj`, najpierw go zaktualizuj.
+### Nie mozesz znalezc plikow programu
 
-### W WCT CEN albo CEN IMTREKS nie da się znaleźć projektu
+Zwykle trzeba patrzec w dwa miejsca:
 
-- upewnij się, że wybrana jest właściwa baza;
-- sprawdź nazwę projektu;
-- jeżeli wybrana była zła baza, przełącz ją i spróbuj ponownie.
-
-### Dane nie uzupełniają się automatycznie
-
-- sprawdź internet;
-- sprawdź numer kontenera;
-- jeżeli nadal nic nie znajduje, dodaj wpis ręcznie przez `Ustawienia`.
-
-### Nie możesz znaleźć plików programu
-
-Zwykle trzeba patrzeć w dwa miejsca:
-
-- sam program -> `AppData\Local\Programs\SME`;
+- aplikacja -> `AppData\Local\Programs\SilesDoc`;
 - dane robocze -> `AppData\Roaming\SME`.
 
-## Najważniejsze w skrócie
+## Najwazniejsze w skrocie
 
-- `SME` -> osobne pliki projektów i wydruk.
-- `WCT CEN` -> projekty wewnątrz bazy `wct_cen_db.sqlite`.
-- `CEN IMTREKS` -> projekty wewnątrz bazy `cen_imtreks_db.sqlite`.
-- Jeżeli widzisz `Otwórz` -> otwieraj.
-- Jeżeli widzisz `Zainstaluj` -> najpierw instaluj.
-- Jeżeli widzisz `Aktualizuj` -> najpierw aktualizuj.
+- `SilesDoc` to cala aplikacja i launcher modulow.
+- `SME` to modul do dokumentow, wydruku i PDF.
+- `WCT CEN` zapisuje projekty w bazie `wct_cen_db.sqlite`.
+- `CEN IMTREKS` zapisuje projekty w bazie `cen_imtreks_db.sqlite` i ma dodatkowa zakladke `Do faktur`.
+- Aktualizacja aplikacji pokazuje rzeczywisty postep pobierania.
+- Instalator `SilesDoc Setup` pokazuje rzeczywisty postep instalacji.
+- Dane wspolne nadal sa w folderze `AppData\Roaming\SME`.
