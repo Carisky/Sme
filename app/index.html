@@ -46,11 +46,19 @@
       </section>
 
       <section class="launcher-update" id="launcher-update" aria-live="polite">
-        <div class="launcher-update__line">
-          <span class="launcher-update__label">Aplikacja</span>
-          <strong class="launcher-update__summary" id="launcher-update-summary">
-            Sprawdzanie wersji aplikacji.
-          </strong>
+        <div class="launcher-update__body">
+          <div class="launcher-update__line">
+            <span class="launcher-update__label">Aplikacja</span>
+            <strong class="launcher-update__summary" id="launcher-update-summary">
+              Sprawdzanie wersji aplikacji.
+            </strong>
+          </div>
+          <div class="launcher-update__progress" id="launcher-update-progress" hidden>
+            <div class="launcher-update__progress-track">
+              <span class="launcher-update__progress-fill" id="launcher-update-progress-fill"></span>
+            </div>
+            <span class="launcher-update__progress-value" id="launcher-update-progress-value">0%</span>
+          </div>
         </div>
         <div class="launcher-update__actions">
           <button

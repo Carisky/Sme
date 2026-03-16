@@ -112,16 +112,24 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 12px 16px;
-  border-radius: 18px;
+  padding: 14px 16px;
+  border-radius: 20px;
   border: 1px solid rgba(74, 44, 17, 0.16);
-  background: rgba(255, 248, 236, 0.88);
-  box-shadow: 0 12px 26px rgba(63, 37, 11, 0.08);
+  background:
+    linear-gradient(155deg, rgba(255, 250, 243, 0.94), rgba(245, 229, 203, 0.9)),
+    rgba(255, 248, 236, 0.88);
+  box-shadow: 0 16px 34px rgba(63, 37, 11, 0.1);
+}
+
+.launcher-update__body {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: grid;
+  gap: 10px;
 }
 
 .launcher-update__line {
   min-width: 0;
-  flex: 1 1 auto;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -156,6 +164,56 @@ code {
   font-weight: 600;
 }
 
+.launcher-update__progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.launcher-update__progress-track {
+  position: relative;
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(92, 61, 31, 0.12);
+  box-shadow: inset 0 1px 2px rgba(67, 41, 15, 0.12);
+}
+
+.launcher-update__progress-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #c76a21 0%, #f0a23b 52%, #f7d27c 100%);
+  box-shadow: 0 0 12px rgba(199, 106, 33, 0.24);
+  transition: width 160ms ease;
+}
+
+.launcher-update__progress[data-mode="indeterminate"] .launcher-update__progress-track::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -32%;
+  width: 32%;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgba(199, 106, 33, 0), rgba(199, 106, 33, 0.85), rgba(247, 210, 124, 0));
+  animation: launcher-update-progress 1.2s ease-in-out infinite;
+}
+
+.launcher-update__progress[data-mode="indeterminate"] .launcher-update__progress-fill {
+  width: 0 !important;
+}
+
+.launcher-update__progress-value {
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #7a552c;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
 .launcher-update__actions {
   display: flex;
   flex: 0 0 auto;
@@ -173,6 +231,11 @@ code {
 .launcher-update[data-update-state="server-unavailable"] .launcher-update__label,
 .launcher-update[data-update-state="offline-verified"] .launcher-update__label {
   background: rgba(128, 78, 27, 0.92);
+}
+
+.launcher-update[data-update-state="downloading"] {
+  border-color: rgba(186, 112, 36, 0.28);
+  box-shadow: 0 18px 38px rgba(138, 79, 20, 0.13);
 }
 
 .launcher-tile,
@@ -457,6 +520,16 @@ code {
   gap: 12px;
 }
 
+@keyframes launcher-update-progress {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(420%);
+  }
+}
+
 @media (max-width: 760px) {
   .launcher-shell {
     padding: 24px 18px 22px;
@@ -492,6 +565,10 @@ code {
   .launcher-update {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .launcher-update__body {
+    width: 100%;
   }
 
   .launcher-update__line {

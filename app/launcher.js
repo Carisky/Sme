@@ -11,6 +11,9 @@ const tiles = document.getElementById("launcher-tiles");
 const status = document.getElementById("launcher-status");
 const appUpdatePanel = document.getElementById("launcher-update");
 const appUpdateSummary = document.getElementById("launcher-update-summary");
+const appUpdateProgress = document.getElementById("launcher-update-progress");
+const appUpdateProgressFill = document.getElementById("launcher-update-progress-fill");
+const appUpdateProgressValue = document.getElementById("launcher-update-progress-value");
 const appUpdateInstall = document.getElementById("launcher-update-install");
 const appUpdateRetry = document.getElementById("launcher-update-retry");
 const visibilityButton = document.getElementById("launcher-visibility-button");
@@ -451,6 +454,23 @@ function shouldAllowManualRetry(updateGate = {}) {
   return updateGate.status !== "development";
 }
 
+function setAppUpdateProgressDisplay({
+  visible = false,
+  percent = 0,
+  value = "",
+  mode = "determinate",
+}) {
+  appUpdateProgress.hidden = !visible;
+  appUpdateProgress.dataset.mode =
+    visible && mode === "indeterminate" ? "indeterminate" : "determinate";
+
+  const normalizedPercent = Math.max(0, Math.min(Number(percent) || 0, 100));
+  appUpdateProgressFill.style.width = `${normalizedPercent}%`;
+  appUpdateProgressValue.textContent = String(
+    value || (visible ? `${normalizedPercent}%` : "")
+  ).trim();
+}
+
 function buildUpdateLine({
   summary,
   versions = "",
@@ -469,6 +489,10 @@ function setAppUpdateDisplay({
   state = "default",
   showInstall = false,
   showRetry = true,
+  progressVisible = false,
+  progressPercent = 0,
+  progressValue = "",
+  progressMode = "determinate",
 }) {
   const normalizedSummary = String(summary || "Sprawdzanie wersji aplikacji.").trim();
   const normalizedDetail = String(detail || "").trim();
@@ -482,6 +506,12 @@ function setAppUpdateDisplay({
   appUpdatePanel.dataset.updateState = state || "default";
   appUpdateSummary.textContent = summaryLine;
   appUpdateSummary.title = summaryLine;
+  setAppUpdateProgressDisplay({
+    visible: progressVisible,
+    percent: progressPercent,
+    value: progressValue,
+    mode: progressMode,
+  });
 
   appUpdateInstall.hidden = !showInstall;
   appUpdateRetry.hidden = !showRetry;
@@ -497,6 +527,7 @@ function renderAppUpdate(updateGate = {}) {
     state: updateGate.status || "default",
     showInstall: Boolean(updateGate.allowInstall),
     showRetry: shouldAllowManualRetry(updateGate),
+    progressVisible: false,
   });
 }
 
@@ -510,18 +541,29 @@ function handleUpdateStatusEvent(payload = {}) {
         state: "checking",
         showInstall: false,
         showRetry: false,
+        progressVisible: true,
+        progressPercent: 0,
+        progressValue: "...",
+        progressMode: "indeterminate",
       });
       return;
     case "downloading":
-      setAppUpdateButtonsDisabled(true);
-      setAppUpdateDisplay({
-        summary: "Pobieranie aktualizacji",
-        detail: payload.message || "Trwa pobieranie instalatora.",
-        versions: getUpdateVersions(currentUpdateGate || {}),
-        state: "downloading",
-        showInstall: false,
-        showRetry: false,
-      });
+      {
+        const percent = Math.max(0, Math.min(Number(payload.percent) || 0, 100));
+        setAppUpdateButtonsDisabled(true);
+        setAppUpdateDisplay({
+          summary: "Pobieranie aktualizacji",
+          detail: payload.message || "Trwa pobieranie instalatora.",
+          versions: getUpdateVersions(currentUpdateGate || {}),
+          state: "downloading",
+          showInstall: false,
+          showRetry: false,
+          progressVisible: true,
+          progressPercent: percent,
+          progressValue: `${percent}%`,
+          progressMode: "determinate",
+        });
+      }
       return;
     case "verifying":
       setAppUpdateButtonsDisabled(true);
@@ -532,6 +574,10 @@ function handleUpdateStatusEvent(payload = {}) {
         state: "verifying",
         showInstall: false,
         showRetry: false,
+        progressVisible: true,
+        progressPercent: 100,
+        progressValue: "hash",
+        progressMode: "indeterminate",
       });
       return;
     case "launching":
@@ -543,6 +589,10 @@ function handleUpdateStatusEvent(payload = {}) {
         state: "launching",
         showInstall: false,
         showRetry: false,
+        progressVisible: true,
+        progressPercent: 100,
+        progressValue: "100%",
+        progressMode: "determinate",
       });
       return;
     default:

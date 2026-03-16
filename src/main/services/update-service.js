@@ -437,7 +437,7 @@ function createUpdateService({ windowController, catalogService, packageJson }) 
     const child = spawn(installerPath, [], {
       detached: true,
       stdio: "ignore",
-      windowsHide: false,
+      windowsHide: true,
     });
     child.unref();
 
