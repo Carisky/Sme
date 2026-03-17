@@ -162,6 +162,42 @@ h2 {
   align-items: center;
 }
 
+.toolbar--project-controls {
+  flex: 1 1 880px;
+  display: grid;
+  gap: 0.42rem;
+  justify-items: end;
+  align-content: start;
+}
+
+.toolbar-group {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  align-items: center;
+}
+
+.toolbar-group--filters {
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.1rem;
+  scrollbar-width: thin;
+}
+
+.toolbar-group--filters:has(.filter-multiselect--popover[open]) {
+  position: relative;
+  overflow: visible;
+  z-index: 180;
+}
+
+.toolbar-group--actions {
+  justify-content: flex-end;
+}
+
 .tabs-row {
   border-radius: 16px;
   padding: 0.35rem;
@@ -470,6 +506,12 @@ h2 {
   min-height: 38px;
 }
 
+.toolbar--project-controls .toggle {
+  min-height: 34px;
+  padding: 0.45rem 0.68rem;
+  font-size: 0.82rem;
+}
+
 input[type="text"],
 input[type="search"],
 input[type="date"],
@@ -485,6 +527,33 @@ select {
 
 .filter-select {
   min-width: 145px;
+}
+
+.toolbar--project-controls button {
+  padding: 0.5rem 0.8rem;
+}
+
+.toolbar--project-controls .search-input {
+  flex: 1 1 280px;
+  min-width: 240px;
+  width: auto;
+}
+
+.toolbar--project-controls .filter-select {
+  width: auto;
+  min-width: 140px;
+  max-width: 180px;
+  padding: 0.5rem 0.66rem;
+  font-size: 0.84rem;
+  flex: 0 0 auto;
+}
+
+.toolbar--project-controls #filter-has-t1 {
+  min-width: 135px;
+}
+
+.toolbar--project-controls #filter-comparison {
+  min-width: 165px;
 }
 
 .filter-field {
@@ -534,6 +603,11 @@ select {
   background: transparent;
 }
 
+.toolbar--project-controls .filter-multiselect--popover {
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
 .filter-multiselect[hidden] {
   display: none;
 }
@@ -557,6 +631,15 @@ select {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset;
+}
+
+.toolbar--project-controls .filter-multiselect--popover > summary {
+  min-width: 150px;
+  width: auto;
+  max-width: 200px;
+  padding: 0.5rem 2rem 0.5rem 0.68rem;
+  min-height: 34px;
+  font-size: 0.84rem;
 }
 
 .filter-multiselect--popover > summary::after {
@@ -1168,6 +1251,23 @@ select {
 
   .toolbar {
     justify-content: flex-start;
+  }
+
+  .toolbar--project-controls {
+    justify-items: stretch;
+  }
+
+  .toolbar-group--filters,
+  .toolbar-group--actions {
+    justify-content: flex-start;
+  }
+
+  .toolbar--project-controls .search-input,
+  .toolbar--project-controls .filter-select,
+  .toolbar--project-controls .filter-multiselect--popover,
+  .toolbar--project-controls .filter-multiselect--popover > summary {
+    width: 100%;
+    max-width: none;
   }
 
   .month-tabs {

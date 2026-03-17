@@ -184,118 +184,123 @@
                 <p class="card__eyebrow">Projekt</p>
                 <h2>Wiersze robocze</h2>
               </div>
-              <div class="toolbar">
-                <input
-                  type="search"
-                  id="project-search"
-                  class="search-input"
-                  placeholder="Szukaj po kontenerze"
-                />
-                <details id="filter-vessel-date-list" class="filter-multiselect filter-multiselect--popover">
-                  <summary id="filter-vessel-date-summary">Daty statku: wszystkie</summary>
-                  <div class="filter-multiselect__panel">
-                    <label class="filter-field filter-field--panel filter-field--mode">
-                      <span>Tryb daty statku</span>
-                      <select
-                        id="filter-vessel-date-mode"
-                        class="filter-select"
-                        aria-label="Tryb filtra daty statku"
-                      >
-                        <option value="range">Zakres od-do</option>
-                        <option value="list">Wybrane daty</option>
-                      </select>
-                    </label>
-                    <div id="filter-vessel-date-range" class="filter-group filter-group--panel">
-                      <label class="filter-field filter-field--panel">
-                        <span>Data statku od</span>
-                        <input
-                          type="date"
-                          id="filter-vessel-date-from"
+              <div class="toolbar toolbar--project-controls">
+                <div class="toolbar-group toolbar-group--filters">
+                  <input
+                    type="search"
+                    id="project-search"
+                    class="search-input"
+                    placeholder="Szukaj po kontenerze"
+                  />
+                  <details id="filter-vessel-date-list" class="filter-multiselect filter-multiselect--popover">
+                    <summary id="filter-vessel-date-summary">Daty statku: wszystkie</summary>
+                    <div class="filter-multiselect__panel">
+                      <label class="filter-field filter-field--panel filter-field--mode">
+                        <span>Tryb daty statku</span>
+                        <select
+                          id="filter-vessel-date-mode"
                           class="filter-select"
-                          aria-label="Filtr daty statku od"
-                          title="Data statku od"
-                        />
+                          aria-label="Tryb filtra daty statku"
+                        >
+                          <option value="range">Zakres od-do</option>
+                          <option value="list">Wybrane daty</option>
+                        </select>
                       </label>
-                      <label class="filter-field filter-field--panel">
-                        <span>Data statku do</span>
-                        <input
-                          type="date"
-                          id="filter-vessel-date-to"
-                          class="filter-select"
-                          aria-label="Filtr daty statku do"
-                          title="Data statku do"
-                        />
-                      </label>
+                      <div id="filter-vessel-date-range" class="filter-group filter-group--panel">
+                        <label class="filter-field filter-field--panel">
+                          <span>Data statku od</span>
+                          <input
+                            type="date"
+                            id="filter-vessel-date-from"
+                            class="filter-select"
+                            aria-label="Filtr daty statku od"
+                            title="Data statku od"
+                          />
+                        </label>
+                        <label class="filter-field filter-field--panel">
+                          <span>Data statku do</span>
+                          <input
+                            type="date"
+                            id="filter-vessel-date-to"
+                            class="filter-select"
+                            aria-label="Filtr daty statku do"
+                            title="Data statku do"
+                          />
+                        </label>
+                      </div>
+                      <div id="filter-vessel-date-list-panel" class="filter-multiselect__list-panel">
+                        <div id="filter-vessel-date-options"></div>
+                      </div>
                     </div>
-                    <div id="filter-vessel-date-list-panel" class="filter-multiselect__list-panel">
-                      <div id="filter-vessel-date-options"></div>
+                  </details>
+                  <select id="filter-has-t1" class="filter-select" aria-label="Filtr T1">
+                    <option value="all">T1: wszystko</option>
+                    <option value="with">Tylko z T1</option>
+                    <option value="without">Tylko bez T1</option>
+                  </select>
+                  <details id="filter-status-list" class="filter-multiselect filter-multiselect--popover">
+                    <summary id="filter-status-summary">Status: wszystkie</summary>
+                    <div class="filter-multiselect__panel">
+                      <div id="filter-status-options"></div>
                     </div>
-                  </div>
-                </details>
-                <select id="filter-has-t1" class="filter-select" aria-label="Filtr T1">
-                  <option value="all">T1: wszystko</option>
-                  <option value="with">Tylko z T1</option>
-                  <option value="without">Tylko bez T1</option>
-                </select>
-                <details id="filter-status-list" class="filter-multiselect filter-multiselect--popover">
-                  <summary id="filter-status-summary">Status: wszystkie</summary>
-                  <div class="filter-multiselect__panel">
-                    <div id="filter-status-options"></div>
-                  </div>
-                </details>
-                <details id="filter-remarks-list" class="filter-multiselect filter-multiselect--popover">
-                  <summary id="filter-remarks-summary">Uwagi: wszystkie</summary>
-                  <div class="filter-multiselect__panel">
-                    <div id="filter-remarks-options"></div>
-                  </div>
-                </details>
-                <select id="filter-comparison" class="filter-select" aria-label="Filtr porownania">
-                  <option value="all">Porownanie: wszystko</option>
-                  <option value="matched">Tylko w bazie</option>
-                  <option value="missing">Tylko do faktur</option>
-                </select>
-                <button type="button" data-action="clear-filters" class="button--minimal">
-                  Wyczysc filtry
-                </button>
-                <label class="toggle toggle--compact">
-                  <input type="checkbox" id="comparison-highlight" />
-                  <span>W bazie</span>
-                </label>
-                <label class="toggle toggle--compact">
-                  <input type="checkbox" id="duplicate-highlight" />
-                  <span>Duplikaty</span>
-                </label>
-                <button type="button" data-action="invoice-batch-open" class="button--accent">
-                  Przypisz fakture
-                </button>
-                <button
-                  type="button"
-                  data-action="invoice-preview-accept"
-                  class="button--strong"
-                  hidden
-                >
-                  Akceptuj fakture
-                </button>
-                <button
-                  type="button"
-                  data-action="invoice-preview-cancel"
-                  class="button--minimal"
-                  hidden
-                >
-                  Cofnij podglad
-                </button>
-                <span id="invoice-preview-status" class="meta-pill meta-pill--accent" hidden></span>
-                <button type="button" data-action="export-visible" class="button--minimal">
-                  Eksport
-                </button>
-                <button type="button" data-action="lookup-repair-t1" class="button--strong">
-                  Napraw T1
-                </button>
-                <label class="toggle toggle--compact">
-                  <input type="checkbox" id="force-update" />
-                  <span>Force</span>
-                </label>
-                <button type="button" data-action="add-row">Dodaj pusty</button>
+                  </details>
+                  <details id="filter-remarks-list" class="filter-multiselect filter-multiselect--popover">
+                    <summary id="filter-remarks-summary">Uwagi: wszystkie</summary>
+                    <div class="filter-multiselect__panel">
+                      <div id="filter-remarks-options"></div>
+                    </div>
+                  </details>
+                  <select id="filter-comparison" class="filter-select" aria-label="Filtr porownania">
+                    <option value="all">Porownanie: wszystko</option>
+                    <option value="matched">Tylko w bazie</option>
+                    <option value="missing">Tylko do faktur</option>
+                  </select>
+                </div>
+
+                <div class="toolbar-group toolbar-group--actions">
+                  <button type="button" data-action="clear-filters" class="button--minimal">
+                    Wyczysc filtry
+                  </button>
+                  <label class="toggle toggle--compact">
+                    <input type="checkbox" id="comparison-highlight" />
+                    <span>W bazie</span>
+                  </label>
+                  <label class="toggle toggle--compact">
+                    <input type="checkbox" id="duplicate-highlight" />
+                    <span>Duplikaty</span>
+                  </label>
+                  <button type="button" data-action="invoice-batch-open" class="button--accent">
+                    Przypisz fakture
+                  </button>
+                  <button
+                    type="button"
+                    data-action="invoice-preview-accept"
+                    class="button--strong"
+                    hidden
+                  >
+                    Akceptuj fakture
+                  </button>
+                  <button
+                    type="button"
+                    data-action="invoice-preview-cancel"
+                    class="button--minimal"
+                    hidden
+                  >
+                    Cofnij podglad
+                  </button>
+                  <span id="invoice-preview-status" class="meta-pill meta-pill--accent" hidden></span>
+                  <button type="button" data-action="export-visible" class="button--minimal">
+                    Eksport
+                  </button>
+                  <button type="button" data-action="lookup-repair-t1" class="button--strong">
+                    Napraw T1
+                  </button>
+                  <label class="toggle toggle--compact">
+                    <input type="checkbox" id="force-update" />
+                    <span>Force</span>
+                  </label>
+                  <button type="button" data-action="add-row">Dodaj pusty</button>
+                </div>
               </div>
             </div>
 
