@@ -817,6 +817,9 @@ function openTextEntryModal(options = {}) {
 
   stateRef.textEntryRestoreFocus =
     document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  if (stateRef.textEntryRestoreFocus instanceof HTMLElement) {
+    stateRef.textEntryRestoreFocus.blur();
+  }
   elements.textEntryEyebrow.textContent = request.eyebrow;
   elements.textEntryTitle.textContent = request.title;
   elements.textEntryCopy.textContent = request.copy;
