@@ -60,6 +60,10 @@ export function wireEvents({ commands, actions, renderers }) {
     renderers.renderCustomsOfficeEditor(event.target.value);
   });
 
+  renderers.elements.settingsOreKind.addEventListener("change", (event) => {
+    renderers.renderOreKindEditor(event.target.value);
+  });
+
   renderers.elements.settingsOriginCountry.addEventListener("change", (event) => {
     renderers.renderOriginCountryEditor(event.target.value);
   });

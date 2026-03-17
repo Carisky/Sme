@@ -358,6 +358,11 @@ export function createRenderers({ store, extensions }) {
     ) {
       stateRef.state.oreType = selectedOreKind.defaultOreType;
     }
+
+    const hasDraft = stateRef.oreKinds.some((item) => item.id === stateRef.oreKindDraftId);
+    if (!hasDraft) {
+      stateRef.oreKindDraftId = stateRef.oreKinds[0].id;
+    }
   }
 
   function ensureOriginCountrySelection() {
@@ -391,6 +396,9 @@ export function createRenderers({ store, extensions }) {
     elements.oreType.innerHTML = bridge.meta.oreTypes
       .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
       .join("");
+    elements.settingsOreKindDefaultType.innerHTML = bridge.meta.oreTypes
+      .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+      .join("");
 
     renderOreKindOptions();
     renderCustomsOfficeOptions();
@@ -411,10 +419,34 @@ export function createRenderers({ store, extensions }) {
     const fallbackValue = options[0] || "";
     const normalizedValue = options.includes(currentValue) ? currentValue : fallbackValue;
 
-    elements.oreKind.innerHTML = options
-      .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
-      .join("");
-    elements.oreKind.value = normalizedValue;
+    if (options.length > 0) {
+      elements.oreKind.innerHTML = options
+        .map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`)
+        .join("");
+      elements.oreKind.value = normalizedValue;
+    } else {
+      elements.oreKind.innerHTML = '<option value=""></option>';
+      elements.oreKind.value = "";
+    }
+
+    elements.settingsOreKind.innerHTML = [
+      '<option value="">Nowy rodzaj...</option>',
+      ...stateRef.oreKinds.map(
+        (item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`
+      ),
+    ].join("");
+
+    renderOreKindEditor();
+  }
+
+  function renderOreKindEditor(targetId = stateRef.oreKindDraftId) {
+    const oreKind = stateRef.oreKinds.find((item) => item.id === Number(targetId)) || null;
+    const fallbackOreType = bridge.meta.oreTypes[0] || "";
+
+    stateRef.oreKindDraftId = oreKind?.id ?? null;
+    elements.settingsOreKind.value = oreKind ? String(oreKind.id) : "";
+    elements.settingsOreKindName.value = oreKind?.name || "";
+    elements.settingsOreKindDefaultType.value = oreKind?.defaultOreType || fallbackOreType;
   }
 
   function renderCustomsOfficeOptions() {
@@ -670,6 +702,7 @@ export function createRenderers({ store, extensions }) {
     populateInputs,
     renderCustomsOfficeEditor,
     renderCustomsOfficeOptions,
+    renderOreKindEditor,
     renderOreKindOptions,
     renderOriginCountryEditor,
     renderOriginCountryOptions,

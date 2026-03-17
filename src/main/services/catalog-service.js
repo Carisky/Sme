@@ -1,4 +1,5 @@
 const {
+  deleteOreKind,
   listCustomsOffices,
   listOriginCountries,
   listOreKinds,
@@ -8,6 +9,7 @@ const {
   saveCustomsOffice,
   saveAppSettings,
   saveModuleStorage,
+  saveOreKind,
   saveOriginCountry,
   saveVerifiedRelease,
 } = require("../../ore-catalog");
@@ -40,6 +42,7 @@ function createCatalogService() {
   }
 
   return {
+    deleteOreKind,
     loadBootstrapData,
     listCustomsOffices,
     listOriginCountries,
@@ -50,6 +53,7 @@ function createCatalogService() {
     saveCustomsOffice,
     saveAppSettings,
     saveModuleStorage,
+    saveOreKind,
     saveOriginCountry,
     saveVerifiedRelease,
   };

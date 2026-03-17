@@ -48,6 +48,10 @@ contextBridge.exposeInMainWorld("bridge", {
     ),
   importSourceWorkbook: (state) =>
     ipcRenderer.invoke("source:import", state),
+  saveOreKind: (oreKind) =>
+    ipcRenderer.invoke("catalog:save-ore-kind", oreKind),
+  deleteOreKind: (oreKindId) =>
+    ipcRenderer.invoke("catalog:delete-ore-kind", oreKindId),
   saveCustomsOffice: (office) =>
     ipcRenderer.invoke("catalog:save-customs-office", office),
   saveOriginCountry: (country) =>

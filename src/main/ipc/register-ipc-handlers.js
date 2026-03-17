@@ -118,6 +118,14 @@ function registerIpcHandlers({
     return catalogService.saveOriginCountry(country);
   });
 
+  ipcMain.handle("catalog:save-ore-kind", async (_event, oreKind) => {
+    return catalogService.saveOreKind(oreKind);
+  });
+
+  ipcMain.handle("catalog:delete-ore-kind", async (_event, oreKindId) => {
+    return catalogService.deleteOreKind(oreKindId);
+  });
+
   ipcMain.handle("settings:save", async (_event, settings) => {
     return catalogService.saveAppSettings(settings);
   });

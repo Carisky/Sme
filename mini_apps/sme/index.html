@@ -348,8 +348,9 @@
               </article>
             </div>
 
-            <article class="card">
-              <div class="card__title-row">
+            <div class="settings-stack">
+              <article class="card">
+                <div class="card__title-row">
                 <h2>Nagłówek wydruku</h2>
                 <span class="badge badge--muted">nadawca i podpis</span>
               </div>
@@ -384,6 +385,38 @@
                 </label>
               </div>
             </article>
+
+            <article class="card">
+              <div class="card__title-row">
+                <h2>Rodzaje rudy</h2>
+                <span class="badge badge--muted">slownik SQLite</span>
+              </div>
+              <div class="form-grid settings-print-grid">
+                <label class="field field--wide">
+                  <span>Wybierz rodzaj rudy</span>
+                  <select id="settings-ore-kind"></select>
+                </label>
+                <label class="field field--wide">
+                  <span>Nazwa</span>
+                  <input type="text" id="settings-ore-kind-name" />
+                </label>
+                <label class="field field--wide">
+                  <span>Domyslny typ rudy</span>
+                  <select id="settings-ore-kind-default-type"></select>
+                </label>
+                <div class="field field--wide field--actions">
+                  <span>Operacje</span>
+                  <div class="toolbar">
+                    <button type="button" data-action="ore-kind-new">Nowy rodzaj</button>
+                    <button type="button" data-action="ore-kind-save" class="button--strong">
+                      Zapisz rodzaj
+                    </button>
+                    <button type="button" data-action="ore-kind-delete">Usun rodzaj</button>
+                  </div>
+                </div>
+              </div>
+              </article>
+            </div>
 
             <div class="module-slot module-slot--stack" data-ui-slot="settings:after"></div>
           </section>

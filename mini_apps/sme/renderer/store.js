@@ -17,6 +17,7 @@ export function createAppStore() {
     activeTab: "dane",
     lastWorkTab: "dane",
     oreKinds: [],
+    oreKindDraftId: null,
     customsOffices: [],
     originCountries: [],
     officeDraftId: null,

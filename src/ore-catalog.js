@@ -6,11 +6,13 @@ const { normalizeAppSettings } = require("./core");
 const { VERIFIED_RELEASE_KEY } = require("./update-common");
 const {
   createOreCatalogClient,
+  deleteOreKind: removeOreKind,
   loadAppSettingJson,
   loadAppSettingsJson: readAppSettingsJson,
   saveAppSettingJson,
   saveCustomsOffice: persistCustomsOffice,
   saveAppSettingsJson: persistAppSettingsJson,
+  saveOreKind: persistOreKind,
   saveOriginCountry: persistOriginCountry,
   seedDefaultCustomsOffices,
   seedDefaultOriginCountries,
@@ -70,8 +72,11 @@ async function listOreKinds() {
   return prisma.oreKind.findMany({
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     select: {
+      id: true,
+      key: true,
       name: true,
       defaultOreType: true,
+      sortOrder: true,
     },
   });
 }
@@ -126,6 +131,36 @@ async function saveOriginCountry(country) {
       sortOrder: savedCountry.sortOrder,
     },
     originCountries: await listOriginCountries(),
+  };
+}
+
+async function saveOreKind(oreKind) {
+  const prisma = await getPrismaClient();
+  const savedOreKind = await persistOreKind(prisma, oreKind);
+  return {
+    savedOreKind: {
+      id: savedOreKind.id,
+      key: savedOreKind.key,
+      name: savedOreKind.name,
+      defaultOreType: savedOreKind.defaultOreType,
+      sortOrder: savedOreKind.sortOrder,
+    },
+    oreKinds: await listOreKinds(),
+  };
+}
+
+async function deleteOreKind(oreKindId) {
+  const prisma = await getPrismaClient();
+  const deletedOreKind = await removeOreKind(prisma, oreKindId);
+  return {
+    deletedOreKind: {
+      id: deletedOreKind.id,
+      key: deletedOreKind.key,
+      name: deletedOreKind.name,
+      defaultOreType: deletedOreKind.defaultOreType,
+      sortOrder: deletedOreKind.sortOrder,
+    },
+    oreKinds: await listOreKinds(),
   };
 }
 
@@ -207,6 +242,7 @@ async function disconnectOreCatalog() {
 }
 
 module.exports = {
+  deleteOreKind,
   disconnectOreCatalog,
   listCustomsOffices,
   listOriginCountries,
@@ -217,6 +253,7 @@ module.exports = {
   saveCustomsOffice,
   saveAppSettings,
   saveModuleStorage,
+  saveOreKind,
   saveVerifiedRelease,
   saveOriginCountry,
 };

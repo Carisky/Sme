@@ -265,6 +265,18 @@ export function createActions({ store, renderers, extensions }) {
     };
   }
 
+  function collectOreKindDraft() {
+    return {
+      id: stateRef.oreKindDraftId,
+      name: elements.settingsOreKindName.value.trim(),
+      defaultOreType: elements.settingsOreKindDefaultType.value,
+      sortOrder: (() => {
+        const current = stateRef.oreKinds.find((item) => item.id === stateRef.oreKindDraftId);
+        return current?.sortOrder ?? stateRef.oreKinds.length;
+      })(),
+    };
+  }
+
   function collectOriginCountryDraft() {
     return {
       id: stateRef.originCountryDraftId,
@@ -276,6 +288,89 @@ export function createActions({ store, renderers, extensions }) {
         return current?.sortOrder ?? stateRef.originCountries.length;
       })(),
     };
+  }
+
+  async function saveOreKind() {
+    const existingOreKind = stateRef.oreKinds.find(
+      (item) => item.id === stateRef.oreKindDraftId
+    );
+    const previousName = existingOreKind?.name || "";
+    const previousDefaultOreType = existingOreKind?.defaultOreType || "";
+    const result = await bridge.saveOreKind(collectOreKindDraft());
+
+    stateRef.oreKinds = result.oreKinds || stateRef.oreKinds;
+    stateRef.oreKindDraftId = result.savedOreKind?.id ?? null;
+
+    const shouldSwitchSelectedOreKind =
+      !stateRef.state.oreKind ||
+      stateRef.state.oreKind === previousName ||
+      !stateRef.oreKinds.some((item) => item.name === stateRef.state.oreKind);
+
+    if (shouldSwitchSelectedOreKind && result.savedOreKind?.name) {
+      stateRef.state.oreKind = result.savedOreKind.name;
+      markDirty();
+    }
+
+    if (
+      stateRef.state.oreKind === result.savedOreKind?.name &&
+      result.savedOreKind?.defaultOreType &&
+      (!stateRef.state.oreType ||
+        stateRef.state.oreType === previousDefaultOreType ||
+        !bridge.meta.oreTypes.includes(stateRef.state.oreType))
+    ) {
+      stateRef.state.oreType = result.savedOreKind.defaultOreType;
+      elements.oreType.value = result.savedOreKind.defaultOreType;
+      markDirty();
+    }
+
+    renderers.ensureOreKindSelection();
+    renderers.renderOreKindOptions(stateRef.state.oreKind);
+    renderers.populateInputs();
+    recompute();
+    renderers.showStatus(`Zapisano rodzaj rudy ${result.savedOreKind?.name || ""}.`);
+    return result;
+  }
+
+  function createOreKindDraft() {
+    stateRef.oreKindDraftId = null;
+    renderers.renderOreKindEditor(null);
+    renderers.showStatus("Wprowadz dane nowego rodzaju rudy i zapisz je do slownika.");
+  }
+
+  async function deleteOreKind() {
+    const currentOreKind =
+      stateRef.oreKinds.find((item) => item.id === stateRef.oreKindDraftId) || null;
+
+    if (!currentOreKind) {
+      renderers.showStatus("Wybierz rodzaj rudy do usuniecia.");
+      return null;
+    }
+
+    if (!window.confirm(`Usunac rodzaj rudy "${currentOreKind.name}"?`)) {
+      return null;
+    }
+
+    const result = await bridge.deleteOreKind(currentOreKind.id);
+    stateRef.oreKinds = result.oreKinds || stateRef.oreKinds;
+    stateRef.oreKindDraftId = null;
+
+    if (stateRef.state.oreKind === currentOreKind.name) {
+      const fallbackOreKind = stateRef.oreKinds[0] || null;
+      stateRef.state.oreKind = fallbackOreKind?.name || "";
+      if (fallbackOreKind?.defaultOreType) {
+        stateRef.state.oreType = fallbackOreKind.defaultOreType;
+      } else if (!stateRef.oreKinds.length && bridge.meta.oreTypes.length > 0) {
+        stateRef.state.oreType = bridge.meta.oreTypes[0];
+      }
+      markDirty();
+    }
+
+    renderers.ensureOreKindSelection();
+    renderers.renderOreKindOptions(stateRef.state.oreKind);
+    renderers.populateInputs();
+    recompute();
+    renderers.showStatus(`Usunieto rodzaj rudy ${currentOreKind.name}.`);
+    return result;
   }
 
   async function saveOffice() {
@@ -392,6 +487,11 @@ export function createActions({ store, renderers, extensions }) {
       renderers.renderOreKindOptions(target.value);
 
       const oreKind = stateRef.oreKinds.find((item) => item.name === target.value);
+      if (oreKind) {
+        stateRef.oreKindDraftId = oreKind.id;
+        renderers.renderOreKindEditor(oreKind.id);
+      }
+
       if (oreKind?.defaultOreType) {
         stateRef.state.oreType = oreKind.defaultOreType;
         elements.oreType.value = oreKind.defaultOreType;
@@ -477,8 +577,10 @@ export function createActions({ store, renderers, extensions }) {
     choosePdfOutputDir,
     confirmDiscardIfNeeded,
     createNewProject,
+    createOreKindDraft,
     createOfficeDraft,
     createOriginCountryDraft,
+    deleteOreKind,
     getBootstrapStatusMessage,
     goBackFromPrint,
     handleCommandError,
@@ -490,6 +592,7 @@ export function createActions({ store, renderers, extensions }) {
     recompute,
     refreshUpdateGate,
     replaceProjectState,
+    saveOreKind,
     saveOffice,
     saveOriginCountry,
     saveProject,

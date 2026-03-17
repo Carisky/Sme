@@ -128,6 +128,24 @@ export function createModuleContextFactory({
         getOriginCountries() {
           return cloneValue(stateRef.originCountries);
         },
+        async saveOreKind(oreKind) {
+          const result = await bridge.saveOreKind(oreKind);
+          stateRef.oreKinds = result.oreKinds || stateRef.oreKinds;
+          renderers.ensureOreKindSelection();
+          renderers.renderOreKindOptions(stateRef.state?.oreKind || "");
+          renderers.populateInputs();
+          actions.recompute();
+          return cloneValue(result);
+        },
+        async deleteOreKind(oreKindId) {
+          const result = await bridge.deleteOreKind(oreKindId);
+          stateRef.oreKinds = result.oreKinds || stateRef.oreKinds;
+          renderers.ensureOreKindSelection();
+          renderers.renderOreKindOptions(stateRef.state?.oreKind || "");
+          renderers.populateInputs();
+          actions.recompute();
+          return cloneValue(result);
+        },
         async saveCustomsOffice(office) {
           const result = await bridge.saveCustomsOffice(office);
           stateRef.customsOffices = result.customsOffices || stateRef.customsOffices;
