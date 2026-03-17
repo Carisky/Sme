@@ -539,6 +539,13 @@ function setStatus(message) {
   elements.statusText.textContent = message;
 }
 
+function hasDatabaseBackupBridge() {
+  return (
+    typeof bridge?.listCenImtreksDatabaseBackups === "function" &&
+    typeof bridge?.restoreCenImtreksDatabaseBackup === "function"
+  );
+}
+
 function formatBackupTimestamp(value) {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) {
@@ -569,6 +576,16 @@ function formatBackupSize(size) {
 }
 
 function renderDatabaseBackupOptions() {
+  if (!hasDatabaseBackupBridge()) {
+    elements.backupList.innerHTML =
+      '<option value="">Wymagana aktualizacja aplikacji SME</option>';
+    elements.backupList.disabled = true;
+    elements.backupRestoreButton.disabled = true;
+    elements.backupSummary.textContent =
+      "Ten modul zostal zaktualizowany osobno, ale host aplikacji nie ma jeszcze backendu backupow. Potrzebna jest aktualizacja calego SME.";
+    return;
+  }
+
   const selectedBackupId = asText(elements.backupList.value);
   const backups = Array.isArray(stateRef.databaseBackups) ? stateRef.databaseBackups : [];
 
@@ -1660,6 +1677,13 @@ async function refreshLookupRecords() {
 }
 
 async function refreshDatabaseBackups() {
+  if (!hasDatabaseBackupBridge()) {
+    stateRef.databaseBackups = [];
+    stateRef.backupMaxCount = 5;
+    renderDatabaseBackupOptions();
+    return;
+  }
+
   const dbPath = await ensureDbPath();
   const result = await bridge.listCenImtreksDatabaseBackups(dbPath);
   stateRef.state.dbPath = asText(result.dbPath) || dbPath;
@@ -1893,6 +1917,14 @@ async function chooseDbPath() {
 }
 
 async function restoreDatabaseBackup() {
+  if (!hasDatabaseBackupBridge()) {
+    window.alert(
+      "Backupy wymagaja aktualizacji glownej aplikacji SME. Sam update modulu CEN IMTREKS nie wystarczy."
+    );
+    renderDatabaseBackupOptions();
+    return null;
+  }
+
   await flushAutosave({ silent: true });
   closeSheetContextMenu();
 
