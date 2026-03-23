@@ -61,6 +61,8 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("dialog:choose-directory", defaultPath),
   printToDefaultPrinter: (state) =>
     ipcRenderer.invoke("print:to-default-printer", state),
+  savePreviewAsDocx: (state, context) =>
+    ipcRenderer.invoke("print:save-docx", state, context),
   checkForUpdates: () => ipcRenderer.invoke("update:check"),
   downloadAndInstallUpdate: () =>
     ipcRenderer.invoke("update:download-and-install"),

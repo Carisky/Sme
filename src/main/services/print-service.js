@@ -4,8 +4,12 @@ const os = require("os");
 const { pathToFileURL } = require("url");
 const { execFile } = require("child_process");
 const { promisify } = require("util");
-const { BrowserWindow } = require("electron");
+const { app, BrowserWindow, dialog } = require("electron");
 const { normalizeState, suggestProjectName } = require("../../core");
+const {
+  buildPrintDocxBuffer,
+  createDocxFileName,
+} = require("./print-docx-builder");
 
 const execFileAsync = promisify(execFile);
 
@@ -244,7 +248,7 @@ async function printPdfWithElectron(pdfPath, printer) {
             return;
           }
 
-          reject(new Error(failureReason || "Nie udalo sie wydrukowac dokumentu PDF."));
+          reject(new Error(failureReason || "Nie udało się wydrukować dokumentu PDF."));
         }
       );
     });
@@ -281,6 +285,28 @@ async function resolveDefaultPrinter(webContents) {
 function createPrintService({ windowController }) {
   const sendPrintStatus = createPrintStatusSender(windowController);
 
+  async function saveCurrentPreviewAsDocx(state, context = {}) {
+    const normalizedState = normalizeState(state);
+    const saveDialog = await dialog.showSaveDialog(windowController.getMainWindow(), {
+      title: "Zapisz dokument DOCX",
+      defaultPath: path.join(app.getPath("documents"), createDocxFileName(normalizedState)),
+      filters: [{ name: "Dokument Word", extensions: ["docx"] }],
+    });
+
+    if (saveDialog.canceled || !saveDialog.filePath) {
+      return { canceled: true };
+    }
+
+    const buffer = await buildPrintDocxBuffer(normalizedState, context);
+    await fs.writeFile(saveDialog.filePath, buffer);
+
+    return {
+      canceled: false,
+      filePath: saveDialog.filePath,
+      pageCount: Number(normalizedState.print?.pageCount) || 0,
+    };
+  }
+
   async function printCurrentPreviewToDefaultPrinter(state) {
     const mainWindow = windowController.getMainWindow();
     if (!mainWindow) {
@@ -293,7 +319,7 @@ function createPrintService({ windowController }) {
 
     sendPrintStatus({
       phase: "spooling",
-      printerName: printer.printerName || "domyslna drukarka systemowa",
+      printerName: printer.printerName || "domyślna drukarka systemowa",
       printedPages: 0,
       totalPages: fallbackPageCount,
       message: "Trwa przygotowanie PDF do wydruku.",
@@ -321,7 +347,7 @@ function createPrintService({ windowController }) {
         const outputDir = normalizedState.print.pdfOutputDir;
         if (!outputDir) {
           throw new Error(
-            "Wlaczono zapis PDF po wydruku, ale nie ustawiono folderu docelowego."
+            "Włączono zapis PDF po wydruku, ale nie ustawiono folderu docelowego."
           );
         }
 
@@ -341,7 +367,7 @@ function createPrintService({ windowController }) {
 
     sendPrintStatus({
       phase: "spooling",
-      printerName: printer.printerName || "domyslna drukarka systemowa",
+      printerName: printer.printerName || "domyślna drukarka systemowa",
       printedPages: 0,
       totalPages: fallbackPageCount,
       message: "Trwa wysylanie gotowego PDF do drukarki.",
@@ -365,7 +391,7 @@ function createPrintService({ windowController }) {
 
     return {
       success: true,
-      printerName: printer.printerName || "domyslna drukarka systemowa",
+      printerName: printer.printerName || "domyślna drukarka systemowa",
       colorMode: printer.colorSupported ? "color" : "grayscale",
       pdfPath,
       pdfError,
@@ -375,6 +401,7 @@ function createPrintService({ windowController }) {
   }
 
   return {
+    saveCurrentPreviewAsDocx,
     printCurrentPreviewToDefaultPrinter,
   };
 }

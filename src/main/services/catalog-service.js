@@ -29,7 +29,7 @@ function createCatalogService() {
       customsOffices = await listCustomsOffices();
       originCountries = await listOriginCountries();
     } catch (error) {
-      catalogError = `Nie udalo sie odczytac slownikow aplikacji: ${error.message}`;
+      catalogError = `Nie udało się odczytać słowników aplikacji: ${error.message}`;
     }
 
     return {

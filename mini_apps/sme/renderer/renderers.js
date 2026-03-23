@@ -73,7 +73,7 @@ export function createRenderers({ store, extensions }) {
     if (stateRef.currentProjectPath) {
       elements.projectIndicator.textContent = `${stateRef.currentProjectPath}${suffix}`;
     } else {
-      elements.projectIndicator.textContent = `Projekt w pamieci${suffix}`;
+      elements.projectIndicator.textContent = `Projekt w pamięci${suffix}`;
     }
 
     const titleBase = stateRef.currentProjectPath
@@ -156,8 +156,8 @@ export function createRenderers({ store, extensions }) {
     elements.updateDetail.textContent =
       stateRef.updateGate.detail ||
       (stateRef.updateGate.allowInstall
-        ? "Kliknij Zaktualizuj, aby pobrac nowy instalator."
-        : "Kliknij Sprobuj ponownie, aby odswiezyc stan release.");
+        ? "Kliknij Zaktualizuj, aby pobrać nowy instalator."
+        : "Kliknij Spróbuj ponownie, aby odświeżyć stan release.");
     elements.updateRetry.hidden = !stateRef.updateGate.allowRetry;
     elements.updateInstall.hidden = !stateRef.updateGate.allowInstall;
     elements.updateInstall.textContent = isIntegrityProblem
@@ -168,7 +168,7 @@ export function createRenderers({ store, extensions }) {
       0,
       stateRef.updateGate.allowInstall
         ? "Gotowe do pobrania aktualizacji."
-        : "Oczekiwanie na ponowna probe."
+        : "Oczekiwanie na ponowną próbę."
     );
   }
 
@@ -219,9 +219,9 @@ export function createRenderers({ store, extensions }) {
   function openPrintStatusModal(pageCount) {
     stateRef.isPrinting = true;
     elements.printStatusModal.hidden = false;
-    elements.printStatusPrinter.textContent = "domyslna systemowa";
+    elements.printStatusPrinter.textContent = "domyślna systemowa";
     elements.printStatusSummary.textContent = "Przygotowywanie dokumentu do druku";
-    elements.printStatusDetail.textContent = "Budowanie podgladu i przygotowanie zadania.";
+    elements.printStatusDetail.textContent = "Budowanie podglądu i przygotowanie zadania.";
     setPrintProgress(0, pageCount);
     setPrintStatusModalBusy(true);
   }
@@ -235,17 +235,17 @@ export function createRenderers({ store, extensions }) {
   function updatePrintStatusModalAfterPrepare(pageCount) {
     elements.printStatusSummary.textContent = "Dokument gotowy, rozpoczynam drukowanie";
     elements.printStatusDetail.textContent =
-      `Przygotowano ${pageCount} stron i rozpoczeto wysylanie do drukarki.`;
+      `Przygotowano ${pageCount} stron i rozpoczęto wysyłanie do drukarki.`;
     setPrintProgress(0, pageCount);
   }
 
   function updatePrintStatusModalSuccess(result, pageCount) {
-    const modeLabel = result.colorMode === "grayscale" ? "czarno-bialy" : "kolor";
+    const modeLabel = result.colorMode === "grayscale" ? "czarno-biały" : "kolor";
     const printedPages = Number(result.printedPages) || pageCount;
     const totalPages = Number(result.totalPages) || pageCount;
-    elements.printStatusPrinter.textContent = result.printerName || "domyslna systemowa";
+    elements.printStatusPrinter.textContent = result.printerName || "domyślna systemowa";
     elements.printStatusSummary.textContent = "Gotowe";
-    elements.printStatusDetail.textContent = `Wydrukowano ${printedPages} z ${totalPages} stron na ${result.printerName || "drukarce domyslnej"} (${modeLabel}).`;
+    elements.printStatusDetail.textContent = `Wydrukowano ${printedPages} z ${totalPages} stron na ${result.printerName || "drukarce domyślnej"} (${modeLabel}).`;
     setPrintProgress(printedPages, totalPages);
 
     if (result.pdfError) {
@@ -263,7 +263,7 @@ export function createRenderers({ store, extensions }) {
   }
 
   function updatePrintStatusModalError(error) {
-    elements.printStatusSummary.textContent = "Nie udalo sie uruchomic drukowania.";
+    elements.printStatusSummary.textContent = "Nie udało się uruchomić drukowania.";
     elements.printStatusDetail.textContent = error.message;
     stateRef.isPrinting = false;
     setPrintStatusModalBusy(false);
@@ -462,7 +462,7 @@ export function createRenderers({ store, extensions }) {
       .join("");
 
     elements.settingsCustomsOffice.innerHTML = [
-      '<option value="">Nowy urzad...</option>',
+      '<option value="">Nowy urząd...</option>',
       ...stateRef.customsOffices.map(
         (office) =>
           `<option value="${office.id}">${escapeHtml(`${office.code} - ${office.name}`)}</option>`
@@ -675,11 +675,11 @@ export function createRenderers({ store, extensions }) {
       stateRef.pendingPrintLayout = null;
       elements.printRoot.innerHTML = `
         <div class="document document--error">
-          <p class="document__paragraph">Nie udalo sie zbudowac podgladu wydruku.</p>
+          <p class="document__paragraph">Nie udało się zbudować podglądu wydruku.</p>
           <p class="document__paragraph">${escapeHtml(error.message)}</p>
         </div>
       `;
-      showStatus(`Blad podgladu wydruku: ${error.message}`);
+      showStatus(`Błąd podglądu wydruku: ${error.message}`);
     }
 
     renderProjectIndicator();

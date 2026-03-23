@@ -9,6 +9,7 @@ export default {
     ctx.project.setPrintRenderer(renderDefaultPrint);
     ctx.commands.register("show-print", () => ctx.system.actions.showPrintPreview());
     ctx.commands.register("print", () => ctx.system.actions.printProject());
+    ctx.commands.register("save-docx", () => ctx.system.actions.saveDocx());
     ctx.commands.register("back", () => ctx.system.actions.goBackFromPrint());
     ctx.commands.register("choose-pdf-output-dir", () =>
       ctx.system.actions.choosePdfOutputDir()

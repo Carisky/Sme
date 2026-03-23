@@ -151,6 +151,10 @@ function registerIpcHandlers({
     return printService.printCurrentPreviewToDefaultPrinter(state);
   });
 
+  ipcMain.handle("print:save-docx", async (_event, state, context) => {
+    return printService.saveCurrentPreviewAsDocx(state, context);
+  });
+
   ipcMain.handle("update:check", async () => {
     const updateGate = await updateService.evaluateUpdateGate({ forceRefresh: true });
     if (cachedShellBootstrap) {

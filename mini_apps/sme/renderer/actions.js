@@ -10,7 +10,7 @@ export function createActions({ store, renderers, extensions }) {
       return result.updateGate.message;
     }
 
-    return result.error || result.catalogError || "Zaladowano pusty projekt startowy.";
+    return result.error || result.catalogError || "Załadowano pusty projekt startowy.";
   }
 
   function markDirty(value = true) {
@@ -31,7 +31,7 @@ export function createActions({ store, renderers, extensions }) {
       try {
         await bridge.saveAppSettings(bridge.extractAppSettings(stateRef.state));
       } catch (error) {
-        renderers.showStatus(`Nie udalo sie zapisac ustawien aplikacji: ${error.message}`);
+        renderers.showStatus(`Nie udało się zapisać ustawień aplikacji: ${error.message}`);
       }
     }, 250);
   }
@@ -74,7 +74,7 @@ export function createActions({ store, renderers, extensions }) {
       return true;
     }
 
-    return window.confirm("Sa niezapisane zmiany. Kontynuowac?");
+    return window.confirm("Są niezapisane zmiany. Kontynuować?");
   }
 
   function applyBootstrapPayload(result, options = {}) {
@@ -124,7 +124,7 @@ export function createActions({ store, renderers, extensions }) {
     }
 
     if (result.appId && result.appId !== "sme") {
-      const message = `Ten projekt nalezy do modulu ${result.appId}. Otworz go z ekranu modulow.`;
+      const message = `Ten projekt należy do modułu ${result.appId}. Otwórz go z ekranu modułów.`;
       window.alert(message);
       renderers.showStatus(message);
       return null;
@@ -177,7 +177,7 @@ export function createActions({ store, renderers, extensions }) {
   async function showPrintPreview() {
     if (stateRef.snapshot.validation.errors.length > 0) {
       window.alert(
-        "Uzupelnij numer i date noty we wszystkich rozpoczetych wierszach korekty."
+        "Uzupełnij numer i datę noty we wszystkich rozpoczętych wierszach korekty."
       );
       renderers.setActiveTab("dane");
       return null;
@@ -185,7 +185,7 @@ export function createActions({ store, renderers, extensions }) {
 
     renderers.setActiveTab("wydruk");
     await renderers.waitForPrintPreviewReady();
-    renderers.showStatus("Podglad wydruku jest gotowy.");
+    renderers.showStatus("Podgląd wydruku jest gotowy.");
     return true;
   }
 
@@ -195,7 +195,7 @@ export function createActions({ store, renderers, extensions }) {
     }
 
     if (stateRef.snapshot.validation.errors.length > 0) {
-      window.alert("Nie mozna drukowac, dopoki sa bledy walidacji.");
+      window.alert("Nie można drukować, dopóki są błędy walidacji.");
       renderers.setActiveTab("dane");
       return null;
     }
@@ -204,7 +204,7 @@ export function createActions({ store, renderers, extensions }) {
       stateRef.state.print?.savePdfAfterPrint &&
       !String(stateRef.state.print?.pdfOutputDir || "").trim()
     ) {
-      window.alert("Wlaczono zapis PDF po wydruku, ale nie ustawiono folderu docelowego.");
+      window.alert("Włączono zapis PDF po wydruku, ale nie ustawiono folderu docelowego.");
       renderers.setActiveTab("ustawienia");
       return null;
     }
@@ -222,12 +222,12 @@ export function createActions({ store, renderers, extensions }) {
         pageCount: resolvedPageCount,
       },
     });
-    const modeLabel = result.colorMode === "grayscale" ? "czarno-bialy" : "kolor";
+    const modeLabel = result.colorMode === "grayscale" ? "czarno-biały" : "kolor";
     renderers.updatePrintStatusModalSuccess(result, resolvedPageCount);
 
     if (result.pdfError) {
       renderers.showStatus(
-        `Wydrukowano na ${result.printerName} (${modeLabel}), ale zapis PDF nie udal sie: ${result.pdfError}`
+        `Wydrukowano na ${result.printerName} (${modeLabel}), ale zapis PDF nie udał się: ${result.pdfError}`
       );
       return result;
     }
@@ -242,6 +242,37 @@ export function createActions({ store, renderers, extensions }) {
     }
 
     renderers.showStatus(`Wydrukowano na ${result.printerName} (${modeLabel}).`);
+    return result;
+  }
+
+  async function saveDocx() {
+    if (stateRef.snapshot.validation.errors.length > 0) {
+      window.alert("Nie można zapisać DOCX, dopóki są błędy walidacji.");
+      renderers.setActiveTab("dane");
+      return null;
+    }
+
+    renderers.setActiveTab("wydruk");
+    await renderers.waitForPrintPreviewReady();
+    const pageCount = renderers.getPrintPageCount() || 0;
+    const result = await bridge.savePreviewAsDocx(
+      {
+        ...stateRef.state,
+        print: {
+          ...stateRef.state.print,
+          pageCount,
+        },
+      },
+      {
+        customsOffices: stateRef.customsOffices,
+      }
+    );
+
+    if (result.canceled) {
+      return null;
+    }
+
+    renderers.showStatus(`Zapisano DOCX: ${basename(result.filePath)}.`);
     return result;
   }
 
@@ -334,7 +365,7 @@ export function createActions({ store, renderers, extensions }) {
   function createOreKindDraft() {
     stateRef.oreKindDraftId = null;
     renderers.renderOreKindEditor(null);
-    renderers.showStatus("Wprowadz dane nowego rodzaju rudy i zapisz je do slownika.");
+    renderers.showStatus("Wprowadź dane nowego rodzaju rudy i zapisz je do słownika.");
   }
 
   async function deleteOreKind() {
@@ -342,11 +373,11 @@ export function createActions({ store, renderers, extensions }) {
       stateRef.oreKinds.find((item) => item.id === stateRef.oreKindDraftId) || null;
 
     if (!currentOreKind) {
-      renderers.showStatus("Wybierz rodzaj rudy do usuniecia.");
+      renderers.showStatus("Wybierz rodzaj rudy do usunięcia.");
       return null;
     }
 
-    if (!window.confirm(`Usunac rodzaj rudy "${currentOreKind.name}"?`)) {
+    if (!window.confirm(`Usunąć rodzaj rudy "${currentOreKind.name}"?`)) {
       return null;
     }
 
@@ -369,7 +400,7 @@ export function createActions({ store, renderers, extensions }) {
     renderers.renderOreKindOptions(stateRef.state.oreKind);
     renderers.populateInputs();
     recompute();
-    renderers.showStatus(`Usunieto rodzaj rudy ${currentOreKind.name}.`);
+    renderers.showStatus(`Usunięto rodzaj rudy ${currentOreKind.name}.`);
     return result;
   }
 
@@ -399,14 +430,14 @@ export function createActions({ store, renderers, extensions }) {
     renderers.renderCustomsOfficeOptions();
     renderers.populateInputs();
     recompute();
-    renderers.showStatus(`Zapisano urzad ${result.savedOffice?.code || ""}.`);
+    renderers.showStatus(`Zapisano urząd ${result.savedOffice?.code || ""}.`);
     return result;
   }
 
   function createOfficeDraft() {
     stateRef.officeDraftId = null;
     renderers.renderCustomsOfficeEditor(null);
-    renderers.showStatus("Wprowadz dane nowego urzedu i zapisz je do slownika.");
+    renderers.showStatus("Wprowadź dane nowego urzędu i zapisz je do słownika.");
   }
 
   async function saveOriginCountry() {
@@ -442,7 +473,7 @@ export function createActions({ store, renderers, extensions }) {
   function createOriginCountryDraft() {
     stateRef.originCountryDraftId = null;
     renderers.renderOriginCountryEditor(null);
-    renderers.showStatus("Wprowadz dane nowego kraju pochodzenia i zapisz je do slownika.");
+    renderers.showStatus("Wprowadź dane nowego kraju pochodzenia i zapisz je do słownika.");
   }
 
   async function choosePdfOutputDir() {
@@ -592,6 +623,7 @@ export function createActions({ store, renderers, extensions }) {
     recompute,
     refreshUpdateGate,
     replaceProjectState,
+    saveDocx,
     saveOreKind,
     saveOffice,
     saveOriginCountry,
