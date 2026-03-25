@@ -318,6 +318,10 @@ function registerIpcHandlers({
     return rejContService.saveDbContainer(record);
   });
 
+  ipcMain.handle("rej-cont:containers:update", async (_event, options) => {
+    return rejContService.updateDbContainers(options);
+  });
+
   ipcMain.on("window:set-title", (_event, title) => {
     windowController.setTitle(title);
   });

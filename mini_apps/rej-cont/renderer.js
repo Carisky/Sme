@@ -44,6 +44,7 @@ const stateRef = {
   nextOffset: 0,
   hasMore: false,
   isLoading: false,
+  isRefreshing: false,
   isSubmitting: false,
   filters: createEmptyFilters(),
   statusOptions: [],
@@ -233,9 +234,13 @@ function renderViewSwitch() {
   elements.observedCount.textContent = String(stateRef.observedIds.length);
   elements.gridTitle.textContent =
     stateRef.activeView === "observed" ? "Obserwowane kontenery" : "Container";
-  elements.refreshButton.textContent =
-    stateRef.activeView === "observed" ? "Odswiez obserwowane" : "Odswiez";
-  elements.refreshButton.disabled = stateRef.isLoading;
+  if (stateRef.isRefreshing) {
+    elements.refreshButton.textContent = "Aktualizuje...";
+  } else {
+    elements.refreshButton.textContent =
+      stateRef.activeView === "observed" ? "Odswiez obserwowane" : "Odswiez";
+  }
+  elements.refreshButton.disabled = stateRef.isLoading || stateRef.isRefreshing;
 }
 
 function renderSummary() {
@@ -269,7 +274,7 @@ function renderSummary() {
     elements.recordsMeta.textContent = "Brak danych.";
   }
 
-  if (stateRef.isLoading) {
+  if (stateRef.isLoading || stateRef.isRefreshing) {
     elements.loadMoreButton.textContent = "Ladowanie...";
   } else if (stateRef.hasMore) {
     elements.loadMoreButton.textContent = "Dociagnij kolejne 500";
@@ -279,7 +284,8 @@ function renderSummary() {
     elements.loadMoreButton.textContent = "Wczytano wszystko";
   }
 
-  elements.loadMoreButton.disabled = stateRef.isLoading || !stateRef.hasMore;
+  elements.loadMoreButton.disabled =
+    stateRef.isLoading || stateRef.isRefreshing || !stateRef.hasMore;
 }
 
 function renderRows() {
@@ -524,6 +530,51 @@ async function submitCreate() {
   }
 }
 
+async function updateCurrentContainers() {
+  if (stateRef.isLoading || stateRef.isRefreshing) {
+    return null;
+  }
+
+  const containerIds = stateRef.rows
+    .map((row) => asPositiveInteger(row.id))
+    .filter(Boolean);
+
+  if (containerIds.length === 0) {
+    setStatus("Brak kontenerow do aktualizacji.");
+    return null;
+  }
+
+  stateRef.isRefreshing = true;
+  renderViewSwitch();
+  renderSummary();
+
+  try {
+    const result = await bridge.updateRejContContainers({
+      containerIds,
+    });
+    await loadContainers();
+
+    const errorSummary =
+      Array.isArray(result?.errors) && result.errors.length > 0
+        ? ` Bledy: ${result.errors.map((entry) => `${entry.terminalName}: ${entry.message}`).join(" | ")}`
+        : "";
+
+    setStatus(
+      `Aktualizacja: odswiezono ${Number(result?.touchedCount) || 0}, z danymi ${Number(result?.updatedCount) || 0}, pominieto swieze ${Number(result?.skippedFreshCount) || 0}.${errorSummary}`
+    );
+
+    return result;
+  } catch (error) {
+    console.error(error);
+    window.alert(error.message);
+    setStatus(error.message);
+    return null;
+  } finally {
+    stateRef.isRefreshing = false;
+    renderAll();
+  }
+}
+
 async function toggleObserved(containerId) {
   const normalizedId = asPositiveInteger(containerId);
   if (!normalizedId) {
@@ -570,7 +621,7 @@ async function handleAction(action, payload = {}) {
     case "home":
       return bridge.openHome();
     case "refresh":
-      return loadContainers();
+      return updateCurrentContainers();
     case "apply-filters":
       return loadContainers();
     case "reset-filters":

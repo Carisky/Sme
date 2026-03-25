@@ -137,6 +137,8 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("rej-cont:containers:list", options),
   createRejContContainer: (record) =>
     ipcRenderer.invoke("rej-cont:containers:create", record),
+  updateRejContContainers: (options) =>
+    ipcRenderer.invoke("rej-cont:containers:update", options),
   onPrintStatus: (callback) => {
     ipcRenderer.removeAllListeners("print:status");
     ipcRenderer.on("print:status", (_event, payload) => callback(payload));
