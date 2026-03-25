@@ -1,0 +1,9 @@
+generator rejContClient {
+  provider   = "prisma-client-js"
+  output     = "../../node_modules/.prisma/rej-cont-client"
+  engineType = "client"
+}
+
+datasource rejContDb {
+  provider = "postgresql"
+}

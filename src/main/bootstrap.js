@@ -93,6 +93,13 @@ function bootstrapMainApp() {
         // Ignore catalog disconnect errors on shutdown.
       }
 
+      try {
+        const { disconnectRejContPrisma } = require("../rej-cont/prisma");
+        await disconnectRejContPrisma();
+      } catch {
+        // Ignore rej-cont disconnect errors on shutdown.
+      }
+
       app.exit(0);
     })();
   });

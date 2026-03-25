@@ -8,13 +8,22 @@
     "start": "electron .",
     "icons:generate": "node scripts/generate-icons.cjs",
     "seed": "node prisma/seed.js",
-    "test": "node test/core.test.js && node test/print-docx-builder.test.js && node test/mini-app-catalog.test.js && node test/launcher-preferences.test.js && node test/wct-cen-db.test.js && node test/cen-imtreks.test.js && node test/ore-catalog-store.test.js",
+    "test": "node test/core.test.js && node test/print-docx-builder.test.js && node test/mini-app-catalog.test.js && node test/launcher-preferences.test.js && node test/wct-cen-db.test.js && node test/cen-imtreks.test.js && node test/ore-catalog-store.test.js && node test/rej-cont-prisma.test.js",
     "make:portable": "node scripts/make-portable.cjs",
     "make:installer": "node scripts/make-portable.cjs",
     "push:remote": "node scripts/push-remote.cjs",
     "push:mini-apps": "node scripts/push-remote.cjs --mini-apps-only",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name init_ore_catalog",
+    "prisma:generate:rej-cont": "prisma generate --config prisma/rej-cont/prisma.config.ts",
+    "prisma:validate:main": "prisma validate",
+    "prisma:validate:rej-cont": "prisma validate --config prisma/rej-cont/prisma.config.ts",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:main": "prisma migrate dev",
+    "prisma:migrate:status:main": "prisma migrate status",
+    "prisma:migrate:deploy:main": "prisma migrate deploy",
+    "prisma:migrate:rej-cont": "prisma migrate dev --config prisma/rej-cont/prisma.config.ts",
+    "prisma:migrate:status:rej-cont": "prisma migrate status --config prisma/rej-cont/prisma.config.ts",
+    "prisma:migrate:deploy:rej-cont": "prisma migrate deploy --config prisma/rej-cont/prisma.config.ts",
     "prisma:seed": "prisma db seed"
   },
   "repository": {
@@ -27,10 +36,12 @@
   "license": "SEE LICENSE IN LICENSE",
   "type": "commonjs",
   "dependencies": {
+    "@prisma/adapter-pg": "^7.2.0",
     "@libsql/client": "^0.17.0",
     "@prisma/adapter-libsql": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "cfb": "^1.2.2",
+    "pg": "^8.16.3",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
