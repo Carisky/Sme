@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>REJ CONT</title>
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <img class="brand__mark" src="./icon.svg" alt="Ikona REJ CONT" width="68" height="68" />
+          <div>
+            <p class="eyebrow">Kontenery rej-cont</p>
+            <h1>REJ CONT</h1>
+            <p id="grid-summary" class="brand__summary">Ladowanie danych...</p>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button type="button" data-action="refresh" class="button--soft">Odswiez</button>
+          <button type="button" data-action="home" class="button--minimal">Moduly</button>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="card filters-card">
+          <div class="card__header">
+            <div>
+              <p class="eyebrow">Filtry</p>
+              <h2>Widok bazy</h2>
+            </div>
+            <p class="muted-copy">Pobieranie idzie paczkami po 500 rekordow.</p>
+          </div>
+
+          <div class="filters-grid">
+            <label class="field">
+              <span>Status</span>
+              <select id="filter-status"></select>
+            </label>
+
+            <label class="field">
+              <span>Terminal</span>
+              <select id="filter-terminal"></select>
+            </label>
+
+            <label class="field">
+              <span>Created od</span>
+              <input type="datetime-local" id="filter-created-from" />
+            </label>
+
+            <label class="field">
+              <span>Created do</span>
+              <input type="datetime-local" id="filter-created-to" />
+            </label>
+
+            <label class="field">
+              <span>Refresh od</span>
+              <input type="datetime-local" id="filter-refresh-from" />
+            </label>
+
+            <label class="field">
+              <span>Refresh do</span>
+              <input type="datetime-local" id="filter-refresh-to" />
+            </label>
+          </div>
+
+          <div class="filters-actions">
+            <button type="button" data-action="apply-filters" class="button--strong">Filtruj</button>
+            <button type="button" data-action="reset-filters" class="button--soft">Reset</button>
+            <button type="button" id="load-more-button" data-action="load-more" class="button--minimal">
+              Dociagnij kolejne 500
+            </button>
+          </div>
+        </section>
+
+        <section class="card card--table">
+          <div class="card__header card__header--spread">
+            <div>
+              <p class="eyebrow">Data grid</p>
+              <h2>Container</h2>
+            </div>
+            <p id="records-meta" class="muted-copy">Brak danych.</p>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Number</th>
+                  <th>MRN</th>
+                  <th>Stop</th>
+                  <th>Last refresh</th>
+                  <th>Status</th>
+                  <th>Terminal</th>
+                  <th>Created at</th>
+                </tr>
+              </thead>
+              <tbody id="table-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <footer class="statusbar">
+        <span id="status-text">Gotowe.</span>
+      </footer>
+    </div>
+
+    <button
+      type="button"
+      class="fab"
+      data-action="open-modal"
+      aria-label="Dodaj lub importuj kontener"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M4 16.5V20h3.5L18.2 9.3l-3.5-3.5L4 16.5Zm11.7-10.7 3.5 3.5 1.2-1.2a1.5 1.5 0 0 0 0-2.1l-1.4-1.4a1.5 1.5 0 0 0-2.1 0l-1.2 1.2Z"
+          fill="currentColor"
+        />
+      </svg>
+    </button>
+
+    <div id="modal-root" class="modal" hidden>
+      <div class="modal__backdrop" data-action="close-modal"></div>
+      <section
+        class="modal__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+      >
+        <header class="modal__header">
+          <div>
+            <p class="eyebrow">Operacje</p>
+            <h2 id="modal-title">Dodawanie kontenera</h2>
+          </div>
+          <button type="button" class="button--minimal" data-action="close-modal">Zamknij</button>
+        </header>
+
+        <div class="mode-switch" role="tablist" aria-label="Tryb modalki">
+          <button type="button" id="mode-create" class="mode-switch__button" data-action="switch-create">
+            Dodawanie
+          </button>
+          <button type="button" id="mode-import" class="mode-switch__button" data-action="switch-import">
+            Import
+          </button>
+        </div>
+
+        <div class="modal__body">
+          <section id="create-panel" class="panel">
+            <div class="form-grid">
+              <label class="field">
+                <span>Number</span>
+                <input type="text" id="draft-number" maxlength="30" placeholder="MSCU1234567" />
+              </label>
+
+              <label class="field">
+                <span>MRN</span>
+                <input type="text" id="draft-mrn" maxlength="40" placeholder="Opcjonalnie" />
+              </label>
+
+              <label class="field field--wide">
+                <span>Stop</span>
+                <input type="text" id="draft-stop" maxlength="255" placeholder="Opcjonalnie" />
+              </label>
+
+              <label class="field">
+                <span>Status</span>
+                <input type="text" id="draft-status" maxlength="30" placeholder="Opcjonalnie" />
+              </label>
+
+              <label class="field">
+                <span>Terminal</span>
+                <select id="draft-terminal"></select>
+              </label>
+            </div>
+
+            <div class="info-strip">
+              <div>
+                <strong>Wymagane pole</strong>
+                <span>Tylko container number musi byc podany przy dodawaniu.</span>
+              </div>
+              <div>
+                <strong>Daty</strong>
+                <span>Created at i last refresh time ustawia backend automatycznie.</span>
+              </div>
+            </div>
+          </section>
+
+          <section id="import-panel" class="panel" hidden>
+            <div class="import-layout">
+              <article class="import-dropzone">
+                <p class="eyebrow">Import</p>
+                <h3>Strefa pliku</h3>
+                <p>
+                  Tutaj pojawi sie wygodny upload arkusza lub CSV. Na razie to tylko
+                  placeholder bez logiki backendowej.
+                </p>
+                <button type="button" class="button--soft" disabled>Wybierz plik</button>
+              </article>
+
+              <article class="import-card">
+                <p class="eyebrow">Mapowanie</p>
+                <h3>Kolumny wejsciowe</h3>
+                <ul class="placeholder-list">
+                  <li>Number -> Container number</li>
+                  <li>MRN -> MRN</li>
+                  <li>Status -> Status</li>
+                  <li>Terminal -> Terminal enum</li>
+                </ul>
+              </article>
+
+              <article class="import-card">
+                <p class="eyebrow">Walidacja</p>
+                <h3>Kontrola importu</h3>
+                <ul class="placeholder-list">
+                  <li>Podglad liczby rekordow</li>
+                  <li>Wykrycie brakujacych terminali</li>
+                  <li>Raport duplikatow container number</li>
+                  <li>Przelacznik replace / append</li>
+                </ul>
+              </article>
+            </div>
+          </section>
+        </div>
+
+        <footer class="modal__footer">
+          <span id="modal-status" class="muted-copy">Wypelnij dane i dodaj kontener.</span>
+          <div class="toolbar">
+            <button type="button" class="button--minimal" data-action="close-modal">Anuluj</button>
+            <button type="button" id="submit-button" data-action="submit-container" class="button--strong">
+              Dodaj kontener
+            </button>
+          </div>
+        </footer>
+      </section>
+    </div>
+
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>

@@ -11,6 +11,7 @@ const { createMiniAppRegistryService } = require("./services/mini-app-registry-s
 const { createModuleDiscoveryService } = require("./services/module-discovery-service");
 const { createPrintService } = require("./services/print-service");
 const { createProjectService } = require("./services/project-service");
+const { createRejContService } = require("./services/rej-cont-service");
 const { createUpdateService } = require("./services/update-service");
 const { createWctCenService } = require("./services/wct-cen-service");
 const { registerIpcHandlers } = require("./ipc/register-ipc-handlers");
@@ -36,6 +37,7 @@ function bootstrapMainApp() {
     windowController,
     catalogService,
   });
+  const rejContService = createRejContService();
   const wctCenService = createWctCenService({ windowController });
   const updateService = createUpdateService({
     windowController,
@@ -53,6 +55,7 @@ function bootstrapMainApp() {
     updateService,
     moduleDiscoveryService,
     cenImtreksService,
+    rejContService,
     wctCenService,
   });
 

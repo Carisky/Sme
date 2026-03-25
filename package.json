@@ -8,7 +8,7 @@
     "start": "electron .",
     "icons:generate": "node scripts/generate-icons.cjs",
     "seed": "node prisma/seed.js",
-    "test": "node test/core.test.js && node test/print-docx-builder.test.js && node test/mini-app-catalog.test.js && node test/launcher-preferences.test.js && node test/wct-cen-db.test.js && node test/cen-imtreks.test.js && node test/ore-catalog-store.test.js && node test/rej-cont-prisma.test.js",
+    "test": "node test/core.test.js && node test/print-docx-builder.test.js && node test/mini-app-catalog.test.js && node test/launcher-preferences.test.js && node test/wct-cen-db.test.js && node test/cen-imtreks.test.js && node test/ore-catalog-store.test.js && node test/rej-cont-prisma.test.js && node test/rej-cont-store.test.js",
     "make:portable": "node scripts/make-portable.cjs",
     "make:installer": "node scripts/make-portable.cjs",
     "push:remote": "node scripts/push-remote.cjs",

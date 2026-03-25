@@ -10,6 +10,7 @@ function registerIpcHandlers({
   updateService,
   moduleDiscoveryService,
   cenImtreksService,
+  rejContService,
   wctCenService,
 }) {
   let cachedShellBootstrap = null;
@@ -307,6 +308,14 @@ function registerIpcHandlers({
 
   ipcMain.handle("wct-cen:db:save", async (_event, dbPath, record) => {
     return wctCenService.saveDbRecord(dbPath, record);
+  });
+
+  ipcMain.handle("rej-cont:containers:list", async (_event, options) => {
+    return rejContService.listDbContainers(options);
+  });
+
+  ipcMain.handle("rej-cont:containers:create", async (_event, record) => {
+    return rejContService.saveDbContainer(record);
   });
 
   ipcMain.on("window:set-title", (_event, title) => {

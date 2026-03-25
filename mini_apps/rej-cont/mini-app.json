@@ -1,0 +1,9 @@
+{
+  "id": "rej-cont",
+  "name": "REJ CONT",
+  "description": "Siatka kontenerow rej-cont z filtrami, ladowaniem po 500 oraz recznym dodawaniem.",
+  "version": "0.1.0",
+  "order": 25,
+  "page": "index.html",
+  "icon": "icon.svg"
+}

@@ -133,6 +133,10 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("wct-cen:db:list", dbPath, options),
   saveWctCenLookupRecord: (dbPath, record) =>
     ipcRenderer.invoke("wct-cen:db:save", dbPath, record),
+  listRejContContainers: (options) =>
+    ipcRenderer.invoke("rej-cont:containers:list", options),
+  createRejContContainer: (record) =>
+    ipcRenderer.invoke("rej-cont:containers:create", record),
   onPrintStatus: (callback) => {
     ipcRenderer.removeAllListeners("print:status");
     ipcRenderer.on("print:status", (_event, payload) => callback(payload));
