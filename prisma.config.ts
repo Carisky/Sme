@@ -1,7 +1,11 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "prisma/config";
-import { getRejContDatasourceUrl, isRejContSchemaSelected } from "./prisma/config-utils";
+import {
+  getRejContDatasourceUrl,
+  getRejContShadowDatabaseUrl,
+  isRejContSchemaSelected,
+} from "./prisma/config-utils";
 
 const configDirectory = path.dirname(fileURLToPath(import.meta.url));
 const useRejContModule = isRejContSchemaSelected(configDirectory);
@@ -18,5 +22,6 @@ export default defineConfig({
       },
   datasource: {
     url: useRejContModule ? getRejContDatasourceUrl(configDirectory) : "file:./prisma/dev.db",
+    shadowDatabaseUrl: useRejContModule ? getRejContShadowDatabaseUrl(configDirectory) : undefined,
   },
 });

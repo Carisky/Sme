@@ -7,3 +7,20 @@ generator rejContClient {
 datasource rejContDb {
   provider = "postgresql"
 }
+
+model Container {
+  id              Int       @id @default(autoincrement())
+  number          String    @rejContDb.VarChar(30)
+  mrn             String    @rejContDb.VarChar(40)
+  stop            String    @rejContDb.VarChar(255)
+  lastRefreshTime DateTime  @rejContDb.Timestamp(0)
+  status          String    @rejContDb.VarChar(30)
+  terminalName    Terminal
+  createdAt       DateTime  @default(now()) @rejContDb.Timestamp(0)
+}
+
+enum Terminal {
+  BCT
+  DCT
+  GCT
+}

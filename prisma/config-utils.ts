@@ -90,7 +90,7 @@ function buildRejContEnvCandidates(projectRoot: string): string[] {
   ];
 }
 
-export function getRejContDatasourceUrl(projectRoot: string): string {
+function loadRejContEnv(projectRoot: string): void {
   const seenCandidates = new Set<string>();
 
   for (const candidatePath of buildRejContEnvCandidates(projectRoot)) {
@@ -106,8 +106,23 @@ export function getRejContDatasourceUrl(projectRoot: string): string {
       break;
     }
   }
+}
 
+export function getRejContDatasourceUrl(projectRoot: string): string {
+  loadRejContEnv(projectRoot);
   return String(process.env.POSTGRES_DATABASE_URL || process.env.DATABASE_URL || "").trim();
+}
+
+export function getRejContShadowDatabaseUrl(projectRoot: string): string | undefined {
+  loadRejContEnv(projectRoot);
+
+  const shadowDatabaseUrl = String(
+    process.env.REJ_CONT_SHADOW_DATABASE_URL ||
+      process.env.POSTGRES_SHADOW_DATABASE_URL ||
+      ""
+  ).trim();
+
+  return shadowDatabaseUrl || undefined;
 }
 
 export function isRejContSchemaSelected(projectRoot: string): boolean {
