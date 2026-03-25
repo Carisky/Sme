@@ -5,6 +5,7 @@ const {
   buildContainerWhereInput,
   createContainer,
   listContainers,
+  normalizeContainerIds,
   normalizeCreateContainerInput,
 } = require("../src/rej-cont/store");
 
@@ -22,8 +23,11 @@ async function main() {
   assert.equal(normalized.stop, null);
   assert.equal(normalized.status, null);
   assert.equal(normalized.terminalName, null);
+  assert.deepEqual(normalizeContainerIds([1, "2", 2, 0, -3, "abc", 5]), [1, 2, 5]);
 
   const where = buildContainerWhereInput({
+    number: " mscu 123 ",
+    containerIds: [77, "88"],
     status: "OPEN",
     terminalName: "GCT",
     createdAtFrom: "2026-03-01T00:00",
@@ -33,12 +37,16 @@ async function main() {
   });
 
   assert.ok(Array.isArray(where.AND));
-  assert.deepEqual(where.AND[0], { status: "OPEN" });
-  assert.deepEqual(where.AND[1], { terminalName: "GCT" });
-  assert.ok(where.AND[2].createdAt.gte instanceof Date);
-  assert.ok(where.AND[2].createdAt.lte instanceof Date);
-  assert.ok(where.AND[3].lastRefreshTime.gte instanceof Date);
-  assert.ok(where.AND[3].lastRefreshTime.lte instanceof Date);
+  assert.deepEqual(where.AND[0], {
+    number: { contains: "MSCU123", mode: "insensitive" },
+  });
+  assert.deepEqual(where.AND[1], { id: { in: [77, 88] } });
+  assert.deepEqual(where.AND[2], { status: "OPEN" });
+  assert.deepEqual(where.AND[3], { terminalName: "GCT" });
+  assert.ok(where.AND[4].createdAt.gte instanceof Date);
+  assert.ok(where.AND[4].createdAt.lte instanceof Date);
+  assert.ok(where.AND[5].lastRefreshTime.gte instanceof Date);
+  assert.ok(where.AND[5].lastRefreshTime.lte instanceof Date);
 
   const calls = {};
   const prisma = {
@@ -82,6 +90,8 @@ async function main() {
     limit: 999,
     offset: 500,
     filters: {
+      number: " mscu 123 ",
+      containerIds: [77, "78", 78],
       status: "OPEN",
       terminalName: "BCT",
     },
@@ -90,9 +100,20 @@ async function main() {
   assert.equal(calls.findMany.take, REJ_CONT_PAGE_SIZE);
   assert.equal(calls.findMany.skip, 500);
   assert.deepEqual(calls.count.where, {
-    AND: [{ status: "OPEN" }, { terminalName: "BCT" }],
+    AND: [
+      { number: { contains: "MSCU123", mode: "insensitive" } },
+      { id: { in: [77, 78] } },
+      { status: "OPEN" },
+      { terminalName: "BCT" },
+    ],
   });
-  assert.deepEqual(calls.groupBy.where, { terminalName: "BCT" });
+  assert.deepEqual(calls.groupBy.where, {
+    AND: [
+      { number: { contains: "MSCU123", mode: "insensitive" } },
+      { id: { in: [77, 78] } },
+      { terminalName: "BCT" },
+    ],
+  });
   assert.equal(listed.totalCount, 702);
   assert.equal(listed.limit, REJ_CONT_PAGE_SIZE);
   assert.equal(listed.offset, 500);
@@ -119,6 +140,14 @@ async function main() {
   assert.equal(created.number, "OOLU9911223");
   assert.equal(created.terminalName, "");
   assert.match(created.lastRefreshTime, /^2026-03-25T18:15:00/);
+
+  const emptyObserved = await listContainers(prisma, {
+    filters: {
+      containerIds: [],
+    },
+  });
+  assert.deepEqual(emptyObserved.items, []);
+  assert.equal(emptyObserved.totalCount, 0);
 
   console.log("rej-cont store tests passed");
 }

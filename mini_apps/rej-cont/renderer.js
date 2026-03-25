@@ -1,12 +1,19 @@
 const bridge = window.bridge;
+const MODULE_STORAGE_KEY = "rej-cont.settings";
 const PAGE_SIZE = 500;
 const FALLBACK_TERMINALS = ["BCT", "DCT", "GCT"];
 
 const elements = {
   gridSummary: document.getElementById("grid-summary"),
+  gridTitle: document.getElementById("grid-title"),
   recordsMeta: document.getElementById("records-meta"),
   statusText: document.getElementById("status-text"),
   tableBody: document.getElementById("table-body"),
+  refreshButton: document.getElementById("refresh-button"),
+  viewAll: document.getElementById("view-all"),
+  viewObserved: document.getElementById("view-observed"),
+  observedCount: document.getElementById("observed-count"),
+  filterNumber: document.getElementById("filter-number"),
   filterStatus: document.getElementById("filter-status"),
   filterTerminal: document.getElementById("filter-terminal"),
   filterCreatedFrom: document.getElementById("filter-created-from"),
@@ -30,6 +37,8 @@ const elements = {
 };
 
 const stateRef = {
+  activeView: "all",
+  observedIds: [],
   rows: [],
   totalCount: 0,
   nextOffset: 0,
@@ -50,6 +59,25 @@ function asText(value) {
   }
 
   return String(value).trim();
+}
+
+function asPositiveInteger(value) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return 0;
+  }
+
+  return parsed;
+}
+
+function normalizeObservedIds(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(value.map((entry) => asPositiveInteger(entry)).filter(Boolean))
+  );
 }
 
 function escapeHtml(value) {
@@ -86,6 +114,7 @@ function displayValue(value) {
 
 function createEmptyFilters() {
   return {
+    number: "",
     status: "",
     terminalName: "",
     createdAtFrom: "",
@@ -107,6 +136,14 @@ function createEmptyDraft() {
 
 function setStatus(message) {
   elements.statusText.textContent = message;
+}
+
+function isObserved(containerId) {
+  return stateRef.observedIds.includes(asPositiveInteger(containerId));
+}
+
+function getViewLabel() {
+  return stateRef.activeView === "observed" ? "obserwowanych" : "rekordow";
 }
 
 function updateSelectOptions(select, values, options = {}) {
@@ -141,6 +178,7 @@ function updateSelectOptions(select, values, options = {}) {
 }
 
 function writeFiltersToDom() {
+  elements.filterNumber.value = asText(stateRef.filters.number);
   updateSelectOptions(elements.filterStatus, stateRef.statusOptions, {
     value: stateRef.filters.status,
     anyLabel: "Wszystkie statusy",
@@ -157,6 +195,7 @@ function writeFiltersToDom() {
 
 function readFiltersFromDom() {
   return {
+    number: asText(elements.filterNumber.value),
     status: asText(elements.filterStatus.value),
     terminalName: asText(elements.filterTerminal.value),
     createdAtFrom: asText(elements.filterCreatedFrom.value),
@@ -188,19 +227,44 @@ function readDraftFromDom() {
   };
 }
 
+function renderViewSwitch() {
+  elements.viewAll.classList.toggle("is-active", stateRef.activeView === "all");
+  elements.viewObserved.classList.toggle("is-active", stateRef.activeView === "observed");
+  elements.observedCount.textContent = String(stateRef.observedIds.length);
+  elements.gridTitle.textContent =
+    stateRef.activeView === "observed" ? "Obserwowane kontenery" : "Container";
+  elements.refreshButton.textContent =
+    stateRef.activeView === "observed" ? "Odswiez obserwowane" : "Odswiez";
+  elements.refreshButton.disabled = stateRef.isLoading;
+}
+
 function renderSummary() {
+  const observedCount = stateRef.observedIds.length;
+
   if (stateRef.isLoading) {
-    elements.gridSummary.textContent = "Ladowanie kontenerow z bazy...";
+    elements.gridSummary.textContent =
+      stateRef.activeView === "observed"
+        ? "Ladowanie obserwowanych kontenerow..."
+        : "Ladowanie kontenerow z bazy...";
+  } else if (stateRef.activeView === "observed" && observedCount === 0) {
+    elements.gridSummary.textContent = "Nie masz jeszcze zadnych obserwowanych kontenerow.";
   } else if (!stateRef.rows.length) {
-    elements.gridSummary.textContent = "Brak rekordow dla aktualnych filtrow.";
+    elements.gridSummary.textContent =
+      stateRef.activeView === "observed"
+        ? "Brak obserwowanych kontenerow dla aktualnych filtrow."
+        : "Brak rekordow dla aktualnych filtrow.";
+  } else if (stateRef.activeView === "observed") {
+    elements.gridSummary.textContent = `Obserwowane: ${stateRef.rows.length} z ${stateRef.totalCount}.`;
   } else {
     elements.gridSummary.textContent = `Pokazano ${stateRef.rows.length} z ${stateRef.totalCount} rekordow.`;
   }
 
   if (stateRef.totalCount > 0) {
     elements.recordsMeta.textContent = stateRef.hasMore
-      ? `Widocznych ${stateRef.rows.length} / ${stateRef.totalCount}. Kolejna paczka zacznie sie od offset ${stateRef.nextOffset}.`
-      : `Widocznych ${stateRef.rows.length} / ${stateRef.totalCount}.`;
+      ? `Widocznych ${stateRef.rows.length} / ${stateRef.totalCount} ${getViewLabel()}. Kolejna paczka zacznie sie od offset ${stateRef.nextOffset}.`
+      : `Widocznych ${stateRef.rows.length} / ${stateRef.totalCount} ${getViewLabel()}.`;
+  } else if (stateRef.activeView === "observed" && observedCount === 0) {
+    elements.recordsMeta.textContent = "Przypnij kontener z glownej listy, zeby pojawil sie tutaj.";
   } else {
     elements.recordsMeta.textContent = "Brak danych.";
   }
@@ -209,6 +273,8 @@ function renderSummary() {
     elements.loadMoreButton.textContent = "Ladowanie...";
   } else if (stateRef.hasMore) {
     elements.loadMoreButton.textContent = "Dociagnij kolejne 500";
+  } else if (stateRef.activeView === "observed" && observedCount === 0) {
+    elements.loadMoreButton.textContent = "Brak obserwowanych";
   } else {
     elements.loadMoreButton.textContent = "Wczytano wszystko";
   }
@@ -220,7 +286,16 @@ function renderRows() {
   if (stateRef.isLoading && stateRef.rows.length === 0) {
     elements.tableBody.innerHTML = `
       <tr>
-        <td colspan="8">Trwa pobieranie pierwszej paczki 500 rekordow...</td>
+        <td colspan="9">Trwa pobieranie pierwszej paczki 500 rekordow...</td>
+      </tr>
+    `;
+    return;
+  }
+
+  if (stateRef.activeView === "observed" && stateRef.observedIds.length === 0) {
+    elements.tableBody.innerHTML = `
+      <tr>
+        <td colspan="9">Brak przypietych kontenerow. Uzyj przycisku "Przypnij" w glownej tabeli.</td>
       </tr>
     `;
     return;
@@ -229,15 +304,18 @@ function renderRows() {
   if (stateRef.rows.length === 0) {
     elements.tableBody.innerHTML = `
       <tr>
-        <td colspan="8">Brak kontenerow dla wybranego zestawu filtrow.</td>
+        <td colspan="9">Brak kontenerow dla wybranego zestawu filtrow.</td>
       </tr>
     `;
     return;
   }
 
   elements.tableBody.innerHTML = stateRef.rows
-    .map(
-      (row) => `
+    .map((row) => {
+      const observed = isObserved(row.id);
+      const actionLabel = observed ? "Odepnij" : "Przypnij";
+
+      return `
         <tr>
           <td>${escapeHtml(row.id)}</td>
           <td>${escapeHtml(row.number)}</td>
@@ -247,9 +325,19 @@ function renderRows() {
           <td><span class="cell-status">${escapeHtml(displayValue(row.status))}</span></td>
           <td><span class="cell-terminal">${escapeHtml(displayValue(row.terminalName))}</span></td>
           <td>${escapeHtml(formatGridDate(row.createdAt))}</td>
+          <td class="cell-actions">
+            <button
+              type="button"
+              class="pin-button${observed ? " is-active" : ""}"
+              data-action="toggle-observed"
+              data-container-id="${escapeHtml(row.id)}"
+            >
+              ${escapeHtml(actionLabel)}
+            </button>
+          </td>
         </tr>
-      `
-    )
+      `;
+    })
     .join("");
 }
 
@@ -281,9 +369,42 @@ function renderModal() {
 
 function renderAll() {
   writeFiltersToDom();
+  renderViewSwitch();
   renderSummary();
   renderRows();
   renderModal();
+}
+
+async function persistSettings() {
+  await bridge.saveModuleStorage(MODULE_STORAGE_KEY, {
+    observedIds: [...stateRef.observedIds],
+  });
+}
+
+async function loadSettings() {
+  const settings = (await bridge.loadModuleStorage(MODULE_STORAGE_KEY)) || {};
+  stateRef.observedIds = normalizeObservedIds(settings.observedIds);
+}
+
+function buildRequestFilters() {
+  const filters = {
+    ...stateRef.filters,
+  };
+
+  if (stateRef.activeView === "observed") {
+    filters.containerIds = [...stateRef.observedIds];
+  }
+
+  return filters;
+}
+
+function applyEmptyListState() {
+  stateRef.rows = [];
+  stateRef.totalCount = 0;
+  stateRef.nextOffset = null;
+  stateRef.hasMore = false;
+  stateRef.statusOptions = [];
+  stateRef.terminalOptions = [...FALLBACK_TERMINALS];
 }
 
 async function loadContainers(options = {}) {
@@ -296,6 +417,13 @@ async function loadContainers(options = {}) {
     stateRef.filters = readFiltersFromDom();
   }
 
+  if (stateRef.activeView === "observed" && stateRef.observedIds.length === 0) {
+    applyEmptyListState();
+    renderAll();
+    setStatus("Brak obserwowanych kontenerow.");
+    return null;
+  }
+
   stateRef.isLoading = true;
   renderAll();
 
@@ -303,7 +431,7 @@ async function loadContainers(options = {}) {
     const result = await bridge.listRejContContainers({
       limit: PAGE_SIZE,
       offset: append ? stateRef.nextOffset || stateRef.rows.length : 0,
-      filters: stateRef.filters,
+      filters: buildRequestFilters(),
     });
 
     const nextItems = Array.isArray(result?.items) ? result.items : [];
@@ -324,7 +452,9 @@ async function loadContainers(options = {}) {
     setStatus(
       append
         ? `Dociagnieto ${nextItems.length} rekordow. Widocznych ${stateRef.rows.length} z ${stateRef.totalCount}.`
-        : `Wczytano ${stateRef.rows.length} z ${stateRef.totalCount} rekordow.`
+        : stateRef.activeView === "observed"
+          ? `Wczytano ${stateRef.rows.length} z ${stateRef.totalCount} obserwowanych kontenerow.`
+          : `Wczytano ${stateRef.rows.length} z ${stateRef.totalCount} rekordow.`
     );
 
     return result;
@@ -394,7 +524,48 @@ async function submitCreate() {
   }
 }
 
-async function handleAction(action) {
+async function toggleObserved(containerId) {
+  const normalizedId = asPositiveInteger(containerId);
+  if (!normalizedId) {
+    return null;
+  }
+
+  const alreadyObserved = isObserved(normalizedId);
+  stateRef.observedIds = alreadyObserved
+    ? stateRef.observedIds.filter((entry) => entry !== normalizedId)
+    : [...stateRef.observedIds, normalizedId].sort((left, right) => left - right);
+
+  await persistSettings();
+
+  if (stateRef.activeView === "observed") {
+    await loadContainers();
+  } else {
+    renderViewSwitch();
+    renderSummary();
+    renderRows();
+  }
+
+  setStatus(
+    alreadyObserved
+      ? `Usunieto kontener ${normalizedId} z obserwowanych.`
+      : `Dodano kontener ${normalizedId} do obserwowanych.`
+  );
+
+  return true;
+}
+
+async function switchView(nextView) {
+  const normalizedView = nextView === "observed" ? "observed" : "all";
+  if (stateRef.activeView === normalizedView) {
+    return null;
+  }
+
+  stateRef.activeView = normalizedView;
+  await loadContainers();
+  return true;
+}
+
+async function handleAction(action, payload = {}) {
   switch (action) {
     case "home":
       return bridge.openHome();
@@ -406,6 +577,12 @@ async function handleAction(action) {
       return resetFilters();
     case "load-more":
       return loadContainers({ append: true });
+    case "switch-view-all":
+      return switchView("all");
+    case "switch-view-observed":
+      return switchView("observed");
+    case "toggle-observed":
+      return toggleObserved(payload.containerId);
     case "open-modal":
       return openModal("create");
     case "close-modal":
@@ -430,7 +607,9 @@ document.addEventListener("click", async (event) => {
   }
 
   try {
-    await handleAction(actionNode.dataset.action);
+    await handleAction(actionNode.dataset.action, {
+      containerId: actionNode.dataset.containerId,
+    });
   } catch (error) {
     console.error(error);
     window.alert(error.message);
@@ -446,6 +625,7 @@ window.addEventListener("keydown", (event) => {
 
 async function bootstrap() {
   bridge.setWindowTitle("REJ CONT");
+  await loadSettings();
   renderAll();
   await loadContainers();
 }

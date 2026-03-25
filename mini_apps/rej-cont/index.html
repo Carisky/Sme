@@ -23,10 +23,27 @@
         </div>
 
         <div class="toolbar">
-          <button type="button" data-action="refresh" class="button--soft">Odswiez</button>
+          <button type="button" id="refresh-button" data-action="refresh" class="button--soft">
+            Odswiez
+          </button>
           <button type="button" data-action="home" class="button--minimal">Moduly</button>
         </div>
       </header>
+
+      <nav class="view-switch" aria-label="Zakladki rej-cont">
+        <button type="button" id="view-all" class="view-switch__button" data-action="switch-view-all">
+          Wszystkie
+        </button>
+        <button
+          type="button"
+          id="view-observed"
+          class="view-switch__button"
+          data-action="switch-view-observed"
+        >
+          Obserwuje
+          <span id="observed-count" class="view-switch__badge">0</span>
+        </button>
+      </nav>
 
       <main class="content">
         <section class="card filters-card">
@@ -39,6 +56,11 @@
           </div>
 
           <div class="filters-grid">
+            <label class="field">
+              <span>Number</span>
+              <input type="search" id="filter-number" placeholder="Szukaj po numerze kontenera" />
+            </label>
+
             <label class="field">
               <span>Status</span>
               <select id="filter-status"></select>
@@ -83,7 +105,7 @@
           <div class="card__header card__header--spread">
             <div>
               <p class="eyebrow">Data grid</p>
-              <h2>Container</h2>
+              <h2 id="grid-title">Container</h2>
             </div>
             <p id="records-meta" class="muted-copy">Brak danych.</p>
           </div>
@@ -100,6 +122,7 @@
                   <th>Status</th>
                   <th>Terminal</th>
                   <th>Created at</th>
+                  <th>Obserwuje</th>
                 </tr>
               </thead>
               <tbody id="table-body"></tbody>

@@ -167,6 +167,42 @@ button:focus-visible {
   gap: 10px;
 }
 
+.view-switch {
+  display: inline-flex;
+  gap: 10px;
+}
+
+.view-switch__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.view-switch__button.is-active {
+  background: var(--accent);
+  color: #f7f4ee;
+}
+
+.view-switch__badge {
+  display: inline-grid;
+  min-width: 1.7rem;
+  height: 1.7rem;
+  padding: 0 0.4rem;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(31, 94, 87, 0.12);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.view-switch__button.is-active .view-switch__badge {
+  background: rgba(255, 255, 255, 0.18);
+  color: #f7f4ee;
+}
+
 .button--strong {
   background: var(--accent);
   color: #f7f4ee;
@@ -208,11 +244,16 @@ button:focus-visible {
   align-items: center;
 }
 
-.filters-grid,
+.filters-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
 .form-grid {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .field {
@@ -247,7 +288,7 @@ button:focus-visible {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1080px;
+  min-width: 1220px;
 }
 
 .data-table thead th {
@@ -300,6 +341,26 @@ button:focus-visible {
   border-radius: 12px;
   padding: 0.34rem 0.62rem;
   background: rgba(217, 134, 75, 0.14);
+  color: #9a5625;
+}
+
+.cell-actions {
+  text-align: right;
+}
+
+.pin-button {
+  min-width: 112px;
+  padding: 0.56rem 0.82rem;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+.pin-button.is-active {
+  background: rgba(217, 134, 75, 0.18);
+  border-color: rgba(217, 134, 75, 0.28);
   color: #9a5625;
 }
 
@@ -489,12 +550,14 @@ button:focus-visible {
   }
 
   .toolbar,
-  .filters-actions {
+  .filters-actions,
+  .view-switch {
     justify-content: stretch;
   }
 
   .toolbar button,
   .filters-actions button,
+  .view-switch button,
   .modal__footer .toolbar button {
     width: 100%;
   }

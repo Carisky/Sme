@@ -1,6 +1,16 @@
 const REJ_CONT_PAGE_SIZE = 500;
 const TERMINAL_OPTIONS = Object.freeze(["BCT", "DCT", "GCT"]);
 const TERMINAL_SET = new Set(TERMINAL_OPTIONS);
+const EMPTY_RESULT = Object.freeze({
+  items: [],
+  totalCount: 0,
+  limit: REJ_CONT_PAGE_SIZE,
+  offset: 0,
+  nextOffset: null,
+  hasMore: false,
+  statusOptions: [],
+  terminalOptions: [...TERMINAL_OPTIONS],
+});
 
 function asText(value) {
   if (value === null || value === undefined) {
@@ -17,6 +27,18 @@ function asNullableText(value) {
 
 function normalizeContainerNumber(value) {
   return asText(value).replace(/[\s\u00a0]+/g, "").toUpperCase();
+}
+
+function normalizeContainerIds(value) {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const normalizedIds = value
+    .map((entry) => Number(entry))
+    .filter((entry) => Number.isInteger(entry) && entry > 0);
+
+  return Array.from(new Set(normalizedIds));
 }
 
 function normalizeTerminalName(value) {
@@ -78,6 +100,25 @@ function buildDateRange(fieldName, fromValue, toValue) {
 
 function buildContainerWhereInput(filters = {}, options = {}) {
   const clauses = [];
+  const number = normalizeContainerNumber(filters.number);
+  const containerIds = normalizeContainerIds(filters.containerIds);
+
+  if (number) {
+    clauses.push({
+      number: {
+        contains: number,
+        mode: "insensitive",
+      },
+    });
+  }
+
+  if (containerIds && containerIds.length > 0) {
+    clauses.push({
+      id: {
+        in: containerIds,
+      },
+    });
+  }
 
   const status = asText(filters.status);
   if (status && !options.excludeStatus) {
@@ -179,6 +220,15 @@ async function listContainers(prisma, options = {}) {
   }
 
   const { limit, offset, filters } = normalizeListOptions(options);
+  const containerIds = normalizeContainerIds(filters.containerIds);
+  if (Array.isArray(filters.containerIds) && containerIds && containerIds.length === 0) {
+    return {
+      ...EMPTY_RESULT,
+      limit,
+      offset,
+    };
+  }
+
   const where = buildContainerWhereInput(filters);
   const statusWhere = buildContainerWhereInput(filters, {
     excludeStatus: true,
@@ -244,6 +294,7 @@ module.exports = {
   buildContainerWhereInput,
   createContainer,
   listContainers,
+  normalizeContainerIds,
   normalizeContainerNumber,
   normalizeCreateContainerInput,
   normalizeTerminalName,
