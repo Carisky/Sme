@@ -26,6 +26,9 @@
           <button type="button" id="refresh-button" data-action="refresh" class="button--soft">
             Odswiez
           </button>
+          <button type="button" id="settings-button" data-action="open-settings" class="button--minimal">
+            Ustawienia
+          </button>
           <button type="button" data-action="home" class="button--minimal">Moduly</button>
         </div>
       </header>
@@ -122,6 +125,7 @@
                   <th>Status</th>
                   <th>Terminal</th>
                   <th>Created at</th>
+                  <th>Dodali</th>
                   <th>Obserwuje</th>
                 </tr>
               </thead>
@@ -173,6 +177,14 @@
           <button type="button" id="mode-import" class="mode-switch__button" data-action="switch-import">
             Import
           </button>
+          <button
+            type="button"
+            id="mode-settings"
+            class="mode-switch__button"
+            data-action="switch-settings"
+          >
+            Dane użytkownika
+          </button>
         </div>
 
         <div class="modal__body">
@@ -220,33 +232,79 @@
             <div class="import-layout">
               <article class="import-dropzone">
                 <p class="eyebrow">Import</p>
-                <h3>Strefa pliku</h3>
-                <p>
-                  Tutaj pojawi sie wygodny upload arkusza lub CSV. Na razie to tylko
-                  placeholder bez logiki backendowej.
+                <h3>Plik Excel</h3>
+                <p id="import-file-summary">
+                  Wybierz plik Excel, a aplikacja odczyta arkusze i kolumny do mapowania.
                 </p>
-                <button type="button" class="button--soft" disabled>Wybierz plik</button>
+                <button type="button" class="button--soft" data-action="choose-import-file">
+                  Wybierz plik
+                </button>
               </article>
 
               <article class="import-card">
                 <p class="eyebrow">Mapowanie</p>
-                <h3>Kolumny wejsciowe</h3>
-                <ul class="placeholder-list">
-                  <li>Number -> Container number</li>
-                  <li>MRN -> MRN</li>
-                  <li>Status -> Status</li>
-                  <li>Terminal -> Terminal enum</li>
-                </ul>
+                <h3>Arkusz i kolumny</h3>
+                <div class="field-stack">
+                  <label class="field">
+                    <span>Arkusz</span>
+                    <select id="import-sheet"></select>
+                  </label>
+                  <label class="field">
+                    <span>Kolumna z numerami kontenerow</span>
+                    <select id="import-column"></select>
+                  </label>
+                  <label class="field">
+                    <span>Kolumna z terminalem</span>
+                    <select id="import-terminal-column"></select>
+                  </label>
+                </div>
               </article>
 
               <article class="import-card">
-                <p class="eyebrow">Walidacja</p>
-                <h3>Kontrola importu</h3>
+                <p class="eyebrow">Kontrola</p>
+                <h3>Podglad importu</h3>
+                <ul id="import-preview" class="placeholder-list">
+                  <li>Po wyborze pliku tutaj pojawi sie podsumowanie importu.</li>
+                </ul>
+              </article>
+            </div>
+          </section>
+
+          <section id="settings-panel" class="panel" hidden>
+            <div class="settings-layout">
+              <article class="import-card">
+                <p class="eyebrow">Dane użytkownika</p>
+                <h3>Autor dodania i importu</h3>
+                <div class="field-stack">
+                  <label class="field">
+                    <span>Imie i nazwisko</span>
+                    <input
+                      type="text"
+                      id="user-full-name"
+                      maxlength="120"
+                      placeholder="Jan Kowalski"
+                    />
+                  </label>
+
+                  <label class="field">
+                    <span>Dzial</span>
+                    <input
+                      type="text"
+                      id="user-department"
+                      maxlength="120"
+                      placeholder="Spedycja"
+                    />
+                  </label>
+                </div>
+              </article>
+
+              <article class="import-card">
+                <p class="eyebrow">Opis</p>
+                <h3>Jak to dziala</h3>
                 <ul class="placeholder-list">
-                  <li>Podglad liczby rekordow</li>
-                  <li>Wykrycie brakujacych terminali</li>
-                  <li>Raport duplikatow container number</li>
-                  <li>Przelacznik replace / append</li>
+                  <li>Te dane beda dopisywane do kontenera przy recznym dodaniu i imporcie.</li>
+                  <li>Jesli kontener juz istnieje, rekord nie zostanie nadpisany.</li>
+                  <li>Program zapisze tylko, kto dodawal ten numer do wspolnej bazy.</li>
                 </ul>
               </article>
             </div>

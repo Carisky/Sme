@@ -37,7 +37,7 @@ function bootstrapMainApp() {
     windowController,
     catalogService,
   });
-  const rejContService = createRejContService();
+  const rejContService = createRejContService({ windowController });
   const wctCenService = createWctCenService({ windowController });
   const updateService = createUpdateService({
     windowController,

@@ -137,6 +137,14 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.invoke("rej-cont:containers:list", options),
   createRejContContainer: (record) =>
     ipcRenderer.invoke("rej-cont:containers:create", record),
+  inspectRejContImportWorkbook: () =>
+    ipcRenderer.invoke("rej-cont:import:inspect"),
+  importRejContContainersFromWorkbook: (request) =>
+    ipcRenderer.invoke("rej-cont:import:run", request),
+  onRejContStatus: (callback) => {
+    ipcRenderer.removeAllListeners("rej-cont:status");
+    ipcRenderer.on("rej-cont:status", (_event, payload) => callback(payload));
+  },
   updateRejContContainers: (options) =>
     ipcRenderer.invoke("rej-cont:containers:update", options),
   onPrintStatus: (callback) => {

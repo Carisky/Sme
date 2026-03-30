@@ -1,6 +1,25 @@
+const path = require("node:path");
+
 const REJ_CONT_PAGE_SIZE = 500;
 const TERMINAL_OPTIONS = Object.freeze(["BCT", "DCT", "GCT"]);
 const TERMINAL_SET = new Set(TERMINAL_OPTIONS);
+const CONTAINER_NUMBER_PATTERN = /^[A-Z]{4}\d{7}$/;
+const CONTAINER_ADDITION_SOURCE_KINDS = Object.freeze(["MANUAL", "IMPORT"]);
+const DEFAULT_IMPORT_CHUNK_SIZE = 25;
+const CONTAINER_INCLUDE = Object.freeze({
+  additions: {
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      fullName: true,
+      department: true,
+      sourceKind: true,
+      sourceFileName: true,
+      sourceSheetName: true,
+      createdAt: true,
+    },
+  },
+});
 const EMPTY_RESULT = Object.freeze({
   items: [],
   totalCount: 0,
@@ -29,6 +48,105 @@ function normalizeContainerNumber(value) {
   return asText(value).replace(/[\s\u00a0]+/g, "").toUpperCase();
 }
 
+function isValidContainerNumber(value) {
+  return CONTAINER_NUMBER_PATTERN.test(normalizeContainerNumber(value));
+}
+
+function normalizeImportedContainerNumbers(value) {
+  const entries = Array.isArray(value) ? value : [];
+  const seen = new Set();
+  const numbers = [];
+  let invalidCount = 0;
+  let duplicateCount = 0;
+
+  entries.forEach((entry) => {
+    const rawValue = asText(entry);
+    const normalized = normalizeContainerNumber(entry);
+    if (!normalized || !CONTAINER_NUMBER_PATTERN.test(normalized)) {
+      if (rawValue) {
+        invalidCount += 1;
+      }
+      return;
+    }
+
+    if (seen.has(normalized)) {
+      duplicateCount += 1;
+      return;
+    }
+
+    seen.add(normalized);
+    numbers.push(normalized);
+  });
+
+  return {
+    totalCount: entries.length,
+    numbers,
+    invalidCount,
+    duplicateCount,
+  };
+}
+
+function normalizeImportedContainers(value) {
+  const entries = Array.isArray(value) ? value : [];
+  const seen = new Set();
+  const indexByNumber = new Map();
+  const containers = [];
+  let invalidCount = 0;
+  let duplicateCount = 0;
+  let terminalResolvedCount = 0;
+
+  entries.forEach((entry) => {
+    const rawNumber =
+      entry && typeof entry === "object" && !Array.isArray(entry) ? entry.number : entry;
+    const rawTerminal =
+      entry && typeof entry === "object" && !Array.isArray(entry)
+        ? entry.terminalName || entry.terminal || entry.terminalRawValue
+        : null;
+    const normalizedNumber = normalizeContainerNumber(rawNumber);
+    const parsedTerminalName = parseImportedTerminalName(rawTerminal);
+
+    if (!normalizedNumber || !CONTAINER_NUMBER_PATTERN.test(normalizedNumber)) {
+      if (asText(rawNumber)) {
+        invalidCount += 1;
+      }
+      return;
+    }
+
+    if (seen.has(normalizedNumber)) {
+      duplicateCount += 1;
+
+      const existingIndex = indexByNumber.get(normalizedNumber);
+      if (
+        Number.isInteger(existingIndex) &&
+        parsedTerminalName &&
+        !containers[existingIndex].terminalName
+      ) {
+        containers[existingIndex].terminalName = parsedTerminalName;
+        terminalResolvedCount += 1;
+      }
+      return;
+    }
+
+    seen.add(normalizedNumber);
+    indexByNumber.set(normalizedNumber, containers.length);
+    containers.push({
+      number: normalizedNumber,
+      terminalName: parsedTerminalName,
+    });
+    if (parsedTerminalName) {
+      terminalResolvedCount += 1;
+    }
+  });
+
+  return {
+    totalCount: entries.length,
+    containers,
+    invalidCount,
+    duplicateCount,
+    terminalResolvedCount,
+  };
+}
+
 function normalizeContainerIds(value) {
   if (!Array.isArray(value)) {
     return null;
@@ -52,6 +170,47 @@ function normalizeTerminalName(value) {
   }
 
   return terminalName;
+}
+
+function parseImportedTerminalName(value) {
+  const rawValue = asText(value).toUpperCase();
+  if (!rawValue) {
+    return null;
+  }
+
+  const match = rawValue.match(/\b(BCT|DCT|GCT)\b/);
+  if (!match) {
+    return null;
+  }
+
+  return normalizeTerminalName(match[1]) || null;
+}
+
+function normalizeUserProfile(input = {}, options = {}) {
+  const fullName = asText(input?.fullName);
+  const department = asText(input?.department);
+
+  if (!fullName && !department && options.required !== true) {
+    return null;
+  }
+
+  if (!fullName || !department) {
+    throw new Error("Uzupelnij Dane uzytkownika: imie i nazwisko oraz dzial.");
+  }
+
+  return {
+    fullName,
+    department,
+  };
+}
+
+function normalizeAdditionSourceKind(value) {
+  const sourceKind = asText(value).toUpperCase() || "MANUAL";
+  if (!CONTAINER_ADDITION_SOURCE_KINDS.includes(sourceKind)) {
+    throw new Error(`Nieprawidlowy rodzaj zrodla "${sourceKind}".`);
+  }
+
+  return sourceKind;
 }
 
 function parseDateTimeValue(value, options = {}) {
@@ -179,6 +338,36 @@ function normalizeCreateContainerInput(input = {}) {
   };
 }
 
+function serializeAddedBy(entries) {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+
+  const seen = new Set();
+  const addedBy = [];
+
+  entries.forEach((entry) => {
+    const fullName = asText(entry?.fullName);
+    const department = asText(entry?.department);
+    if (!fullName || !department) {
+      return;
+    }
+
+    const key = `${fullName}\u0000${department}`;
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    addedBy.push({
+      fullName,
+      department,
+    });
+  });
+
+  return addedBy;
+}
+
 function serializeContainer(record = {}) {
   return {
     id: Number(record.id) || 0,
@@ -191,6 +380,7 @@ function serializeContainer(record = {}) {
     status: asText(record.status),
     terminalName: asText(record.terminalName),
     createdAt: record.createdAt ? new Date(record.createdAt).toISOString() : "",
+    addedBy: serializeAddedBy(record.additions),
   };
 }
 
@@ -212,6 +402,87 @@ function normalizeListOptions(options = {}) {
         ? options.filters
         : {},
   };
+}
+
+function buildAdditionCreateInput(containerId, actor, input = {}) {
+  return {
+    containerId,
+    fullName: actor.fullName,
+    department: actor.department,
+    sourceKind: normalizeAdditionSourceKind(input.sourceKind),
+    ...(asNullableText(input.sourceFileName || input.filePath)
+      ? { sourceFileName: path.basename(asText(input.sourceFileName || input.filePath)) }
+      : {}),
+    ...(asNullableText(input.sourceSheetName)
+      ? { sourceSheetName: asText(input.sourceSheetName) }
+      : {}),
+  };
+}
+
+function chunkValues(values, chunkSize) {
+  const normalizedChunkSize =
+    Number.isInteger(Number(chunkSize)) && Number(chunkSize) > 0
+      ? Number(chunkSize)
+      : DEFAULT_IMPORT_CHUNK_SIZE;
+  const chunks = [];
+
+  for (let index = 0; index < values.length; index += normalizedChunkSize) {
+    chunks.push(values.slice(index, index + normalizedChunkSize));
+  }
+
+  return chunks;
+}
+
+async function createContainersBatch(prisma, containers) {
+  if (!Array.isArray(containers) || containers.length === 0) {
+    return;
+  }
+
+  if (typeof prisma?.container?.createMany === "function") {
+    await prisma.container.createMany({
+      data: containers.map((container) => ({
+        number: container.number,
+        ...(container.terminalName ? { terminalName: container.terminalName } : {}),
+      })),
+    });
+    return;
+  }
+
+  for (const container of containers) {
+    await prisma.container.create({
+      data: {
+        number: container.number,
+        ...(container.terminalName ? { terminalName: container.terminalName } : {}),
+      },
+    });
+  }
+}
+
+async function createAdditionsBatch(prisma, additions) {
+  if (!Array.isArray(additions) || additions.length === 0) {
+    return;
+  }
+
+  if (typeof prisma?.containerAddition?.createMany === "function") {
+    await prisma.containerAddition.createMany({
+      data: additions,
+    });
+    return;
+  }
+
+  for (const addition of additions) {
+    await prisma.containerAddition.create({
+      data: addition,
+    });
+  }
+}
+
+async function withTransaction(prisma, callback) {
+  if (typeof prisma?.$transaction !== "function") {
+    return callback(prisma);
+  }
+
+  return prisma.$transaction(async (tx) => callback(tx));
 }
 
 async function listContainers(prisma, options = {}) {
@@ -241,6 +512,7 @@ async function listContainers(prisma, options = {}) {
       skip: offset,
       take: limit,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      include: CONTAINER_INCLUDE,
     }),
     prisma.container.groupBy({
       by: ["status"],
@@ -269,35 +541,238 @@ async function listContainers(prisma, options = {}) {
   };
 }
 
+async function hydrateContainerById(prisma, containerId, fallbackRecord = {}) {
+  if (typeof prisma?.container?.findUnique !== "function") {
+    return serializeContainer(fallbackRecord);
+  }
+
+  const record = await prisma.container.findUnique({
+    where: {
+      id: containerId,
+    },
+    include: CONTAINER_INCLUDE,
+  });
+
+  return serializeContainer(record || fallbackRecord);
+}
+
 async function createContainer(prisma, input = {}) {
-  if (!prisma?.container) {
+  if (!prisma?.container || !prisma?.containerAddition) {
     throw new Error("Prisma klient rej-cont nie jest gotowy.");
   }
 
   const normalized = normalizeCreateContainerInput(input);
-  const data = {
-    number: normalized.number,
-    ...(normalized.mrn ? { mrn: normalized.mrn } : {}),
-    ...(normalized.stop ? { stop: normalized.stop } : {}),
-    ...(normalized.status ? { status: normalized.status } : {}),
-    ...(normalized.terminalName ? { terminalName: normalized.terminalName } : {}),
-  };
+  const actor = normalizeUserProfile(
+    input.userProfile || input.addedBy || input.actor,
+    { required: true }
+  );
+  const sourceKind = normalizeAdditionSourceKind(input.sourceKind || "MANUAL");
 
-  const created = await prisma.container.create({ data });
-  return serializeContainer(created);
+  return withTransaction(prisma, async (tx) => {
+    const existing = await tx.container.findFirst({
+      where: {
+        number: normalized.number,
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+
+    let containerRecord = existing;
+    let created = false;
+
+    if (!containerRecord) {
+      containerRecord = await tx.container.create({
+        data: {
+          number: normalized.number,
+          ...(normalized.mrn ? { mrn: normalized.mrn } : {}),
+          ...(normalized.stop ? { stop: normalized.stop } : {}),
+          ...(normalized.status ? { status: normalized.status } : {}),
+          ...(normalized.terminalName ? { terminalName: normalized.terminalName } : {}),
+        },
+      });
+      created = true;
+    }
+
+    await tx.containerAddition.create({
+      data: buildAdditionCreateInput(containerRecord.id, actor, {
+        sourceKind,
+        sourceFileName: input.sourceFileName,
+        filePath: input.filePath,
+        sourceSheetName: input.sourceSheetName,
+      }),
+    });
+
+    return {
+      created,
+      container: await hydrateContainerById(tx, containerRecord.id, {
+        ...containerRecord,
+        additions: [actor],
+      }),
+    };
+  });
+}
+
+async function importContainers(prisma, request = {}) {
+  if (!prisma?.container || !prisma?.containerAddition) {
+    throw new Error("Prisma klient rej-cont nie jest gotowy.");
+  }
+
+  const actor = normalizeUserProfile(
+    request.userProfile || request.addedBy || request.actor,
+    { required: true }
+  );
+  const normalizedContainers = normalizeImportedContainers(
+    Array.isArray(request.containers) ? request.containers : request.numbers
+  );
+  const sourceKind = normalizeAdditionSourceKind(request.sourceKind || "IMPORT");
+  const sourceFileName = asNullableText(request.sourceFileName || request.filePath);
+  const sourceSheetName = asNullableText(request.sourceSheetName);
+  const onProgress = typeof request.onProgress === "function" ? request.onProgress : null;
+  const chunks = chunkValues(normalizedContainers.containers, request.chunkSize);
+
+  if (normalizedContainers.containers.length === 0) {
+    return {
+      totalRequestedCount: normalizedContainers.totalCount,
+      importedCount: 0,
+      createdCount: 0,
+      existingCount: 0,
+      invalidCount: normalizedContainers.invalidCount,
+      duplicateCount: normalizedContainers.duplicateCount,
+      terminalResolvedCount: normalizedContainers.terminalResolvedCount,
+      sourceFileName: sourceFileName ? path.basename(sourceFileName) : "",
+      sourceSheetName: sourceSheetName || "",
+      actor,
+      chunkCount: 0,
+    };
+  }
+
+  let createdCount = 0;
+  let existingCount = 0;
+  let processedCount = 0;
+
+  onProgress?.({
+    stage: "start",
+    chunkIndex: 0,
+    chunkCount: chunks.length,
+    processedCount: 0,
+    totalCount: normalizedContainers.containers.length,
+    createdCount,
+    existingCount,
+    progress: 0,
+    message: `Import startuje: 0 / ${normalizedContainers.containers.length} kontenerow.`,
+  });
+
+  for (const [chunkIndex, chunkContainers] of chunks.entries()) {
+    const chunkNumbers = chunkContainers.map((container) => container.number);
+    const existingRecords = await prisma.container.findMany({
+      where: {
+        number: {
+          in: chunkNumbers,
+        },
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+
+    const existingByNumber = new Map();
+    existingRecords.forEach((record) => {
+      const containerNumber = normalizeContainerNumber(record.number);
+      if (!containerNumber || existingByNumber.has(containerNumber)) {
+        return;
+      }
+
+      existingByNumber.set(containerNumber, record);
+    });
+
+    const missingContainers = chunkContainers.filter(
+      (container) => !existingByNumber.has(container.number)
+    );
+    existingCount += chunkContainers.length - missingContainers.length;
+
+    await createContainersBatch(prisma, missingContainers);
+    createdCount += missingContainers.length;
+
+    const hydratedRecords =
+      missingContainers.length > 0
+        ? await prisma.container.findMany({
+            where: {
+              number: {
+                in: chunkNumbers,
+              },
+            },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          })
+        : existingRecords;
+
+    const containerIdsByNumber = new Map();
+    hydratedRecords.forEach((record) => {
+      const containerNumber = normalizeContainerNumber(record.number);
+      if (!containerNumber || containerIdsByNumber.has(containerNumber)) {
+        return;
+      }
+
+      containerIdsByNumber.set(containerNumber, record.id);
+    });
+
+    await createAdditionsBatch(
+      prisma,
+      chunkContainers.map((container) =>
+        buildAdditionCreateInput(containerIdsByNumber.get(container.number), actor, {
+          sourceKind,
+          sourceFileName,
+          sourceSheetName,
+        })
+      )
+    );
+
+    processedCount += chunkContainers.length;
+    const progress = Math.round(
+      (processedCount / normalizedContainers.containers.length) * 100
+    );
+    onProgress?.({
+      stage: "chunk",
+      chunkIndex: chunkIndex + 1,
+      chunkCount: chunks.length,
+      processedCount,
+      totalCount: normalizedContainers.containers.length,
+      createdCount,
+      existingCount,
+      progress,
+      message: `Import chunk ${chunkIndex + 1}/${chunks.length}: ${processedCount}/${normalizedContainers.containers.length}, nowe ${createdCount}, istniejace ${existingCount}.`,
+    });
+  }
+
+  return {
+    totalRequestedCount: normalizedContainers.totalCount,
+    importedCount: normalizedContainers.containers.length,
+    createdCount,
+    existingCount,
+    invalidCount: normalizedContainers.invalidCount,
+    duplicateCount: normalizedContainers.duplicateCount,
+    terminalResolvedCount: normalizedContainers.terminalResolvedCount,
+    sourceFileName: sourceFileName ? path.basename(sourceFileName) : "",
+    sourceSheetName: sourceSheetName || "",
+    actor,
+    chunkCount: chunks.length,
+  };
 }
 
 module.exports = {
+  DEFAULT_IMPORT_CHUNK_SIZE,
   REJ_CONT_PAGE_SIZE,
   TERMINAL_OPTIONS,
   asText,
   buildContainerWhereInput,
   createContainer,
+  importContainers,
+  isValidContainerNumber,
   listContainers,
   normalizeContainerIds,
   normalizeContainerNumber,
   normalizeCreateContainerInput,
+  normalizeImportedContainers,
+  normalizeImportedContainerNumbers,
   normalizeTerminalName,
+  parseImportedTerminalName,
+  normalizeUserProfile,
   parseDateTimeValue,
   serializeContainer,
 };

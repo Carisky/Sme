@@ -288,7 +288,7 @@ button:focus-visible {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1220px;
+  min-width: 1420px;
 }
 
 .data-table thead th {
@@ -346,6 +346,10 @@ button:focus-visible {
 
 .cell-actions {
   text-align: right;
+}
+
+.cell-added-by {
+  min-width: 240px;
 }
 
 .pin-button {
@@ -430,7 +434,7 @@ button:focus-visible {
 
 .mode-switch {
   display: inline-grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding: 18px 22px;
 }
@@ -473,6 +477,12 @@ button:focus-visible {
   grid-template-columns: 1.2fr 1fr 1fr;
 }
 
+.settings-layout {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1.2fr 1fr;
+}
+
 .import-dropzone,
 .import-card {
   border-radius: 24px;
@@ -495,6 +505,11 @@ button:focus-visible {
   padding-left: 18px;
   display: grid;
   gap: 10px;
+}
+
+.field-stack {
+  display: grid;
+  gap: 14px;
 }
 
 @keyframes lift-in {
@@ -520,6 +535,10 @@ button:focus-visible {
   }
 
   .import-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-layout {
     grid-template-columns: 1fr;
   }
 }

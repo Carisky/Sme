@@ -318,6 +318,14 @@ function registerIpcHandlers({
     return rejContService.saveDbContainer(record);
   });
 
+  ipcMain.handle("rej-cont:import:inspect", async () => {
+    return rejContService.inspectImportFromDialog();
+  });
+
+  ipcMain.handle("rej-cont:import:run", async (_event, request) => {
+    return rejContService.importFromWorkbook(request);
+  });
+
   ipcMain.handle("rej-cont:containers:update", async (_event, options) => {
     return rejContService.updateDbContainers(options);
   });

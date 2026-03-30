@@ -9,18 +9,38 @@ datasource rejContDb {
 }
 
 model Container {
-  id              Int       @id @default(autoincrement())
-  number          String    @rejContDb.VarChar(30)
-  mrn             String?   @rejContDb.VarChar(40)
-  stop            String?   @rejContDb.VarChar(255)
-  lastRefreshTime DateTime  @default(now()) @rejContDb.Timestamp(0)
-  status          String?   @rejContDb.VarChar(30)
+  id              Int                 @id @default(autoincrement())
+  number          String              @rejContDb.VarChar(30)
+  mrn             String?             @rejContDb.VarChar(40)
+  stop            String?             @rejContDb.VarChar(255)
+  lastRefreshTime DateTime            @default(now()) @rejContDb.Timestamp(0)
+  status          String?             @rejContDb.VarChar(30)
   terminalName    Terminal?
-  createdAt       DateTime  @default(now()) @rejContDb.Timestamp(0)
+  createdAt       DateTime            @default(now()) @rejContDb.Timestamp(0)
+  additions       ContainerAddition[]
+}
+
+model ContainerAddition {
+  id            Int                         @id @default(autoincrement())
+  containerId   Int
+  fullName      String                      @rejContDb.VarChar(120)
+  department    String                      @rejContDb.VarChar(120)
+  sourceKind    ContainerAdditionSourceKind @default(MANUAL)
+  sourceFileName String?                    @rejContDb.VarChar(255)
+  sourceSheetName String?                   @rejContDb.VarChar(120)
+  createdAt     DateTime                    @default(now()) @rejContDb.Timestamp(0)
+  container     Container                   @relation(fields: [containerId], references: [id], onDelete: Cascade)
+
+  @@index([containerId])
 }
 
 enum Terminal {
   BCT
   DCT
   GCT
+}
+
+enum ContainerAdditionSourceKind {
+  MANUAL
+  IMPORT
 }
