@@ -21,7 +21,9 @@ const elements = {
   filterCreatedTo: document.getElementById("filter-created-to"),
   filterRefreshFrom: document.getElementById("filter-refresh-from"),
   filterRefreshTo: document.getElementById("filter-refresh-to"),
-  loadMoreButton: document.getElementById("load-more-button"),
+  pagePrevButton: document.getElementById("page-prev-button"),
+  pageNextButton: document.getElementById("page-next-button"),
+  paginationPages: document.getElementById("pagination-pages"),
   modalRoot: document.getElementById("modal-root"),
   modalTitle: document.getElementById("modal-title"),
   modeCreate: document.getElementById("mode-create"),
@@ -51,8 +53,7 @@ const stateRef = {
   observedIds: [],
   rows: [],
   totalCount: 0,
-  nextOffset: 0,
-  hasMore: false,
+  currentPage: 1,
   isLoading: false,
   isRefreshing: false,
   isSubmitting: false,
@@ -82,6 +83,10 @@ function basename(filePath) {
 function asPositiveInteger(value) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+}
+function normalizePageNumber(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
 function normalizeObservedIds(value) {
   if (!Array.isArray(value)) {
@@ -181,7 +186,22 @@ function formatGridDate(value) {
 function displayValue(value) {
   return asText(value) || "-";
 }
-function formatAddedBy(entries) {
+function getFullNameInitials(value) {
+  const parts = asText(value).split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return "";
+  }
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return (
+    parts
+      .slice(0, 3)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join("") || asText(value).slice(0, 2).toUpperCase()
+  );
+}
+function formatAddedByFull(entries) {
   if (!Array.isArray(entries) || entries.length === 0) {
     return "-";
   }
@@ -195,6 +215,67 @@ function formatAddedBy(entries) {
       .filter(Boolean)
       .join(", ") || "-"
   );
+}
+function formatAddedBy(entries) {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return "-";
+  }
+  return (
+    entries
+      .map((entry) => {
+        const initials = getFullNameInitials(entry?.fullName);
+        const department = asText(entry?.department);
+        return initials ? (department ? `${initials} (${department})` : initials) : "";
+      })
+      .filter(Boolean)
+      .join(", ") || "-"
+  );
+}
+function getTotalPages() {
+  return Math.max(1, Math.ceil(stateRef.totalCount / PAGE_SIZE));
+}
+function getVisibleRange() {
+  if (stateRef.totalCount === 0 || stateRef.rows.length === 0) {
+    return { start: 0, end: 0 };
+  }
+  const start = (normalizePageNumber(stateRef.currentPage) - 1) * PAGE_SIZE + 1;
+  return {
+    start,
+    end: Math.min(stateRef.totalCount, start + stateRef.rows.length - 1),
+  };
+}
+function buildPaginationModel(totalPages, currentPage) {
+  if (totalPages <= 1) {
+    return totalPages === 1 ? [1] : [];
+  }
+  const pages = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1]);
+  if (currentPage <= 3) {
+    pages.add(2);
+    pages.add(3);
+    pages.add(4);
+  }
+  if (currentPage >= totalPages - 2) {
+    pages.add(totalPages - 1);
+    pages.add(totalPages - 2);
+    pages.add(totalPages - 3);
+  }
+
+  const orderedPages = Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((left, right) => left - right);
+
+  const items = [];
+  let previousPage = 0;
+
+  orderedPages.forEach((page) => {
+    if (previousPage > 0 && page - previousPage > 1) {
+      items.push("ellipsis");
+    }
+    items.push(page);
+    previousPage = page;
+  });
+
+  return items;
 }
 function createEmptyFilters() {
   return {
@@ -537,6 +618,9 @@ function renderViewSwitch() {
 }
 function renderSummary() {
   const observedCount = stateRef.observedIds.length;
+  const currentPage = normalizePageNumber(stateRef.currentPage);
+  const totalPages = getTotalPages();
+  const visibleRange = getVisibleRange();
   if (stateRef.isLoading) {
     elements.gridSummary.textContent =
       stateRef.activeView === "observed"
@@ -550,34 +634,53 @@ function renderSummary() {
         ? "Brak obserwowanych kontenerow dla aktualnych filtrow."
         : "Brak rekordow dla aktualnych filtrow.";
   } else if (stateRef.activeView === "observed") {
-    elements.gridSummary.textContent = `Obserwowane: ${stateRef.rows.length} z ${stateRef.totalCount}.`;
+    elements.gridSummary.textContent = `Obserwowane: ${stateRef.rows.length} z ${stateRef.totalCount}. Strona ${currentPage} z ${totalPages}.`;
   } else {
-    elements.gridSummary.textContent = `Pokazano ${stateRef.rows.length} z ${stateRef.totalCount} rekordow.`;
+    elements.gridSummary.textContent = `Pokazano ${stateRef.rows.length} z ${stateRef.totalCount} rekordow. Strona ${currentPage} z ${totalPages}.`;
   }
   if (stateRef.totalCount > 0) {
-    elements.recordsMeta.textContent = stateRef.hasMore
-      ? `Widocznych ${stateRef.rows.length} / ${stateRef.totalCount} ${getViewLabel()}. Kolejna paczka zacznie sie od offset ${stateRef.nextOffset}.`
-      : `Widocznych ${stateRef.rows.length} / ${stateRef.totalCount} ${getViewLabel()}.`;
+    elements.recordsMeta.textContent = `Strona ${currentPage} z ${totalPages}. Widoczne ${visibleRange.start}-${visibleRange.end} z ${stateRef.totalCount} ${getViewLabel()}.`;
   } else if (stateRef.activeView === "observed" && observedCount === 0) {
     elements.recordsMeta.textContent = "Przypnij kontener z glownej listy, zeby pojawil sie tutaj.";
   } else {
     elements.recordsMeta.textContent = "Brak danych.";
   }
-  elements.loadMoreButton.textContent =
-    stateRef.isLoading || stateRef.isRefreshing
-      ? "Ladowanie..."
-      : stateRef.hasMore
-        ? "Dociagnij kolejne 500"
-        : stateRef.activeView === "observed" && observedCount === 0
-          ? "Brak obserwowanych"
-          : "Wczytano wszystko";
-  elements.loadMoreButton.disabled =
-    stateRef.isLoading || stateRef.isRefreshing || !stateRef.hasMore;
+}
+function renderPagination() {
+  const totalPages = getTotalPages();
+  const currentPage = normalizePageNumber(stateRef.currentPage);
+  const disabled = stateRef.isLoading || stateRef.isRefreshing || stateRef.totalCount === 0;
+
+  elements.pagePrevButton.disabled = disabled || currentPage <= 1;
+  elements.pageNextButton.disabled = disabled || currentPage >= totalPages;
+
+  if (stateRef.totalCount === 0) {
+    elements.paginationPages.innerHTML = '<span class="pagination__empty">Brak stron</span>';
+    return;
+  }
+
+  elements.paginationPages.innerHTML = buildPaginationModel(totalPages, currentPage)
+    .map((entry) => {
+      if (entry === "ellipsis") {
+        return '<span class="pagination__ellipsis">...</span>';
+      }
+      return `
+        <button
+          type="button"
+          class="pagination__button${entry === currentPage ? " is-active" : ""}"
+          data-action="go-to-page"
+          data-page="${escapeHtml(entry)}"
+          ${disabled || entry === currentPage ? "disabled" : ""}
+        >
+          ${escapeHtml(entry)}
+        </button>
+      `;
+    })
+    .join("");
 }
 function renderRows() {
   if (stateRef.isLoading && stateRef.rows.length === 0) {
-    elements.tableBody.innerHTML =
-      '<tr><td colspan="10">Trwa pobieranie pierwszej paczki 500 rekordow...</td></tr>';
+    elements.tableBody.innerHTML = '<tr><td colspan="10">Trwa pobieranie danych...</td></tr>';
     return;
   }
   if (stateRef.activeView === "observed" && stateRef.observedIds.length === 0) {
@@ -593,6 +696,8 @@ function renderRows() {
   elements.tableBody.innerHTML = stateRef.rows
     .map((row) => {
       const observed = isObserved(row.id);
+      const addedByPreview = formatAddedBy(row.addedBy);
+      const addedByFull = formatAddedByFull(row.addedBy);
       return `
         <tr>
           <td>${escapeHtml(row.id)}</td>
@@ -603,7 +708,7 @@ function renderRows() {
           <td><span class="cell-status">${escapeHtml(displayValue(row.status))}</span></td>
           <td><span class="cell-terminal">${escapeHtml(displayValue(row.terminalName))}</span></td>
           <td>${escapeHtml(formatGridDate(row.createdAt))}</td>
-          <td class="cell-added-by">${escapeHtml(formatAddedBy(row.addedBy))}</td>
+          <td class="cell-added-by" title="${escapeHtml(addedByFull)}">${escapeHtml(addedByPreview)}</td>
           <td class="cell-actions">
             <button
               type="button"
@@ -702,6 +807,7 @@ function renderAll() {
   writeFiltersToDom();
   renderViewSwitch();
   renderSummary();
+  renderPagination();
   renderRows();
   renderModal();
 }
@@ -729,8 +835,7 @@ function buildRequestFilters() {
 function applyEmptyListState() {
   stateRef.rows = [];
   stateRef.totalCount = 0;
-  stateRef.nextOffset = null;
-  stateRef.hasMore = false;
+  stateRef.currentPage = 1;
   stateRef.statusOptions = [];
   stateRef.terminalOptions = [...FALLBACK_TERMINALS];
 }
@@ -750,35 +855,51 @@ function requireUserProfile() {
   );
   return false;
 }
+async function requestContainerPage(page, filters) {
+  const normalizedPage = normalizePageNumber(page);
+  return bridge.listRejContContainers({
+    limit: PAGE_SIZE,
+    offset: (normalizedPage - 1) * PAGE_SIZE,
+    filters,
+  });
+}
 async function loadContainers(options = {}) {
-  const append = Boolean(options.append);
+  const requestedPage =
+    options.page !== undefined
+      ? normalizePageNumber(options.page)
+      : options.keepPage
+        ? normalizePageNumber(stateRef.currentPage)
+        : 1;
   if (stateRef.isLoading) {
     return null;
   }
-  if (!append) {
-    stateRef.filters = readFiltersFromDom();
-  }
+  stateRef.filters = readFiltersFromDom();
   if (stateRef.activeView === "observed" && stateRef.observedIds.length === 0) {
     applyEmptyListState();
     renderAll();
     setStatus("Brak obserwowanych kontenerow.");
     return null;
   }
+
+  const requestFilters = buildRequestFilters();
   stateRef.isLoading = true;
   renderAll();
   try {
-    const result = await bridge.listRejContContainers({
-      limit: PAGE_SIZE,
-      offset: append ? stateRef.nextOffset || stateRef.rows.length : 0,
-      filters: buildRequestFilters(),
-    });
-    const nextItems = Array.isArray(result?.items) ? result.items : [];
-    stateRef.rows = append ? [...stateRef.rows, ...nextItems] : nextItems;
-    stateRef.totalCount = Number(result?.totalCount) || 0;
-    stateRef.nextOffset = Number.isFinite(Number(result?.nextOffset))
-      ? Number(result.nextOffset)
-      : null;
-    stateRef.hasMore = Boolean(result?.hasMore) && stateRef.nextOffset !== null;
+    let targetPage = requestedPage;
+    let result = await requestContainerPage(targetPage, requestFilters);
+    let totalCount = Number(result?.totalCount) || 0;
+    let totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+    if (totalCount > 0 && targetPage > totalPages) {
+      targetPage = totalPages;
+      result = await requestContainerPage(targetPage, requestFilters);
+      totalCount = Number(result?.totalCount) || 0;
+      totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    }
+
+    stateRef.rows = Array.isArray(result?.items) ? result.items : [];
+    stateRef.totalCount = totalCount;
+    stateRef.currentPage = totalCount > 0 ? targetPage : 1;
     stateRef.statusOptions = Array.isArray(result?.statusOptions)
       ? result.statusOptions.map((value) => asText(value)).filter(Boolean)
       : [];
@@ -786,12 +907,21 @@ async function loadContainers(options = {}) {
       Array.isArray(result?.terminalOptions) && result.terminalOptions.length > 0
         ? result.terminalOptions.map((value) => asText(value)).filter(Boolean)
         : [...FALLBACK_TERMINALS];
+
+    if (stateRef.totalCount === 0) {
+      setStatus(
+        stateRef.activeView === "observed"
+          ? "Brak obserwowanych kontenerow dla aktualnych filtrow."
+          : "Brak rekordow dla aktualnych filtrow."
+      );
+      return result;
+    }
+
+    const visibleRange = getVisibleRange();
     setStatus(
-      append
-        ? `Dociagnieto ${nextItems.length} rekordow. Widocznych ${stateRef.rows.length} z ${stateRef.totalCount}.`
-        : stateRef.activeView === "observed"
-          ? `Wczytano ${stateRef.rows.length} z ${stateRef.totalCount} obserwowanych kontenerow.`
-          : `Wczytano ${stateRef.rows.length} z ${stateRef.totalCount} rekordow.`
+      stateRef.activeView === "observed"
+        ? `Wczytano strone ${stateRef.currentPage} z ${totalPages}. Widoczne ${visibleRange.start}-${visibleRange.end} z ${stateRef.totalCount} obserwowanych kontenerow.`
+        : `Wczytano strone ${stateRef.currentPage} z ${totalPages}. Widoczne ${visibleRange.start}-${visibleRange.end} z ${stateRef.totalCount} rekordow.`
     );
     return result;
   } catch (error) {
@@ -988,7 +1118,7 @@ async function updateCurrentContainers() {
   renderSummary();
   try {
     const result = await bridge.updateRejContContainers({ containerIds });
-    await loadContainers();
+    await loadContainers({ keepPage: true });
     const errorSummary =
       Array.isArray(result?.errors) && result.errors.length > 0
         ? ` Bledy: ${result.errors.map((entry) => `${entry.terminalName}: ${entry.message}`).join(" | ")}`
@@ -1018,10 +1148,11 @@ async function toggleObserved(containerId) {
     : [...stateRef.observedIds, normalizedId].sort((left, right) => left - right);
   await persistSettings();
   if (stateRef.activeView === "observed") {
-    await loadContainers();
+    await loadContainers({ keepPage: true });
   } else {
     renderViewSwitch();
     renderSummary();
+    renderPagination();
     renderRows();
   }
   setStatus(
@@ -1050,8 +1181,12 @@ async function handleAction(action, payload = {}) {
       return loadContainers();
     case "reset-filters":
       return resetFilters();
-    case "load-more":
-      return loadContainers({ append: true });
+    case "page-prev":
+      return loadContainers({ page: normalizePageNumber(stateRef.currentPage) - 1, keepPage: true });
+    case "page-next":
+      return loadContainers({ page: normalizePageNumber(stateRef.currentPage) + 1, keepPage: true });
+    case "go-to-page":
+      return loadContainers({ page: payload.page, keepPage: true });
     case "switch-view-all":
       return switchView("all");
     case "switch-view-observed":
@@ -1096,6 +1231,7 @@ document.addEventListener("click", async (event) => {
   try {
     await handleAction(actionNode.dataset.action, {
       containerId: actionNode.dataset.containerId,
+      page: actionNode.dataset.page,
     });
   } catch (error) {
     console.error(error);

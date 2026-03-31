@@ -277,6 +277,48 @@ button:focus-visible {
   margin-top: 18px;
 }
 
+.table-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.pagination__pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pagination__button,
+.pagination__nav {
+  box-shadow: none;
+}
+
+.pagination__button {
+  min-width: 2.8rem;
+  padding: 0.56rem 0.82rem;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.pagination__button.is-active {
+  background: var(--accent);
+  border-color: transparent;
+  color: #f7f4ee;
+  opacity: 1;
+}
+
+.pagination__ellipsis,
+.pagination__empty {
+  color: var(--muted);
+  padding: 0.42rem 0.18rem;
+}
+
 .table-wrapper {
   overflow: auto;
   border-radius: 22px;
@@ -570,14 +612,25 @@ button:focus-visible {
 
   .toolbar,
   .filters-actions,
+  .table-pagination,
   .view-switch {
     justify-content: stretch;
   }
 
   .toolbar button,
   .filters-actions button,
+  .table-pagination button,
   .view-switch button,
   .modal__footer .toolbar button {
+    width: 100%;
+  }
+
+  .table-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pagination__pages {
     width: 100%;
   }
 

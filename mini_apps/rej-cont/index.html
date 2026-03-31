@@ -55,7 +55,7 @@
               <p class="eyebrow">Filtry</p>
               <h2>Widok bazy</h2>
             </div>
-            <p class="muted-copy">Pobieranie idzie paczkami po 500 rekordow.</p>
+            <p class="muted-copy">Lista jest stronicowana po 500 rekordow na strone.</p>
           </div>
 
           <div class="filters-grid">
@@ -98,9 +98,6 @@
           <div class="filters-actions">
             <button type="button" data-action="apply-filters" class="button--strong">Filtruj</button>
             <button type="button" data-action="reset-filters" class="button--soft">Reset</button>
-            <button type="button" id="load-more-button" data-action="load-more" class="button--minimal">
-              Dociagnij kolejne 500
-            </button>
           </div>
         </section>
 
@@ -131,6 +128,26 @@
               </thead>
               <tbody id="table-body"></tbody>
             </table>
+          </div>
+
+          <div class="table-pagination" aria-label="Paginacja listy kontenerow">
+            <button
+              type="button"
+              id="page-prev-button"
+              data-action="page-prev"
+              class="button--minimal pagination__nav"
+            >
+              Poprzednia
+            </button>
+            <div id="pagination-pages" class="pagination__pages" aria-live="polite"></div>
+            <button
+              type="button"
+              id="page-next-button"
+              data-action="page-next"
+              class="button--minimal pagination__nav"
+            >
+              Nastepna
+            </button>
           </div>
         </section>
       </main>
