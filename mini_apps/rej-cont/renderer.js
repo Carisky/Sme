@@ -21,6 +21,14 @@ const elements = {
   filterCreatedTo: document.getElementById("filter-created-to"),
   filterRefreshFrom: document.getElementById("filter-refresh-from"),
   filterRefreshTo: document.getElementById("filter-refresh-to"),
+  filterUsersField: document.getElementById("filter-users-field"),
+  filterUsersList: document.getElementById("filter-users-list"),
+  filterUsersSummary: document.getElementById("filter-users-summary"),
+  filterUsersOptions: document.getElementById("filter-users-options"),
+  filterDepartmentsField: document.getElementById("filter-departments-field"),
+  filterDepartmentsList: document.getElementById("filter-departments-list"),
+  filterDepartmentsSummary: document.getElementById("filter-departments-summary"),
+  filterDepartmentsOptions: document.getElementById("filter-departments-options"),
   pagePrevButton: document.getElementById("page-prev-button"),
   pageNextButton: document.getElementById("page-next-button"),
   paginationPages: document.getElementById("pagination-pages"),
@@ -61,6 +69,8 @@ const stateRef = {
   filters: createEmptyFilters(),
   statusOptions: [],
   terminalOptions: [...FALLBACK_TERMINALS],
+  userOptions: [],
+  departmentOptions: [],
   modalOpen: false,
   modalMode: "create",
   draft: createEmptyDraft(),
@@ -93,6 +103,12 @@ function normalizeObservedIds(value) {
     return [];
   }
   return Array.from(new Set(value.map((entry) => asPositiveInteger(entry)).filter(Boolean)));
+}
+function normalizeTextList(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return Array.from(new Set(value.map((entry) => asText(entry)).filter(Boolean)));
 }
 function normalizeUserProfile(value) {
   return { fullName: asText(value?.fullName), department: asText(value?.department) };
@@ -286,6 +302,8 @@ function createEmptyFilters() {
     createdAtTo: "",
     lastRefreshTimeFrom: "",
     lastRefreshTimeTo: "",
+    addedByFullNames: [],
+    addedByDepartments: [],
   };
 }
 function createEmptyDraft() {
@@ -363,8 +381,24 @@ function handleRejContStatus(payload = {}) {
 function isObserved(containerId) {
   return stateRef.observedIds.includes(asPositiveInteger(containerId));
 }
+function isGroupsView() {
+  return stateRef.activeView === "groups";
+}
 function getViewLabel() {
-  return stateRef.activeView === "observed" ? "obserwowanych" : "rekordow";
+  return stateRef.activeView === "observed"
+    ? "obserwowanych"
+    : stateRef.activeView === "groups"
+      ? "rekordow grup"
+      : "rekordow";
+}
+function renderFilterVisibility() {
+  const showGroupsFilters = isGroupsView();
+  elements.filterUsersField.hidden = !showGroupsFilters;
+  elements.filterDepartmentsField.hidden = !showGroupsFilters;
+  if (!showGroupsFilters) {
+    elements.filterUsersList.open = false;
+    elements.filterDepartmentsList.open = false;
+  }
 }
 function updateSelectOptions(select, values, options = {}) {
   const includeAny = options.includeAny !== false;
@@ -387,6 +421,88 @@ function updateSelectOptions(select, values, options = {}) {
   });
   select.innerHTML = optionsMarkup.join("");
   select.value = selectedValue;
+}
+function buildCheckboxFilterSummary(selectedValues, availableValues, options = {}) {
+  const normalizedSelectedValues = normalizeTextList(selectedValues);
+  const normalizedAvailableValues = normalizeTextList(availableValues);
+  const allLabel = asText(options.allLabel) || "Wszystkie";
+  const countLabel = asText(options.countLabel) || "Wybrane";
+
+  if (normalizedSelectedValues.length === 0) {
+    return allLabel;
+  }
+  if (
+    normalizedAvailableValues.length > 0 &&
+    normalizedSelectedValues.length >= normalizedAvailableValues.length
+  ) {
+    return allLabel;
+  }
+  if (normalizedSelectedValues.length === 1) {
+    return normalizedSelectedValues[0];
+  }
+  if (normalizedSelectedValues.length === 2) {
+    return normalizedSelectedValues.join(", ");
+  }
+  return `${countLabel}: ${normalizedSelectedValues.length}`;
+}
+function renderCheckboxFilter(options = {}) {
+  const values = Array.from(
+    new Set((Array.isArray(options.values) ? options.values : []).map((value) => asText(value)).filter(Boolean))
+  ).sort((left, right) => left.localeCompare(right, "pl"));
+  const selectedValues = normalizeTextList(options.selectedValues);
+  const valueAttribute = asText(options.valueAttribute);
+  const selectionAttribute = asText(options.selectionAttribute);
+
+  options.summaryNode.textContent = buildCheckboxFilterSummary(selectedValues, values, {
+    allLabel: options.allLabel,
+    countLabel: options.countLabel,
+  });
+
+  if (values.length === 0) {
+    options.optionsNode.innerHTML =
+      '<div class="filter-multiselect__empty">Brak dostepnych opcji.</div>';
+    return;
+  }
+
+  options.optionsNode.innerHTML = `
+    <div class="filter-multiselect__actions">
+      <button type="button" class="button--minimal filter-multiselect__button" ${selectionAttribute}="all">
+        Wszystkie
+      </button>
+      <button type="button" class="button--minimal filter-multiselect__button" ${selectionAttribute}="clear">
+        Wyczysc
+      </button>
+    </div>
+    <div class="filter-multiselect__list">
+      ${values
+        .map(
+          (value) => `
+            <label class="filter-checkbox">
+              <input
+                type="checkbox"
+                ${valueAttribute}="${escapeHtml(value)}"
+                ${selectedValues.includes(value) ? "checked" : ""}
+              />
+              <span>${escapeHtml(value)}</span>
+            </label>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+function getCheckedFilterValues(selector, dataKey) {
+  return Array.from(document.querySelectorAll(selector))
+    .filter((input) => input instanceof HTMLInputElement && input.checked)
+    .map((input) => asText(input.dataset[dataKey]))
+    .filter(Boolean);
+}
+function isClickInsideGroupsFilter(target) {
+  return (
+    target instanceof Element &&
+    (Boolean(target.closest("#filter-users-list")) ||
+      Boolean(target.closest("#filter-departments-list")))
+  );
 }
 function updateMappedSelectOptions(select, items, options = {}) {
   const includePlaceholder = options.includePlaceholder !== false;
@@ -426,6 +542,26 @@ function writeFiltersToDom() {
   elements.filterCreatedTo.value = asText(stateRef.filters.createdAtTo);
   elements.filterRefreshFrom.value = asText(stateRef.filters.lastRefreshTimeFrom);
   elements.filterRefreshTo.value = asText(stateRef.filters.lastRefreshTimeTo);
+  renderCheckboxFilter({
+    values: stateRef.userOptions,
+    selectedValues: stateRef.filters.addedByFullNames,
+    summaryNode: elements.filterUsersSummary,
+    optionsNode: elements.filterUsersOptions,
+    valueAttribute: "data-users-value",
+    selectionAttribute: "data-users-selection",
+    allLabel: "Wszyscy uzytkownicy",
+    countLabel: "Uzytkownicy",
+  });
+  renderCheckboxFilter({
+    values: stateRef.departmentOptions,
+    selectedValues: stateRef.filters.addedByDepartments,
+    summaryNode: elements.filterDepartmentsSummary,
+    optionsNode: elements.filterDepartmentsOptions,
+    valueAttribute: "data-departments-value",
+    selectionAttribute: "data-departments-selection",
+    allLabel: "Wszystkie oddzialy",
+    countLabel: "Oddzialy",
+  });
 }
 function readFiltersFromDom() {
   return {
@@ -436,6 +572,8 @@ function readFiltersFromDom() {
     createdAtTo: asText(elements.filterCreatedTo.value),
     lastRefreshTimeFrom: asText(elements.filterRefreshFrom.value),
     lastRefreshTimeTo: asText(elements.filterRefreshTo.value),
+    addedByFullNames: normalizeTextList(stateRef.filters.addedByFullNames),
+    addedByDepartments: normalizeTextList(stateRef.filters.addedByDepartments),
   };
 }
 function writeDraftToDom() {
@@ -608,11 +746,17 @@ function renderViewSwitch() {
   elements.viewObserved.classList.toggle("is-active", stateRef.activeView === "observed");
   elements.observedCount.textContent = String(stateRef.observedIds.length);
   elements.gridTitle.textContent =
-    stateRef.activeView === "observed" ? "Obserwowane kontenery" : "Kontenery";
+    stateRef.activeView === "observed"
+      ? "Obserwowane kontenery"
+      : stateRef.activeView === "groups"
+        ? "Grupy kontenerow"
+        : "Kontenery";
   elements.refreshButton.textContent = stateRef.isRefreshing
     ? "Aktualizuje..."
     : stateRef.activeView === "observed"
       ? "Odswiez obserwowane"
+      : stateRef.activeView === "groups"
+        ? "Odswiez grupy"
       : "Odswiez";
   elements.refreshButton.disabled = stateRef.isLoading || stateRef.isRefreshing;
 }
@@ -632,9 +776,13 @@ function renderSummary() {
     elements.gridSummary.textContent =
       stateRef.activeView === "observed"
         ? "Brak obserwowanych kontenerow dla aktualnych filtrow."
+        : stateRef.activeView === "groups"
+          ? "Brak kontenerow dla wybranego zestawu filtrow grup."
         : "Brak rekordow dla aktualnych filtrow.";
   } else if (stateRef.activeView === "observed") {
     elements.gridSummary.textContent = `Obserwowane: ${stateRef.rows.length} z ${stateRef.totalCount}. Strona ${currentPage} z ${totalPages}.`;
+  } else if (stateRef.activeView === "groups") {
+    elements.gridSummary.textContent = `Grupy: ${stateRef.rows.length} z ${stateRef.totalCount}. Strona ${currentPage} z ${totalPages}.`;
   } else {
     elements.gridSummary.textContent = `Pokazano ${stateRef.rows.length} z ${stateRef.totalCount} rekordow. Strona ${currentPage} z ${totalPages}.`;
   }
@@ -758,7 +906,7 @@ function getModalStatusText() {
     return `Gotowe do importu z arkusza ${sheet.name}, kolumna ${column.letter}. Wykryto ${column.uniqueContainerCount} unikalnych numerow.`;
   }
   return hasCompleteUserProfile()
-    ? "Wypelnij numer kontenera. Reszta pol jest opcjonalna, a daty ustawia backend."
+    ? "Wpisz jeden numer albo wklej liste numerow oddzielonych przecinkiem. Pozostale pola beda wspolne dla calej paczki."
     : "Przed zapisaniem kontenera uzupelnij Dane uzytkownika.";
 }
 function renderModal() {
@@ -804,6 +952,7 @@ function renderModal() {
   renderImportPreview();
 }
 function renderAll() {
+  renderFilterVisibility();
   writeFiltersToDom();
   renderViewSwitch();
   renderSummary();
@@ -827,6 +976,10 @@ async function loadSettings() {
 }
 function buildRequestFilters() {
   const filters = { ...stateRef.filters };
+  if (!isGroupsView()) {
+    filters.addedByFullNames = [];
+    filters.addedByDepartments = [];
+  }
   if (stateRef.activeView === "observed") {
     filters.containerIds = [...stateRef.observedIds];
   }
@@ -838,6 +991,8 @@ function applyEmptyListState() {
   stateRef.currentPage = 1;
   stateRef.statusOptions = [];
   stateRef.terminalOptions = [...FALLBACK_TERMINALS];
+  stateRef.userOptions = [];
+  stateRef.departmentOptions = [];
 }
 function openUserSettingsWithMessage(message) {
   stateRef.modalOpen = true;
@@ -907,11 +1062,19 @@ async function loadContainers(options = {}) {
       Array.isArray(result?.terminalOptions) && result.terminalOptions.length > 0
         ? result.terminalOptions.map((value) => asText(value)).filter(Boolean)
         : [...FALLBACK_TERMINALS];
+    stateRef.userOptions = Array.isArray(result?.userOptions)
+      ? result.userOptions.map((value) => asText(value)).filter(Boolean)
+      : [];
+    stateRef.departmentOptions = Array.isArray(result?.departmentOptions)
+      ? result.departmentOptions.map((value) => asText(value)).filter(Boolean)
+      : [];
 
     if (stateRef.totalCount === 0) {
       setStatus(
         stateRef.activeView === "observed"
           ? "Brak obserwowanych kontenerow dla aktualnych filtrow."
+          : stateRef.activeView === "groups"
+            ? "Brak kontenerow dla wybranego zestawu filtrow grup."
           : "Brak rekordow dla aktualnych filtrow."
       );
       return result;
@@ -921,6 +1084,8 @@ async function loadContainers(options = {}) {
     setStatus(
       stateRef.activeView === "observed"
         ? `Wczytano strone ${stateRef.currentPage} z ${totalPages}. Widoczne ${visibleRange.start}-${visibleRange.end} z ${stateRef.totalCount} obserwowanych kontenerow.`
+        : stateRef.activeView === "groups"
+          ? `Wczytano strone ${stateRef.currentPage} z ${totalPages}. Widoczne ${visibleRange.start}-${visibleRange.end} z ${stateRef.totalCount} rekordow grup.`
         : `Wczytano strone ${stateRef.currentPage} z ${totalPages}. Widoczne ${visibleRange.start}-${visibleRange.end} z ${stateRef.totalCount} rekordow.`
     );
     return result;
@@ -1001,16 +1166,22 @@ async function submitCreate() {
       ...stateRef.draft,
       userProfile: stateRef.userProfile,
     });
-    const createdNumber = result?.container?.number || stateRef.draft.number;
     stateRef.modalOpen = false;
     stateRef.modalMode = "create";
     stateRef.draft = createEmptyDraft();
     await loadContainers();
-    setStatus(
-      result?.created
-        ? `Dodano kontener ${createdNumber}.`
-        : `Kontener ${createdNumber} juz byl w bazie. Dopisano autora dodania.`
-    );
+    if (result?.batch) {
+      setStatus(
+        `Dodawanie paczki zakonczone. Przetworzono ${Number(result?.importedCount) || 0} numerow, nowe ${Number(result?.createdCount) || 0}, istniejace ${Number(result?.existingCount) || 0}, bledne ${Number(result?.invalidCount) || 0}, duplikaty ${Number(result?.duplicateCount) || 0}.`
+      );
+    } else {
+      const createdNumber = result?.container?.number || stateRef.draft.number;
+      setStatus(
+        result?.created
+          ? `Dodano kontener ${createdNumber}.`
+          : `Kontener ${createdNumber} juz byl w bazie. Dopisano autora dodania.`
+      );
+    }
     return result;
   } catch (error) {
     console.error(error);
@@ -1224,6 +1395,42 @@ async function handleAction(action, payload = {}) {
 }
 
 document.addEventListener("click", async (event) => {
+  const isGroupsFilterClick = isClickInsideGroupsFilter(event.target);
+  if (elements.filterUsersList.open && !isGroupsFilterClick) {
+    elements.filterUsersList.open = false;
+  }
+  if (elements.filterDepartmentsList.open && !isGroupsFilterClick) {
+    elements.filterDepartmentsList.open = false;
+  }
+
+  const usersSelectionNode =
+    event.target instanceof Element ? event.target.closest("[data-users-selection]") : null;
+  if (usersSelectionNode) {
+    const availableValues = Array.from(
+      elements.filterUsersOptions.querySelectorAll("[data-users-value]")
+    )
+      .map((input) => asText(input.dataset.usersValue))
+      .filter(Boolean);
+    stateRef.filters.addedByFullNames =
+      usersSelectionNode.dataset.usersSelection === "all" ? availableValues : [];
+    writeFiltersToDom();
+    return;
+  }
+
+  const departmentsSelectionNode =
+    event.target instanceof Element ? event.target.closest("[data-departments-selection]") : null;
+  if (departmentsSelectionNode) {
+    const availableValues = Array.from(
+      elements.filterDepartmentsOptions.querySelectorAll("[data-departments-value]")
+    )
+      .map((input) => asText(input.dataset.departmentsValue))
+      .filter(Boolean);
+    stateRef.filters.addedByDepartments =
+      departmentsSelectionNode.dataset.departmentsSelection === "all" ? availableValues : [];
+    writeFiltersToDom();
+    return;
+  }
+
   const actionNode = event.target.closest("[data-action]");
   if (!actionNode) {
     return;
@@ -1256,6 +1463,25 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("change", (event) => {
+  if (event.target instanceof HTMLInputElement && event.target.matches("[data-users-value]")) {
+    stateRef.filters.addedByFullNames = getCheckedFilterValues(
+      "#filter-users-options [data-users-value]",
+      "usersValue"
+    );
+    writeFiltersToDom();
+    return;
+  }
+  if (
+    event.target instanceof HTMLInputElement &&
+    event.target.matches("[data-departments-value]")
+  ) {
+    stateRef.filters.addedByDepartments = getCheckedFilterValues(
+      "#filter-departments-options [data-departments-value]",
+      "departmentsValue"
+    );
+    writeFiltersToDom();
+    return;
+  }
   if (event.target === elements.draftTerminal) {
     stateRef.draft = readDraftFromDom();
     return;

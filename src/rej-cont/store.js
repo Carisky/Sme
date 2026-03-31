@@ -29,6 +29,8 @@ const EMPTY_RESULT = Object.freeze({
   hasMore: false,
   statusOptions: [],
   terminalOptions: [...TERMINAL_OPTIONS],
+  userOptions: [],
+  departmentOptions: [],
 });
 
 function asText(value) {
@@ -42,6 +44,30 @@ function asText(value) {
 function asNullableText(value) {
   const text = asText(value);
   return text || null;
+}
+
+function normalizeTextFilterValues(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(new Set(value.map((entry) => asText(entry)).filter(Boolean)));
+}
+
+function splitManualContainerNumbers(value) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => asText(entry)).filter(Boolean);
+  }
+
+  const rawValue = asText(value);
+  if (!rawValue) {
+    return [];
+  }
+
+  return rawValue
+    .split(/[\s,;\r\n]+/g)
+    .map((entry) => asText(entry))
+    .filter(Boolean);
 }
 
 function normalizeContainerNumber(value) {
@@ -261,6 +287,12 @@ function buildContainerWhereInput(filters = {}, options = {}) {
   const clauses = [];
   const number = normalizeContainerNumber(filters.number);
   const containerIds = normalizeContainerIds(filters.containerIds);
+  const addedByFullNames = normalizeTextFilterValues(
+    filters.addedByFullNames || filters.fullNames || filters.users
+  );
+  const addedByDepartments = normalizeTextFilterValues(
+    filters.addedByDepartments || filters.departments
+  );
 
   if (number) {
     clauses.push({
@@ -307,6 +339,30 @@ function buildContainerWhereInput(filters = {}, options = {}) {
     clauses.push({ lastRefreshTime: lastRefreshTimeRange });
   }
 
+  if (!options.excludeAddedByFilters) {
+    const additionWhere = {};
+
+    if (addedByFullNames.length > 0 && !options.excludeAddedByFullNames) {
+      additionWhere.fullName = {
+        in: addedByFullNames,
+      };
+    }
+
+    if (addedByDepartments.length > 0 && !options.excludeAddedByDepartments) {
+      additionWhere.department = {
+        in: addedByDepartments,
+      };
+    }
+
+    if (Object.keys(additionWhere).length > 0) {
+      clauses.push({
+        additions: {
+          some: additionWhere,
+        },
+      });
+    }
+  }
+
   if (clauses.length === 0) {
     return {};
   }
@@ -319,11 +375,8 @@ function buildContainerWhereInput(filters = {}, options = {}) {
 }
 
 function normalizeCreateContainerInput(input = {}) {
+  const details = normalizeContainerDraftInput(input);
   const number = normalizeContainerNumber(input.number);
-  const mrn = asNullableText(input.mrn);
-  const stop = asNullableText(input.stop);
-  const status = asNullableText(input.status);
-  const terminalName = normalizeTerminalName(input.terminalName) || null;
 
   if (!number) {
     throw new Error("Pole number jest wymagane.");
@@ -331,10 +384,16 @@ function normalizeCreateContainerInput(input = {}) {
 
   return {
     number,
-    mrn,
-    stop,
-    status,
-    terminalName,
+    ...details,
+  };
+}
+
+function normalizeContainerDraftInput(input = {}) {
+  return {
+    mrn: asNullableText(input.mrn),
+    stop: asNullableText(input.stop),
+    status: asNullableText(input.status),
+    terminalName: normalizeTerminalName(input.terminalName) || null,
   };
 }
 
@@ -384,6 +443,33 @@ function serializeContainer(record = {}) {
   };
 }
 
+function collectAddedByOptions(records = {}) {
+  const userSet = new Set();
+  const departmentSet = new Set();
+
+  (Array.isArray(records) ? records : []).forEach((record) => {
+    (Array.isArray(record?.additions) ? record.additions : []).forEach((entry) => {
+      const fullName = asText(entry?.fullName);
+      const department = asText(entry?.department);
+
+      if (fullName) {
+        userSet.add(fullName);
+      }
+
+      if (department) {
+        departmentSet.add(department);
+      }
+    });
+  });
+
+  return {
+    userOptions: Array.from(userSet).sort((left, right) => left.localeCompare(right, "pl")),
+    departmentOptions: Array.from(departmentSet).sort((left, right) =>
+      left.localeCompare(right, "pl")
+    ),
+  };
+}
+
 function normalizeListOptions(options = {}) {
   const requestedLimit = Number(options.limit);
   const requestedOffset = Number(options.offset);
@@ -419,6 +505,21 @@ function buildAdditionCreateInput(containerId, actor, input = {}) {
   };
 }
 
+function createManualDraftContainers(input = {}) {
+  const details = normalizeContainerDraftInput(input);
+  const requestedNumbers = splitManualContainerNumbers(input.numbers || input.number);
+
+  return {
+    ...details,
+    requestedNumbers,
+    requestedCount: requestedNumbers.length,
+    containers: requestedNumbers.map((number) => ({
+      number,
+      ...(details.terminalName ? { terminalName: details.terminalName } : {}),
+    })),
+  };
+}
+
 function chunkValues(values, chunkSize) {
   const normalizedChunkSize =
     Number.isInteger(Number(chunkSize)) && Number(chunkSize) > 0
@@ -433,16 +534,24 @@ function chunkValues(values, chunkSize) {
   return chunks;
 }
 
-async function createContainersBatch(prisma, containers) {
+async function createContainersBatch(prisma, containers, defaults = {}) {
   if (!Array.isArray(containers) || containers.length === 0) {
     return;
   }
+
+  const normalizedDefaults =
+    defaults && typeof defaults === "object" && !Array.isArray(defaults) ? defaults : {};
 
   if (typeof prisma?.container?.createMany === "function") {
     await prisma.container.createMany({
       data: containers.map((container) => ({
         number: container.number,
-        ...(container.terminalName ? { terminalName: container.terminalName } : {}),
+        ...(container.terminalName || normalizedDefaults.terminalName
+          ? { terminalName: container.terminalName || normalizedDefaults.terminalName }
+          : {}),
+        ...(normalizedDefaults.mrn ? { mrn: normalizedDefaults.mrn } : {}),
+        ...(normalizedDefaults.stop ? { stop: normalizedDefaults.stop } : {}),
+        ...(normalizedDefaults.status ? { status: normalizedDefaults.status } : {}),
       })),
     });
     return;
@@ -452,7 +561,12 @@ async function createContainersBatch(prisma, containers) {
     await prisma.container.create({
       data: {
         number: container.number,
-        ...(container.terminalName ? { terminalName: container.terminalName } : {}),
+        ...(container.terminalName || normalizedDefaults.terminalName
+          ? { terminalName: container.terminalName || normalizedDefaults.terminalName }
+          : {}),
+        ...(normalizedDefaults.mrn ? { mrn: normalizedDefaults.mrn } : {}),
+        ...(normalizedDefaults.stop ? { stop: normalizedDefaults.stop } : {}),
+        ...(normalizedDefaults.status ? { status: normalizedDefaults.status } : {}),
       },
     });
   }
@@ -504,8 +618,11 @@ async function listContainers(prisma, options = {}) {
   const statusWhere = buildContainerWhereInput(filters, {
     excludeStatus: true,
   });
+  const additionOptionsWhere = buildContainerWhereInput(filters, {
+    excludeAddedByFilters: true,
+  });
 
-  const [totalCount, items, groupedStatuses] = await Promise.all([
+  const [totalCount, items, groupedStatuses, additionOptionRecords] = await Promise.all([
     prisma.container.count({ where }),
     prisma.container.findMany({
       where,
@@ -518,11 +635,23 @@ async function listContainers(prisma, options = {}) {
       by: ["status"],
       where: statusWhere,
     }),
+    prisma.container.findMany({
+      where: additionOptionsWhere,
+      select: {
+        additions: {
+          select: {
+            fullName: true,
+            department: true,
+          },
+        },
+      },
+    }),
   ]);
 
   const total = Number(totalCount) || 0;
   const rows = Array.isArray(items) ? items.map(serializeContainer) : [];
   const hasMore = offset + rows.length < total;
+  const additionOptions = collectAddedByOptions(additionOptionRecords);
 
   return {
     items: rows,
@@ -538,6 +667,8 @@ async function listContainers(prisma, options = {}) {
           .sort((left, right) => left.localeCompare(right, "pl"))
       : [],
     terminalOptions: [...TERMINAL_OPTIONS],
+    userOptions: additionOptions.userOptions,
+    departmentOptions: additionOptions.departmentOptions,
   };
 }
 
@@ -561,12 +692,50 @@ async function createContainer(prisma, input = {}) {
     throw new Error("Prisma klient rej-cont nie jest gotowy.");
   }
 
-  const normalized = normalizeCreateContainerInput(input);
   const actor = normalizeUserProfile(
     input.userProfile || input.addedBy || input.actor,
     { required: true }
   );
   const sourceKind = normalizeAdditionSourceKind(input.sourceKind || "MANUAL");
+  const manualDraft = createManualDraftContainers(input);
+
+  if (manualDraft.requestedCount === 0) {
+    throw new Error("Pole number jest wymagane.");
+  }
+
+  const normalizedContainers = normalizeImportedContainers(manualDraft.containers);
+  if (normalizedContainers.containers.length === 0) {
+    throw new Error("Podaj przynajmniej jeden poprawny numer kontenera.");
+  }
+
+  if (
+    manualDraft.requestedCount > 1 ||
+    normalizedContainers.invalidCount > 0 ||
+    normalizedContainers.duplicateCount > 0
+  ) {
+    const imported = await importContainers(prisma, {
+      containers: manualDraft.containers,
+      userProfile: actor,
+      sourceKind,
+      sourceFileName: input.sourceFileName,
+      filePath: input.filePath,
+      sourceSheetName: input.sourceSheetName,
+      containerDefaults: manualDraft,
+    });
+
+    return {
+      batch: true,
+      ...imported,
+    };
+  }
+
+  const normalized = {
+    number: normalizedContainers.containers[0].number,
+    mrn: manualDraft.mrn,
+    stop: manualDraft.stop,
+    status: manualDraft.status,
+    terminalName: normalizedContainers.containers[0].terminalName || manualDraft.terminalName,
+  };
 
   return withTransaction(prisma, async (tx) => {
     const existing = await tx.container.findFirst({
@@ -623,6 +792,7 @@ async function importContainers(prisma, request = {}) {
   const normalizedContainers = normalizeImportedContainers(
     Array.isArray(request.containers) ? request.containers : request.numbers
   );
+  const containerDefaults = normalizeContainerDraftInput(request.containerDefaults || {});
   const sourceKind = normalizeAdditionSourceKind(request.sourceKind || "IMPORT");
   const sourceFileName = asNullableText(request.sourceFileName || request.filePath);
   const sourceSheetName = asNullableText(request.sourceSheetName);
@@ -687,7 +857,7 @@ async function importContainers(prisma, request = {}) {
     );
     existingCount += chunkContainers.length - missingContainers.length;
 
-    await createContainersBatch(prisma, missingContainers);
+    await createContainersBatch(prisma, missingContainers, containerDefaults);
     createdCount += missingContainers.length;
 
     const hydratedRecords =

@@ -37,7 +37,8 @@ body.modal-open {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -65,7 +66,8 @@ button:disabled {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -76,9 +78,15 @@ select {
 
 input:focus,
 select:focus,
+textarea:focus,
 button:focus-visible {
   outline: 2px solid rgba(31, 94, 87, 0.25);
   outline-offset: 2px;
+}
+
+textarea {
+  min-height: 5.8rem;
+  resize: vertical;
 }
 
 .shell {
@@ -263,6 +271,123 @@ button:focus-visible {
 
 .field span {
   font-size: 0.9rem;
+}
+
+.field__hint {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.filter-multiselect {
+  position: relative;
+}
+
+.filter-multiselect > summary {
+  list-style: none;
+  cursor: pointer;
+  position: relative;
+  width: 100%;
+  padding: 0.82rem 2.8rem 0.82rem 0.95rem;
+  min-height: 54px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+}
+
+.filter-multiselect > summary::-webkit-details-marker {
+  display: none;
+}
+
+.filter-multiselect > summary::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-65%) rotate(45deg);
+  opacity: 0.7;
+}
+
+.filter-multiselect[open] > summary {
+  border-color: rgba(31, 94, 87, 0.35);
+  box-shadow: 0 0 0 3px rgba(31, 94, 87, 0.08);
+}
+
+.filter-multiselect[open] > summary::after {
+  transform: translateY(-20%) rotate(225deg);
+}
+
+.filter-multiselect__panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  left: 0;
+  z-index: 20;
+  width: min(360px, calc(100vw - 4rem));
+  display: grid;
+  gap: 0.6rem;
+  padding: 0.82rem;
+  border: 1px solid rgba(37, 55, 52, 0.14);
+  border-radius: 18px;
+  background: rgba(251, 246, 239, 0.98);
+  box-shadow: 0 18px 36px rgba(32, 37, 35, 0.14);
+}
+
+.filter-multiselect__panel::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 22px;
+  width: 14px;
+  height: 14px;
+  background: inherit;
+  border-left: 1px solid rgba(37, 55, 52, 0.14);
+  border-top: 1px solid rgba(37, 55, 52, 0.14);
+  transform: rotate(45deg);
+}
+
+.filter-multiselect__actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.filter-multiselect__button {
+  padding: 0.42rem 0.64rem;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.filter-multiselect__list {
+  display: grid;
+  gap: 0.34rem;
+  max-height: 220px;
+  overflow: auto;
+  padding-right: 0.18rem;
+}
+
+.filter-multiselect__empty {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.16rem 0;
+  color: var(--text);
+}
+
+.filter-checkbox input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent);
 }
 
 .field--wide {

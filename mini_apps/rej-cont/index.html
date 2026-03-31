@@ -93,6 +93,29 @@
               <span>Refresh do</span>
               <input type="datetime-local" id="filter-refresh-to" />
             </label>
+
+            <label class="field" id="filter-users-field" hidden>
+              <span>Uzytkownik</span>
+              <details id="filter-users-list" class="filter-multiselect filter-multiselect--popover">
+                <summary id="filter-users-summary">Wszyscy uzytkownicy</summary>
+                <div class="filter-multiselect__panel">
+                  <div id="filter-users-options"></div>
+                </div>
+              </details>
+            </label>
+
+            <label class="field" id="filter-departments-field" hidden>
+              <span>Oddzial</span>
+              <details
+                id="filter-departments-list"
+                class="filter-multiselect filter-multiselect--popover"
+              >
+                <summary id="filter-departments-summary">Wszystkie oddzialy</summary>
+                <div class="filter-multiselect__panel">
+                  <div id="filter-departments-options"></div>
+                </div>
+              </details>
+            </label>
           </div>
 
           <div class="filters-actions">
@@ -207,9 +230,13 @@
         <div class="modal__body">
           <section id="create-panel" class="panel">
             <div class="form-grid">
-              <label class="field">
+              <label class="field field--wide">
                 <span>Number</span>
-                <input type="text" id="draft-number" maxlength="30" placeholder="MSCU1234567" />
+                <textarea
+                  id="draft-number"
+                  rows="3"
+                  placeholder="MSCU1234567, TEMU7654321, TIIU4267366"
+                ></textarea>
               </label>
 
               <label class="field">
@@ -236,7 +263,7 @@
             <div class="info-strip">
               <div>
                 <strong>Wymagane pole</strong>
-                <span>Tylko container number musi byc podany przy dodawaniu.</span>
+                <span>Wklej jeden lub wiele numerow kontenerow oddzielonych przecinkiem, spacja albo nowa linia.</span>
               </div>
               <div>
                 <strong>Daty</strong>
