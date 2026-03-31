@@ -112,9 +112,15 @@ function createRejContUpdateController(options = {}) {
           };
 
           if (payload && typeof payload === "object") {
-            data.mrn = asNullableText(payload.mrn);
-            data.stop = asNullableText(payload.stop);
-            data.status = asNullableText(payload.status);
+            if (Object.prototype.hasOwnProperty.call(payload, "mrn")) {
+              data.mrn = asNullableText(payload.mrn);
+            }
+            if (Object.prototype.hasOwnProperty.call(payload, "stop")) {
+              data.stop = asNullableText(payload.stop);
+            }
+            if (Object.prototype.hasOwnProperty.call(payload, "status")) {
+              data.status = asNullableText(payload.status);
+            }
             updatedCount += 1;
           }
 
