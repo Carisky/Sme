@@ -12,12 +12,26 @@ const {
   suggestProjectName,
 } = require("./src/core");
 
+function normalizeApiBaseUrl(value, fallback) {
+  const raw = String(value || fallback || "").trim();
+
+  if (!raw) {
+    return "";
+  }
+
+  return raw.endsWith("/") ? raw : `${raw}/`;
+}
+
 contextBridge.exposeInMainWorld("bridge", {
   meta: {
     maxLines: MAX_LINES,
     oreTypes: ORE_TYPES,
     documentTypes: Object.keys(DOCUMENT_PRESETS),
     persistedSettingsPaths: APP_SETTINGS_PATHS,
+    trainsApiUrl: normalizeApiBaseUrl(
+      process.env.TRAINS_API_URL,
+      "http://localhost:3000/"
+    ),
   },
   bootstrapShell: () => ipcRenderer.invoke("shell:bootstrap"),
   openHome: () => ipcRenderer.invoke("shell:open-home"),

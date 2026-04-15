@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Trains Info</title>
+  <desc id="desc">Train dashboard icon</desc>
+  <defs>
+    <linearGradient id="bg" x1="18" y1="12" x2="112" y2="116" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#35d0ba"/>
+      <stop offset="1" stop-color="#5ca8ff"/>
+    </linearGradient>
+    <linearGradient id="track" x1="30" y1="98" x2="98" y2="98" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#08131d"/>
+      <stop offset="1" stop-color="#13283a"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="108" height="108" rx="28" fill="url(#bg)"/>
+  <rect x="28" y="26" width="72" height="54" rx="16" fill="#08131d" opacity=".92"/>
+  <rect x="36" y="34" width="56" height="12" rx="6" fill="#e8f2f8" opacity=".18"/>
+  <rect x="36" y="50" width="24" height="20" rx="6" fill="#e8f2f8" opacity=".85"/>
+  <rect x="64" y="50" width="28" height="20" rx="6" fill="#e8f2f8" opacity=".18"/>
+  <rect x="34" y="84" width="60" height="12" rx="6" fill="url(#track)"/>
+  <circle cx="44" cy="101" r="7" fill="#08131d"/>
+  <circle cx="84" cy="101" r="7" fill="#08131d"/>
+  <rect x="50" y="90" width="28" height="4" rx="2" fill="#08131d"/>
+</svg>

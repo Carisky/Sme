@@ -1,0 +1,9 @@
+{
+  "id": "trains-info",
+  "name": "Trains Info",
+  "description": "Operations dashboard for trains, routes, stations, carriers, and disruptions.",
+  "version": "0.1.0",
+  "page": "index.html",
+  "icon": "icon.svg",
+  "order": 20
+}

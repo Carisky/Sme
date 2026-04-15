@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <title>Trains Info</title>
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand">
+          <img class="brand__icon" src="./icon.svg" alt="Trains Info" width="72" height="72" />
+          <div class="brand__copy">
+            <p class="eyebrow">Trains data monitor</p>
+            <h1>Trains Info</h1>
+            <p class="subtitle">Operations, routes, stations, carriers, disruptions</p>
+          </div>
+        </div>
+
+        <div class="header-meta">
+          <div class="meta-chip">
+            <span class="meta-chip__label">API</span>
+            <span class="meta-chip__value" id="api-base-url">loading...</span>
+          </div>
+          <div class="meta-chip">
+            <span class="meta-chip__label">Sync</span>
+            <span class="meta-chip__value" id="sync-status">waiting...</span>
+          </div>
+          <div class="meta-chip">
+            <span class="meta-chip__label">Records</span>
+            <span class="meta-chip__value" id="record-counts">0</span>
+          </div>
+        </div>
+      </header>
+
+      <nav class="nav" aria-label="Sections">
+        <button class="nav__button is-active" data-section-button="dashboard">Dashboard</button>
+        <button class="nav__button" data-section-button="trains">Trains</button>
+        <button class="nav__button" data-section-button="routes">Routes</button>
+        <button class="nav__button" data-section-button="stations">Stations</button>
+        <button class="nav__button" data-section-button="carriers">Carriers</button>
+        <button class="nav__button" data-section-button="disruptions">Disruptions</button>
+      </nav>
+
+      <main class="main">
+        <section class="section is-active" data-section="dashboard">
+          <div class="section__hero">
+            <div>
+              <p class="eyebrow">General monitoring</p>
+              <h2>Operational overview</h2>
+              <p class="section__lead">
+                Latest sync state, active delays, and the most recent operations are visible here.
+              </p>
+            </div>
+            <button class="button button--accent" id="refresh-button" type="button">Refresh data</button>
+          </div>
+
+          <div class="grid grid--metrics" id="metric-grid"></div>
+
+          <div class="grid grid--split">
+            <article class="card">
+              <div class="card__header">
+                <div>
+                  <p class="eyebrow">Latest operations</p>
+                  <h3>Train cards</h3>
+                </div>
+                <span class="badge" id="latest-operations-count">0</span>
+              </div>
+              <div class="stack" id="latest-operations"></div>
+            </article>
+
+            <article class="card">
+              <div class="card__header">
+                <div>
+                  <p class="eyebrow">Active disruptions</p>
+                  <h3>Problems and deviations</h3>
+                </div>
+                <span class="badge badge--warn" id="active-disruptions-count">0</span>
+              </div>
+              <div class="stack" id="dashboard-disruptions"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" data-section="trains">
+          <div class="section__hero">
+            <div>
+              <p class="eyebrow">Train list</p>
+              <h2>Search and filter operations</h2>
+              <p class="section__lead">
+                Search by date, station, route, or status and open a train detail pane instantly.
+              </p>
+            </div>
+          </div>
+
+          <div class="filters card">
+            <label class="field">
+              <span>Search</span>
+              <input id="train-search" type="search" placeholder="Train, route, station, carrier" />
+            </label>
+            <label class="field">
+              <span>Date</span>
+              <input id="train-date" type="date" />
+            </label>
+            <label class="field">
+              <span>Station</span>
+              <select id="train-station"></select>
+            </label>
+            <label class="field">
+              <span>Status</span>
+              <select id="train-status"></select>
+            </label>
+          </div>
+
+          <div class="grid grid--split">
+            <article class="card">
+              <div class="card__header">
+                <div>
+                  <p class="eyebrow">Train cards</p>
+                  <h3>List of trains on date</h3>
+                </div>
+                <span class="badge" id="train-list-count">0</span>
+              </div>
+              <div class="pagination pagination--top" id="train-pager-top"></div>
+              <div class="stack stack--cards" id="train-list"></div>
+              <div class="pagination" id="train-pager"></div>
+            </article>
+
+            <article class="card" id="train-detail-card">
+              <div class="card__header">
+                <div>
+                  <p class="eyebrow">Train detail</p>
+                  <h3 id="detail-title">Select a train</h3>
+                </div>
+                <span class="badge badge--accent" id="detail-status">unknown</span>
+              </div>
+
+              <div class="detail-hero" id="detail-summary"></div>
+
+              <div class="progress" aria-label="Train progress">
+                <div class="progress__bar">
+                  <span id="progress-fill" class="progress__fill"></span>
+                </div>
+                <div class="progress__meta">
+                  <span id="progress-text">0/0</span>
+                  <span id="progress-percent">0%</span>
+                </div>
+              </div>
+
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-item__label">Current station</span>
+                  <strong id="detail-current-station">-</strong>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-item__label">Next station</span>
+                  <strong id="detail-next-station">-</strong>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-item__label">Planned arrival</span>
+                  <strong id="detail-planned-arrival">-</strong>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-item__label">Planned departure</span>
+                  <strong id="detail-planned-departure">-</strong>
+                </div>
+              </div>
+
+              <div class="stack stack--compact" id="detail-problems"></div>
+              <div class="timeline" id="detail-timeline"></div>
+              <div class="table-wrap">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Stop</th>
+                      <th>Planned</th>
+                      <th>Actual</th>
+                      <th>Delay</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="detail-stops"></tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" data-section="routes">
+          <div class="section__hero">
+            <div>
+              <p class="eyebrow">Routes</p>
+              <h2>Schedule and route catalog</h2>
+            </div>
+          </div>
+          <div class="grid grid--split">
+            <article class="card">
+              <div class="card__header">
+                <div>
+                  <p class="eyebrow">Route list</p>
+                  <h3>Routes by schedule and order</h3>
+                </div>
+                <span class="badge" id="route-count">0</span>
+              </div>
+              <div class="pagination pagination--top" id="route-pager-top"></div>
+              <div class="stack stack--cards" id="route-list"></div>
+              <div class="pagination" id="route-pager"></div>
+            </article>
+            <article class="card" id="route-detail-card">
+              <div class="card__header">
+                <div>
+                  <p class="eyebrow">Route detail</p>
+                  <h3 id="route-detail-title">Select a route</h3>
+                </div>
+              </div>
+              <div class="stack stack--compact" id="route-detail-body"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" data-section="stations">
+          <div class="section__hero">
+            <div>
+              <p class="eyebrow">Stations</p>
+              <h2>Station directory</h2>
+            </div>
+          </div>
+          <div class="filters card">
+            <label class="field">
+              <span>Search stations</span>
+              <input id="station-search" type="search" placeholder="Station name or code" />
+            </label>
+          </div>
+          <div class="grid grid--split">
+            <article class="card">
+              <div class="card__header">
+                <div>
+                  <p class="eyebrow">Station list</p>
+                  <h3>Linked trains</h3>
+                </div>
+                <span class="badge" id="station-count">0</span>
+              </div>
+              <div class="pagination pagination--top" id="station-pager-top"></div>
+              <div class="stack stack--cards" id="station-list"></div>
+              <div class="pagination" id="station-pager"></div>
+            </article>
+            <article class="card" id="station-detail-card">
+              <div class="card__header">
+                <div>
+                  <p class="eyebrow">Station detail</p>
+                  <h3 id="station-detail-title">Select a station</h3>
+                </div>
+              </div>
+              <div class="stack stack--compact" id="station-detail-body"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" data-section="carriers">
+          <div class="section__hero">
+            <div>
+              <p class="eyebrow">Carriers</p>
+              <h2>Carrier directory</h2>
+            </div>
+          </div>
+          <div class="filters card">
+            <label class="field">
+              <span>Search carriers</span>
+              <input id="carrier-search" type="search" placeholder="Carrier code or name" />
+            </label>
+          </div>
+          <div class="grid grid--split">
+            <article class="card">
+              <div class="card__header">
+                <div>
+                  <p class="eyebrow">Carrier list</p>
+                  <h3>Codes and linked routes</h3>
+                </div>
+                <span class="badge" id="carrier-count">0</span>
+              </div>
+              <div class="pagination pagination--top" id="carrier-pager-top"></div>
+              <div class="stack stack--cards" id="carrier-list"></div>
+              <div class="pagination" id="carrier-pager"></div>
+            </article>
+            <article class="card" id="carrier-detail-card">
+              <div class="card__header">
+                <div>
+                  <p class="eyebrow">Carrier detail</p>
+                  <h3 id="carrier-detail-title">Select a carrier</h3>
+                </div>
+              </div>
+              <div class="stack stack--compact" id="carrier-detail-body"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section" data-section="disruptions">
+          <div class="section__hero">
+            <div>
+              <p class="eyebrow">Disruptions</p>
+              <h2>Delays, cancellations, and deviations</h2>
+            </div>
+          </div>
+          <div class="filters card">
+            <label class="field">
+              <span>Search disruptions</span>
+              <input id="disruption-search" type="search" placeholder="Station, route, or message" />
+            </label>
+            <label class="field">
+              <span>Type</span>
+              <select id="disruption-type"></select>
+            </label>
+          </div>
+          <div class="grid grid--split">
+            <article class="card">
+              <div class="card__header">
+                <div>
+                  <p class="eyebrow">Disruption list</p>
+                  <h3>All active issues</h3>
+                </div>
+                <span class="badge badge--warn" id="disruption-count">0</span>
+              </div>
+              <div class="pagination pagination--top" id="disruption-pager-top"></div>
+              <div class="stack stack--cards" id="disruption-list"></div>
+              <div class="pagination" id="disruption-pager"></div>
+            </article>
+            <article class="card" id="disruption-detail-card">
+              <div class="card__header">
+                <div>
+                  <p class="eyebrow">Disruption detail</p>
+                  <h3 id="disruption-detail-title">Select a disruption</h3>
+                </div>
+              </div>
+              <div class="stack stack--compact" id="disruption-detail-body"></div>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span id="status-text">Loading train data...</span>
+      </footer>
+    </div>
+
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>
