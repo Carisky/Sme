@@ -161,6 +161,22 @@ contextBridge.exposeInMainWorld("bridge", {
   },
   updateRejContContainers: (options) =>
     ipcRenderer.invoke("rej-cont:containers:update", options),
+  listSentCodes: (options) =>
+    ipcRenderer.invoke("sent-codes:list", options),
+  refreshSentCodes: () =>
+    ipcRenderer.invoke("sent-codes:refresh"),
+  getSentCodesSyncState: () =>
+    ipcRenderer.invoke("sent-codes:sync-state:get"),
+  inspectSentCodesImportWorkbook: () =>
+    ipcRenderer.invoke("sent-codes:import:inspect"),
+  importSentCodesCheck: (request) =>
+    ipcRenderer.invoke("sent-codes:check:import", request),
+  listSentCodesCheck: (options) =>
+    ipcRenderer.invoke("sent-codes:check:list", options),
+  onSentCodesStatus: (callback) => {
+    ipcRenderer.removeAllListeners("sent-codes:status");
+    ipcRenderer.on("sent-codes:status", (_event, payload) => callback(payload));
+  },
   onPrintStatus: (callback) => {
     ipcRenderer.removeAllListeners("print:status");
     ipcRenderer.on("print:status", (_event, payload) => callback(payload));

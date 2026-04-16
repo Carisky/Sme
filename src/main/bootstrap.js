@@ -12,6 +12,7 @@ const { createModuleDiscoveryService } = require("./services/module-discovery-se
 const { createPrintService } = require("./services/print-service");
 const { createProjectService } = require("./services/project-service");
 const { createRejContService } = require("./services/rej-cont-service");
+const { createSentCodesService } = require("./services/sent-codes-service");
 const { createUpdateService } = require("./services/update-service");
 const { createWctCenService } = require("./services/wct-cen-service");
 const { registerIpcHandlers } = require("./ipc/register-ipc-handlers");
@@ -38,6 +39,7 @@ function bootstrapMainApp() {
     catalogService,
   });
   const rejContService = createRejContService({ windowController });
+  const sentCodesService = createSentCodesService({ windowController });
   const wctCenService = createWctCenService({ windowController });
   const updateService = createUpdateService({
     windowController,
@@ -56,10 +58,12 @@ function bootstrapMainApp() {
     moduleDiscoveryService,
     cenImtreksService,
     rejContService,
+    sentCodesService,
     wctCenService,
   });
 
   app.whenReady().then(() => {
+    sentCodesService.startStartupRefresh();
     windowController.createMainWindow();
 
     app.on("activate", () => {

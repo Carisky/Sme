@@ -11,6 +11,7 @@ function registerIpcHandlers({
   moduleDiscoveryService,
   cenImtreksService,
   rejContService,
+  sentCodesService,
   wctCenService,
 }) {
   let cachedShellBootstrap = null;
@@ -328,6 +329,32 @@ function registerIpcHandlers({
 
   ipcMain.handle("rej-cont:containers:update", async (_event, options) => {
     return rejContService.updateDbContainers(options);
+  });
+
+  ipcMain.handle("sent-codes:list", async (_event, options) => {
+    return sentCodesService.listCodes(options);
+  });
+
+  ipcMain.handle("sent-codes:refresh", async () => {
+    return sentCodesService.refreshCodes({
+      trigger: "manual",
+    });
+  });
+
+  ipcMain.handle("sent-codes:sync-state:get", async () => {
+    return sentCodesService.getSyncState();
+  });
+
+  ipcMain.handle("sent-codes:import:inspect", async () => {
+    return sentCodesService.inspectImportFromDialog();
+  });
+
+  ipcMain.handle("sent-codes:check:import", async (_event, request) => {
+    return sentCodesService.importCheckFromWorkbook(request);
+  });
+
+  ipcMain.handle("sent-codes:check:list", async (_event, options) => {
+    return sentCodesService.listCheck(options);
   });
 
   ipcMain.on("window:set-title", (_event, title) => {

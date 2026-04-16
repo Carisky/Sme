@@ -1,0 +1,10 @@
+{
+  "id": "sent-codes",
+  "name": "SENT Codes",
+  "description": "Lokalna baza kodow SENT z automatyczna synchronizacja przy starcie i recznym odswiezaniem.",
+  "version": "0.1.0",
+  "order": 30,
+  "page": "index.html",
+  "icon": "icon.svg"
+}
+
