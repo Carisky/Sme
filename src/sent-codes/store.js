@@ -365,7 +365,11 @@ async function listSentCheckRows(dbPath, options = {}) {
       sql: `
         SELECT COUNT(*) AS count
         FROM "SENT_IMPORTED" AS "i"
-        INNER JOIN "SENT" AS "s" ON "s"."codeNormalized" = "i"."codeNormalized"
+        WHERE EXISTS (
+          SELECT 1
+          FROM "SENT" AS "s"
+          WHERE "i"."codeNormalized" LIKE "s"."codeNormalized" || '%'
+        )
       `,
     });
     const matchedCount = getCountValue(matchedResult.rows[0]);
@@ -377,9 +381,14 @@ async function listSentCheckRows(dbPath, options = {}) {
           "i"."id" AS "id",
           "i"."codeNormalized" AS "codeNormalized",
           "i"."occurrenceCount" AS "occurrenceCount",
-          "s"."code" AS "apiCode"
+          (
+            SELECT "s"."code"
+            FROM "SENT" AS "s"
+            WHERE "i"."codeNormalized" LIKE "s"."codeNormalized" || '%'
+            ORDER BY LENGTH("s"."codeNormalized") DESC, "s"."codeNormalized" ASC
+            LIMIT 1
+          ) AS "registryCode"
         FROM "SENT_IMPORTED" AS "i"
-        LEFT JOIN "SENT" AS "s" ON "s"."codeNormalized" = "i"."codeNormalized"
         ORDER BY "i"."codeNormalized" ASC
         LIMIT ?
         OFFSET ?
@@ -411,8 +420,11 @@ async function listSentCheckRows(dbPath, options = {}) {
         id: Number(row.id) || 0,
         code: String(row.codeNormalized || "").trim(),
         occurrenceCount: Number(row.occurrenceCount) || 0,
-        existsInApi: Boolean(String(row.apiCode || "").trim()),
-        apiCode: String(row.apiCode || "").trim(),
+        existsInRegistry: Boolean(String(row.registryCode || "").trim()),
+        registryCode: String(row.registryCode || "").trim(),
+        // Backward compatibility for the existing renderer payload shape.
+        existsInApi: Boolean(String(row.registryCode || "").trim()),
+        apiCode: String(row.registryCode || "").trim(),
       })),
       totalCount,
       matchedCount,

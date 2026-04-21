@@ -34,7 +34,7 @@ const elements = {
 
 const stateRef = {
   activeTab: "codes",
-  isRefreshingApi: false,
+  isRefreshingRegistry: false,
   syncState: {
     status: "idle",
     startedAt: "",
@@ -179,15 +179,15 @@ function renderSyncState() {
   if (status === "running") {
     elements.syncTime.textContent = startedAt
       ? `Start: ${startedAt}`
-      : "Trwa synchronizacja";
-    elements.syncProgressCopy.textContent = `Pobrano ${Number(syncState.fetchedCount) || 0} kodow (strona ${Number(syncState.page) || 0}).`;
+      : "Trwa odswiezanie rejestru";
+    elements.syncProgressCopy.textContent = `Wczytano ${Number(syncState.fetchedCount) || 0} kodow z data-set.json.`;
     return;
   }
 
   if (status === "success") {
     elements.syncTime.textContent = finishedAt
       ? `Koniec: ${finishedAt}`
-      : "Synchronizacja zakonczona";
+      : "Odswiezenie zakonczone";
     elements.syncProgressCopy.textContent = `Zapisano ${Number(syncState.savedCount) || 0} kodow${trigger ? ` (${trigger})` : ""}.`;
     return;
   }
@@ -195,14 +195,14 @@ function renderSyncState() {
   if (status === "failed") {
     elements.syncTime.textContent = finishedAt
       ? `Blad: ${finishedAt}`
-      : "Synchronizacja nieudana";
+      : "Odswiezenie nieudane";
     elements.syncProgressCopy.textContent =
-      asText(syncState.error) || "Synchronizacja nieudana.";
+      asText(syncState.error) || "Odswiezenie nieudane.";
     return;
   }
 
   elements.syncTime.textContent = "Brak historii";
-  elements.syncProgressCopy.textContent = "Oczekiwanie na synchronizacje";
+  elements.syncProgressCopy.textContent = "Oczekiwanie na odswiezenie";
 }
 
 function renderCodesRows() {
@@ -238,7 +238,7 @@ function renderCodesPagination() {
     stateRef.codes.totalCount
   );
   const isEmpty = stateRef.codes.totalCount === 0;
-  const isBusy = stateRef.codes.isLoading || stateRef.isRefreshingApi;
+  const isBusy = stateRef.codes.isLoading || stateRef.isRefreshingRegistry;
 
   elements.recordsMeta.textContent = isEmpty
     ? "Brak rekordow"
@@ -357,15 +357,15 @@ function renderCheckRows() {
   elements.checkTableBody.innerHTML = stateRef.check.rows
     .map((row, index) => {
       const ordinal = offset + index + 1;
-      const existsInApi = Boolean(row.existsInApi);
+      const existsInRegistry = Boolean(row.existsInRegistry ?? row.existsInApi);
       return `
-        <tr class="${existsInApi ? "check-row--match" : "check-row--missing"}">
+        <tr class="${existsInRegistry ? "check-row--match" : "check-row--missing"}">
           <td>${ordinal}</td>
           <td>${asText(row.code)}</td>
           <td>${Math.max(0, Number(row.occurrenceCount) || 0)}</td>
           <td>
-            <span class="check-status ${existsInApi ? "check-status--match" : "check-status--missing"}">
-              ${existsInApi ? "Jest w API" : "Brak w API"}
+            <span class="check-status ${existsInRegistry ? "check-status--match" : "check-status--missing"}">
+              ${existsInRegistry ? "Jest w rejestrze" : "Brak w rejestrze"}
             </span>
           </td>
         </tr>
@@ -424,15 +424,15 @@ function renderAll() {
   renderCheckRows();
   renderCheckPagination();
 
-  elements.refreshButton.disabled = stateRef.isRefreshingApi;
+  elements.refreshButton.disabled = stateRef.isRefreshingRegistry;
   elements.checkChooseFileButton.disabled = stateRef.check.isImporting;
 
-  if (stateRef.isRefreshingApi) {
-    elements.subtitle.textContent = "Trwa reczna synchronizacja z API.";
+  if (stateRef.isRefreshingRegistry) {
+    elements.subtitle.textContent = "Trwa odswiezanie rejestru z data-set.json.";
   } else if (stateRef.codes.isLoading) {
-    elements.subtitle.textContent = "Wczytywanie strony kodow z lokalnej bazy.";
+    elements.subtitle.textContent = "Wczytywanie kodow rejestru.";
   } else {
-    elements.subtitle.textContent = "Lokalna baza kodow SENT z paginacja.";
+    elements.subtitle.textContent = "Kody rejestru SENT z data-set.json.";
   }
 }
 
@@ -656,11 +656,11 @@ async function loadCheckPage(page, options = {}) {
 }
 
 async function refreshCodes() {
-  if (stateRef.isRefreshingApi) {
+  if (stateRef.isRefreshingRegistry) {
     return null;
   }
 
-  stateRef.isRefreshingApi = true;
+  stateRef.isRefreshingRegistry = true;
   renderAll();
 
   try {
@@ -670,7 +670,9 @@ async function refreshCodes() {
     if (stateRef.check.totalCount > 0) {
       await loadCheckPage(stateRef.check.currentPage, { keepPage: true });
     }
-    setStatus(`Synchronizacja zakonczona. Zapisano ${Number(syncResult?.savedCount) || 0} kodow.`);
+    setStatus(
+      `Odswiezenie rejestru zakonczone. Zapisano ${Number(syncResult?.savedCount) || 0} kodow.`
+    );
     return syncResult;
   } catch (error) {
     console.error(error);
@@ -678,7 +680,7 @@ async function refreshCodes() {
     setStatus(error.message);
     return null;
   } finally {
-    stateRef.isRefreshingApi = false;
+    stateRef.isRefreshingRegistry = false;
     renderAll();
   }
 }
@@ -763,19 +765,21 @@ function handleSentCodesStatus(payload = {}) {
   applySyncState(payload);
 
   if (payload.type === "running") {
-    setStatus("Synchronizacja SENT uruchomiona.");
+    setStatus("Odswiezanie rejestru SENT uruchomione.");
     return;
   }
 
   if (payload.type === "progress") {
     setStatus(
-      `Synchronizacja SENT: strona ${Number(payload.page) || 0}, pobrano ${Number(payload.fetchedCount) || 0} kodow.`
+      `Odswiezanie SENT: wczytano ${Number(payload.fetchedCount) || 0} kodow z data-set.json.`
     );
     return;
   }
 
   if (payload.type === "completed") {
-    setStatus(`Synchronizacja SENT zakonczona. Zapisano ${Number(payload.savedCount) || 0} kodow.`);
+    setStatus(
+      `Odswiezanie SENT zakonczone. Zapisano ${Number(payload.savedCount) || 0} kodow.`
+    );
     loadCodesPage(stateRef.codes.currentPage, { keepPage: true }).catch(() => {});
     if (stateRef.check.totalCount > 0) {
       loadCheckPage(stateRef.check.currentPage, { keepPage: true }).catch(() => {});
@@ -784,7 +788,7 @@ function handleSentCodesStatus(payload = {}) {
   }
 
   if (payload.type === "failed") {
-    setStatus(asText(payload.error) || "Synchronizacja SENT nieudana.");
+    setStatus(asText(payload.error) || "Odswiezanie SENT nieudane.");
   }
 }
 

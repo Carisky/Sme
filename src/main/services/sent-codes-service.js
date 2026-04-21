@@ -1,6 +1,6 @@
 const path = require("path");
+const fs = require("fs/promises");
 const { app, dialog } = require("electron");
-const { fetchAllSentCodes } = require("../../sent-codes/api");
 const {
   importSentCodesFromWorkbook,
   inspectSentCodesWorkbook,
@@ -14,8 +14,44 @@ const {
   resolveSentCodesDbPath,
 } = require("../../sent-codes/store");
 
-function clampProgress(value) {
-  return Math.max(0, Math.min(Number(value) || 0, 100));
+const SENT_CODES_DATA_SET_PATH = path.resolve(
+  __dirname,
+  "../../../mini_apps/sent-codes/data-set.json"
+);
+
+async function loadCodesFromDataSet() {
+  let rawData = "";
+  try {
+    rawData = await fs.readFile(SENT_CODES_DATA_SET_PATH, "utf8");
+  } catch (error) {
+    throw new Error(
+      `Nie mozna odczytac pliku rejestru SENT (${SENT_CODES_DATA_SET_PATH}): ${String(
+        error?.message || error
+      )}`
+    );
+  }
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(rawData);
+  } catch (error) {
+    throw new Error(
+      `Plik rejestru SENT ma niepoprawny JSON (${SENT_CODES_DATA_SET_PATH}): ${String(
+        error?.message || error
+      )}`
+    );
+  }
+
+  const sourceCodes = Array.isArray(parsed?.codes) ? parsed.codes : [];
+  const uniqueCodes = Array.from(
+    new Set(
+      sourceCodes
+        .map((code) => String(code ?? "").trim())
+        .filter(Boolean)
+    )
+  );
+
+  return uniqueCodes;
 }
 
 function createEmptySyncState() {
@@ -86,19 +122,16 @@ function createSentCodesService({ windowController } = {}) {
 
     activeRefreshPromise = (async () => {
       try {
-        const codes = await fetchAllSentCodes({
-          onPage({ page, collectedCount }) {
-            updateSyncState({
-              page,
-              fetchedCount: collectedCount,
-              progress: clampProgress(Math.min(95, 12 + page * 3)),
-            });
+        const codes = await loadCodesFromDataSet();
 
-            publishStatus({
-              type: "progress",
-              ...syncState,
-            });
-          },
+        updateSyncState({
+          page: 1,
+          fetchedCount: codes.length,
+          progress: 65,
+        });
+        publishStatus({
+          type: "progress",
+          ...syncState,
         });
 
         const saveResult = await replaceSentCodes(dbPath, codes);
@@ -265,4 +298,3 @@ function createSentCodesService({ windowController } = {}) {
 module.exports = {
   createSentCodesService,
 };
-

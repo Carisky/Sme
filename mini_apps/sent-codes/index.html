@@ -21,7 +21,7 @@
 
         <div class="toolbar">
           <button type="button" id="refresh-button" class="button--strong" data-action="refresh">
-            Odswiez baze
+            Odswiez rejestr
           </button>
           <button type="button" data-action="home" class="button--minimal">Moduly</button>
         </div>
@@ -38,19 +38,19 @@
             <article class="card stat-card">
               <p class="eyebrow">Lokalna baza</p>
               <h2 id="total-count">0</h2>
-              <p class="muted">Liczba kodow w SQLite</p>
+              <p class="muted">Liczba kodow z data-set.json</p>
             </article>
 
             <article class="card stat-card">
-              <p class="eyebrow">Synchronizacja</p>
+              <p class="eyebrow">Rejestr</p>
               <h2 id="sync-state-label">idle</h2>
               <p class="muted" id="sync-time">Brak historii</p>
             </article>
 
             <article class="card stat-card">
-              <p class="eyebrow">Postep</p>
+              <p class="eyebrow">Odswiezenie</p>
               <h2 id="sync-progress-label">0%</h2>
-              <p class="muted" id="sync-progress-copy">Oczekiwanie na synchronizacje</p>
+              <p class="muted" id="sync-progress-copy">Oczekiwanie na odswiezenie</p>
             </article>
           </section>
 
@@ -149,13 +149,13 @@
             </article>
 
             <article class="card stat-card">
-              <p class="eyebrow">Znalezione w API</p>
+              <p class="eyebrow">Znalezione w rejestrze</p>
               <h2 id="check-matched-count">0</h2>
-              <p class="muted">Porownane z tabela SENT z API</p>
+              <p class="muted">Kod importu zaczyna sie od kodu z data-set.json</p>
             </article>
 
             <article class="card stat-card">
-              <p class="eyebrow">Brak w API</p>
+              <p class="eyebrow">Brak w rejestrze</p>
               <h2 id="check-missing-count">0</h2>
               <p class="muted">Wymagaja sprawdzenia recznego</p>
             </article>
